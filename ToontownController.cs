@@ -346,8 +346,6 @@ namespace TTMulti
             
             if (showBorderWindow || showMouseOverlayWindow)
             {
-                // Running twice seems to get the mouse overlay to properly show up after activating using the hotkey
-                ReorderUtilityWindows();
                 ReorderUtilityWindows();
             }
 
@@ -370,38 +368,15 @@ namespace TTMulti
             * 3 - Toontown window
             */
 
-            bool borderWndIsAboveTT = false,
-                overlayWndIsAboveTT = false;
+            IntPtr wndPosInfo = Win32.BeginDeferWindowPos(3);
 
-            IntPtr hWndAbove = WindowHandle;
+            // Insert border window after (on top of) Toontown window
+            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, WindowHandle, _borderWnd.Handle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
 
-            do
-            {
-                hWndAbove = Win32.GetWindow(hWndAbove, Win32.GetWindow_Cmd.GW_HWNDPREV);
-
-                if (hWndAbove == _borderWnd.Handle)
-                {
-                    borderWndIsAboveTT = true;
-                }
-                else if (hWndAbove == _overlayWnd.Handle)
-                {
-                    overlayWndIsAboveTT = true;
-                }
-
-                if (overlayWndIsAboveTT && borderWndIsAboveTT)
-                {
-                    break;
-                }
-
-            } while (hWndAbove != IntPtr.Zero);
-
-            if (!borderWndIsAboveTT || !overlayWndIsAboveTT)
-            {
-                // TODO: Check this logic
-                Win32.SetWindowPos(_overlayWnd.Handle, _borderWnd.Handle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
-                Win32.SetWindowPos(_borderWnd.Handle, WindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
-                Win32.SetWindowPos(WindowHandle, _borderWnd.Handle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
-            }
+            // Insert overlay window after (on top of) border window
+            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, _borderWnd.Handle, _overlayWnd.Handle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
+            
+            Win32.EndDeferWindowPos(wndPosInfo);
         }
 
         private void _overlayWnd_MouseEvent(object sender, Message m)
