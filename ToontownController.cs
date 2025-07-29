@@ -369,11 +369,11 @@ namespace TTMulti
             */
 
             IntPtr wndPosInfo = Win32.BeginDeferWindowPos(3);
-
-            // Insert border window after (on top of) Toontown window
+            
+            // Move Toontown window immediately underneath border window in the z-order
             wndPosInfo = Win32.DeferWindowPos(wndPosInfo, WindowHandle, _borderWnd.Handle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
-
-            // Insert overlay window after (on top of) border window
+            
+            // Move border window immediately underneath overlay window in the z-order
             wndPosInfo = Win32.DeferWindowPos(wndPosInfo, _borderWnd.Handle, _overlayWnd.Handle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
             
             Win32.EndDeferWindowPos(wndPosInfo);
