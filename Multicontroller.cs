@@ -757,7 +757,7 @@ namespace TTMulti
 
                         if (!windowSizeDifferent && (msg != Win32.WM.MOUSEMOVE || forwardMove))
                         {
-                            controller.SendMessage(msg, wParam, lParam);
+                            controller.PostMessage(msg, wParam, lParam);
                         }
                     }
                     else

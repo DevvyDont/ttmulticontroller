@@ -444,19 +444,6 @@ namespace TTMulti
             }
         }
 
-        /// <summary>
-        /// Alternative to PostMessage to try to maintain the order of mouse events.
-        /// Returns immediately unlike SendMessage as long as the target window is in a different
-        /// thread.
-        /// </summary>
-        public void SendMessage(Win32.WM msg, IntPtr wParam, IntPtr lParam)
-        {
-            if (WindowHandle != IntPtr.Zero)
-            {
-                Win32.SendNotifyMessage(WindowHandle, (uint)msg, wParam, lParam);
-            }
-        }
-
         public void Shutdown()
         {
             _borderWnd.Close();
