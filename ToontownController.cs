@@ -140,6 +140,13 @@ namespace TTMulti
         BorderWnd _borderWnd = new BorderWnd();
         MouseEventOverlay _overlayWnd = new MouseEventOverlay();
 
+        // This class is needed to queue background operations because handles can only be accessed on the UI thread
+        private struct ReorderUtilityWindowsState
+        {
+            public IntPtr BorderWindowHandle;
+            public IntPtr OverlayWindowHandle;
+        }
+
         // Timer to send keep-alive key presses
         System.Timers.Timer keepAliveTimer = new System.Timers.Timer()
         {
@@ -346,7 +353,13 @@ namespace TTMulti
             
             if (showBorderWindow || showMouseOverlayWindow)
             {
-                ReorderUtilityWindows();
+                // Queue utility window reordering on background threads because operations involving a Toontown window
+                // seem to take significantly longer and freeze the UI
+                ThreadPool.QueueUserWorkItem(ReorderUtilityWindowsProc, new ReorderUtilityWindowsState
+                {
+                    BorderWindowHandle = _borderWnd.Handle,
+                    OverlayWindowHandle = _overlayWnd.Handle
+                });
             }
 
             if ((Properties.Settings.Default.disableKeepAlive || !HasWindow) && keepAliveTimer.Enabled)
@@ -359,7 +372,7 @@ namespace TTMulti
             }
         }
 
-        private void ReorderUtilityWindows()
+        private void ReorderUtilityWindowsProc(object state)
         {
             /*
             * Order the windows in the following z-order:
@@ -368,14 +381,16 @@ namespace TTMulti
             * 3 - Toontown window
             */
 
+            ReorderUtilityWindowsState handles = (ReorderUtilityWindowsState)state;
+
             IntPtr wndPosInfo = Win32.BeginDeferWindowPos(3);
-            
+
             // Move Toontown window immediately underneath border window in the z-order
-            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, WindowHandle, _borderWnd.Handle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
-            
+            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, WindowHandle, handles.BorderWindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
+
             // Move border window immediately underneath overlay window in the z-order
-            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, _borderWnd.Handle, _overlayWnd.Handle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
-            
+            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, handles.BorderWindowHandle, handles.OverlayWindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
+
             Win32.EndDeferWindowPos(wndPosInfo);
         }
 
