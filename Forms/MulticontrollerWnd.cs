@@ -299,6 +299,7 @@ namespace TTMulti.Forms
 
             controller.ModeChanged += Controller_ModeChanged;
             controller.GroupsChanged += Controller_GroupsChanged;
+            controller.ActiveControllersChanged += Controller_ActiveControllersChanged;
             controller.ShouldActivate += Controller_ShouldActivate;
             controller.WindowActivated += Controller_WindowActivated;
             controller.AllWindowsInactive += Controller_AllWindowsInactive;
@@ -374,6 +375,11 @@ namespace TTMulti.Forms
         private void Controller_GroupsChanged(object sender, EventArgs e)
         {
             this.UpdateWindowStatus();
+        }
+
+        private void Controller_ActiveControllersChanged(object sender, EventArgs e)
+        {
+            UpdateWindowStatus();
         }
 
         private void Controller_ShouldActivate(object sender, EventArgs e)
