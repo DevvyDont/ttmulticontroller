@@ -379,21 +379,27 @@ namespace TTMulti
             * 1 - overlay window
             * 2 - border window
             * 3 - Toontown window
+            * 
+            * The border and overlay windows are above the multicontroller window at first, so we move them to be 
+            * underneath the Toontown window first to prevent the multicontroller window from ending up in the back.
             */
 
             ReorderUtilityWindowsState handles = (ReorderUtilityWindowsState)state;
 
             IntPtr wndPosInfo = Win32.BeginDeferWindowPos(3);
 
-            // Move Toontown window immediately underneath border window in the z-order
-            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, WindowHandle, handles.BorderWindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
-
+            // Move overlay window immediately underneath Toontown window in the z-order
+            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, handles.OverlayWindowHandle, WindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
+            
             // Move border window immediately underneath overlay window in the z-order
             wndPosInfo = Win32.DeferWindowPos(wndPosInfo, handles.BorderWindowHandle, handles.OverlayWindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
 
+            // Move Toontown window immediately underneath border window in the z-order
+            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, WindowHandle, handles.BorderWindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
+
             Win32.EndDeferWindowPos(wndPosInfo);
         }
-
+        
         private void _overlayWnd_MouseEvent(object sender, Message m)
         {
             if (multicontroller.ActiveControllers.Contains(this))
