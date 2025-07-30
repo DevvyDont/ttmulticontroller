@@ -686,7 +686,7 @@ namespace TTMulti
         /// <returns>True if the input was handled</returns>
         private bool ProcessMouseInput(Win32.WM msg, IntPtr wParam, IntPtr lParam, ToontownController sourceController)
         {
-            if (IsActive)
+            if (IsActive && Properties.Settings.Default.replicateMouse)
             {
                 IEnumerable<ToontownController> affectedControllers = ActiveControllers;
 

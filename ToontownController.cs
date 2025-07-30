@@ -343,6 +343,11 @@ namespace TTMulti
                             break;
                     }
                 }
+
+                if (!Properties.Settings.Default.replicateMouse)
+                {
+                    _borderWnd.ShowFakeCursor = false;
+                }
             }
 
             if (showMouseOverlayWindow)
@@ -413,11 +418,7 @@ namespace TTMulti
                     case Win32.WM.LBUTTONDOWN:
                     case Win32.WM.RBUTTONDOWN:
                     case Win32.WM.MBUTTONDOWN:
-                    case Win32.WM.LBUTTONUP:
-                    case Win32.WM.RBUTTONUP:
-                    case Win32.WM.MBUTTONUP:
                         ShouldActivate?.Invoke(this, EventArgs.Empty);
-                        MouseEvent?.Invoke(this, m);
                         break;
                 }
             }
