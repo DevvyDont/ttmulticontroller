@@ -66,7 +66,7 @@ namespace TTMulti.Controls
             this.rightToonCrosshair.Margin = new System.Windows.Forms.Padding(4);
             this.rightToonCrosshair.Name = "rightToonCrosshair";
             this.rightToonCrosshair.Padding = new System.Windows.Forms.Padding(2);
-            this.rightToonCrosshair.SelectedBorderColor = System.Drawing.Color.DarkGreen;
+            this.rightToonCrosshair.SelectedBorderColor = Colors.RightGroup;
             this.rightToonCrosshair.Size = new System.Drawing.Size(36, 36);
             this.rightToonCrosshair.TabIndex = 5;
             this.rightToonCrosshair.Tag = "right";
@@ -79,7 +79,7 @@ namespace TTMulti.Controls
             this.leftToonCrosshair.Margin = new System.Windows.Forms.Padding(4);
             this.leftToonCrosshair.Name = "leftToonCrosshair";
             this.leftToonCrosshair.Padding = new System.Windows.Forms.Padding(2);
-            this.leftToonCrosshair.SelectedBorderColor = System.Drawing.Color.LimeGreen;
+            this.leftToonCrosshair.SelectedBorderColor = Colors.LeftGroup;
             this.leftToonCrosshair.Size = new System.Drawing.Size(36, 36);
             this.leftToonCrosshair.TabIndex = 4;
             this.leftToonCrosshair.Tag = "left";

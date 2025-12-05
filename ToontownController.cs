@@ -323,7 +323,7 @@ namespace TTMulti
 
                 if (multicontroller.ShowAllBorders && multicontroller.IsActive)
                 {
-                    _borderWnd.BorderColor = Type == ControllerType.Left ? Color.LimeGreen : Color.Green;
+                    _borderWnd.BorderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
                 }
                 else if (multicontroller.IsActive)
                 {
@@ -332,14 +332,14 @@ namespace TTMulti
                         case MulticontrollerMode.Group:
                         case MulticontrollerMode.Pair:
                         case MulticontrollerMode.AllGroup:
-                            _borderWnd.BorderColor = Type == ControllerType.Left ? Color.LimeGreen : Color.Green;
+                            _borderWnd.BorderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
                             break;
                         case MulticontrollerMode.MirrorAll:
                         case MulticontrollerMode.MirrorGroup:
-                            _borderWnd.BorderColor = Color.Violet;
+                            _borderWnd.BorderColor = Colors.AllGroups;
                             break;
                         case MulticontrollerMode.MirrorIndividual:
-                            _borderWnd.BorderColor = Color.Turquoise;
+                            _borderWnd.BorderColor = Colors.Individual;
                             break;
                     }
                 }
@@ -347,6 +347,10 @@ namespace TTMulti
                 if (!Properties.Settings.Default.replicateMouse)
                 {
                     _borderWnd.ShowFakeCursor = false;
+                }
+                else
+                {
+                    _borderWnd.BorderColor = Colors.Multiclick;
                 }
             }
 

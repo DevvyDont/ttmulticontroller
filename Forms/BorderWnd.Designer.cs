@@ -34,7 +34,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.BackColor = System.Drawing.Color.Fuchsia;
+            this.BackColor = Colors.ChromaKey;
             this.ClientSize = new System.Drawing.Size(400, 400);
             this.DoubleBuffered = true;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
@@ -43,7 +43,7 @@
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.Text = "BorderWnd";
-            this.TransparencyKey = System.Drawing.Color.Fuchsia;
+            this.TransparencyKey = Colors.ChromaKey;
             this.ResumeLayout(false);
 
         }
