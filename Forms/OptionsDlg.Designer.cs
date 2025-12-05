@@ -65,11 +65,12 @@ namespace TTMulti.Forms
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.multiclickGroupBox = new System.Windows.Forms.GroupBox();
             this.label4 = new System.Windows.Forms.Label();
+            this.multiclickLabel = new System.Windows.Forms.Label();
             this.tabPage5 = new System.Windows.Forms.TabPage();
             this.label2 = new System.Windows.Forms.Label();
             this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.label7 = new System.Windows.Forms.Label();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
@@ -79,7 +80,6 @@ namespace TTMulti.Forms
             this.mirrorModeCycleToggleChk = new System.Windows.Forms.CheckBox();
             this.groupModeCycleToggleChk = new System.Windows.Forms.CheckBox();
             this.checkBox4 = new System.Windows.Forms.CheckBox();
-            this.mouseChk = new System.Windows.Forms.CheckBox();
             this.checkBox3 = new System.Windows.Forms.CheckBox();
             this.checkBox2 = new System.Windows.Forms.CheckBox();
             this.controlsPicker = new TTMulti.Controls.ControlsPicker();
@@ -90,8 +90,8 @@ namespace TTMulti.Forms
             this.mirrorModeHotkeyPicker = new TTMulti.Controls.KeyPicker();
             this.groupModeHotkeyPicker = new TTMulti.Controls.KeyPicker();
             this.keyPicker1 = new TTMulti.Controls.KeyPicker();
+            this.multiclickKeyPicker = new TTMulti.Controls.KeyPicker();
             this.keyPicker2 = new TTMulti.Controls.KeyPicker();
-            this.keyPicker5 = new TTMulti.Controls.KeyPicker();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.tabControl1.SuspendLayout();
@@ -108,9 +108,9 @@ namespace TTMulti.Forms
             this.tabPage3.SuspendLayout();
             this.tableLayoutPanel2.SuspendLayout();
             this.groupBox1.SuspendLayout();
+            this.multiclickGroupBox.SuspendLayout();
             this.tabPage5.SuspendLayout();
             this.tabPage2.SuspendLayout();
-            this.groupBox4.SuspendLayout();
             this.groupBox6.SuspendLayout();
             this.groupBox5.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -475,7 +475,7 @@ namespace TTMulti.Forms
             this.label8.Text = "Hotkey:";
             // 
             // tabPage3
-            // 
+            //
             this.tabPage3.Controls.Add(this.tableLayoutPanel2);
             this.tabPage3.Location = new System.Drawing.Point(4, 25);
             this.tabPage3.Margin = new System.Windows.Forms.Padding(4);
@@ -491,6 +491,7 @@ namespace TTMulti.Forms
             this.tableLayoutPanel2.ColumnCount = 1;
             this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel2.Controls.Add(this.groupBox1, 0, 0);
+            this.tableLayoutPanel2.Controls.Add(this.multiclickGroupBox, 0, 1);
             this.tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel2.Location = new System.Drawing.Point(4, 4);
             this.tableLayoutPanel2.Name = "tableLayoutPanel2";
@@ -527,6 +528,32 @@ namespace TTMulti.Forms
             this.label4.Text = "This key is used to change from multi-mode to mirror-mode and back. It also activ" +
     "ates the multicontroller when you have a Toontown window active. ";
             // 
+            // multiclickLabel
+            // 
+            this.multiclickLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+                                                                       | System.Windows.Forms.AnchorStyles.Right)));
+            this.multiclickLabel.Location = new System.Drawing.Point(8, 20);
+            this.multiclickLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.multiclickLabel.Name = "multiclickLabel";
+            this.multiclickLabel.Size = new System.Drawing.Size(712, 35);
+            this.multiclickLabel.TabIndex = 13;
+            this.multiclickLabel.Text = "This key is used to enable multiclicking while pressed. Keep in mind " +
+                                        "you must be actively in mirror mode for this to function. ";
+            // 
+            // multiclickGroupBox
+            // 
+            this.multiclickGroupBox.Controls.Add(this.multiclickLabel);
+            this.multiclickGroupBox.Controls.Add(this.multiclickKeyPicker);
+            this.multiclickGroupBox.Dock = System.Windows.Forms.DockStyle.Top;
+            this.multiclickGroupBox.Location = new System.Drawing.Point(4, 4);
+            this.multiclickGroupBox.Margin = new System.Windows.Forms.Padding(4);
+            this.multiclickGroupBox.Name = "multiclickGroupBox";
+            this.multiclickGroupBox.Padding = new System.Windows.Forms.Padding(4);
+            this.multiclickGroupBox.Size = new System.Drawing.Size(726, 100);
+            this.multiclickGroupBox.TabIndex = 14;
+            this.multiclickGroupBox.TabStop = false;
+            this.multiclickGroupBox.Text = "Multiclick Hotkey:";
+            // 
             // tabPage5
             // 
             this.tabPage5.Controls.Add(this.label2);
@@ -554,7 +581,6 @@ namespace TTMulti.Forms
             // tabPage2
             // 
             this.tabPage2.Controls.Add(this.groupBox2);
-            this.tabPage2.Controls.Add(this.groupBox4);
             this.tabPage2.Controls.Add(this.groupBox6);
             this.tabPage2.Controls.Add(this.groupBox5);
             this.tabPage2.Location = new System.Drawing.Point(4, 25);
@@ -565,19 +591,6 @@ namespace TTMulti.Forms
             this.tabPage2.TabIndex = 3;
             this.tabPage2.Text = "Other";
             this.tabPage2.UseVisualStyleBackColor = true;
-            // 
-            // groupBox4
-            // 
-            this.groupBox4.Controls.Add(this.keyPicker5);
-            this.groupBox4.Controls.Add(this.label7);
-            this.groupBox4.Controls.Add(this.mouseChk);
-            this.groupBox4.Dock = System.Windows.Forms.DockStyle.Top;
-            this.groupBox4.Location = new System.Drawing.Point(4, 100);
-            this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(734, 82);
-            this.groupBox4.TabIndex = 3;
-            this.groupBox4.TabStop = false;
-            this.groupBox4.Text = "Mirror Mouse Clicks";
             // 
             // label7
             // 
@@ -674,24 +687,6 @@ namespace TTMulti.Forms
             this.checkBox4.Text = "Disable Keep-Alive";
             this.toolTip1.SetToolTip(this.checkBox4, "If checked, your toons will no longer be kept awake automatically.");
             this.checkBox4.UseVisualStyleBackColor = true;
-            // 
-            // mouseChk
-            // 
-            this.mouseChk.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.mouseChk.CheckAlign = System.Drawing.ContentAlignment.TopLeft;
-            this.mouseChk.Checked = global::TTMulti.Properties.Settings.Default.replicateMouse;
-            this.mouseChk.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "replicateMouse", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.mouseChk.Location = new System.Drawing.Point(7, 20);
-            this.mouseChk.Margin = new System.Windows.Forms.Padding(2);
-            this.mouseChk.Name = "mouseChk";
-            this.mouseChk.Size = new System.Drawing.Size(465, 59);
-            this.mouseChk.TabIndex = 0;
-            this.mouseChk.Text = "Lets you click on gags and other things on all toons at once, depending on the mo" +
-    "de.\r\nNote: Toontown windows have to be the same size for this to work.";
-            this.mouseChk.TextAlign = System.Drawing.ContentAlignment.TopLeft;
-            this.mouseChk.UseVisualStyleBackColor = true;
             // 
             // checkBox3
             // 
@@ -828,6 +823,19 @@ namespace TTMulti.Forms
             this.keyPicker1.TabIndex = 12;
             this.keyPicker1.TabStop = false;
             // 
+            // multiclickKeyPicker
+            // 
+            this.multiclickKeyPicker.ChosenKey = System.Windows.Forms.Keys.LControlKey;
+            this.multiclickKeyPicker.ChosenKeyCode = global::TTMulti.Properties.Settings.Default.replicateMouseKeyCode;
+            this.multiclickKeyPicker.DataBindings.Add(new System.Windows.Forms.Binding("ChosenKeyCode", global::TTMulti.Properties.Settings.Default, "replicateMouseKeyCode", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.multiclickKeyPicker.Location = new System.Drawing.Point(9, 60);
+            this.multiclickKeyPicker.Margin = new System.Windows.Forms.Padding(5);
+            this.multiclickKeyPicker.MinimumSize = new System.Drawing.Size(50, 25);
+            this.multiclickKeyPicker.Name = "multiclickKeyPicker";
+            this.multiclickKeyPicker.Size = new System.Drawing.Size(188, 25);
+            this.multiclickKeyPicker.TabIndex = 12;
+            this.multiclickKeyPicker.TabStop = false;
+            // 
             // keyPicker2
             // 
             this.keyPicker2.ChosenKey = System.Windows.Forms.Keys.Home;
@@ -840,20 +848,6 @@ namespace TTMulti.Forms
             this.keyPicker2.Size = new System.Drawing.Size(188, 25);
             this.keyPicker2.TabIndex = 13;
             this.toolTip1.SetToolTip(this.keyPicker2, "This is the key that will be pressed periodically to keep your toons awake.");
-            // 
-            // keyPicker5
-            // 
-            this.keyPicker5.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.keyPicker5.ChosenKey = System.Windows.Forms.Keys.None;
-            this.keyPicker5.ChosenKeyCode = global::TTMulti.Properties.Settings.Default.replicateMouseKeyCode;
-            this.keyPicker5.DataBindings.Add(new System.Windows.Forms.Binding("ChosenKeyCode", global::TTMulti.Properties.Settings.Default, "replicateMouseKeyCode", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.keyPicker5.Location = new System.Drawing.Point(541, 22);
-            this.keyPicker5.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
-            this.keyPicker5.MinimumSize = new System.Drawing.Size(48, 25);
-            this.keyPicker5.Name = "keyPicker5";
-            this.keyPicker5.Size = new System.Drawing.Size(186, 25);
-            this.keyPicker5.TabIndex = 1;
-            this.keyPicker5.TabStop = false;
             // 
             // groupBox2
             // 
@@ -926,11 +920,10 @@ namespace TTMulti.Forms
             this.tabPage3.ResumeLayout(false);
             this.tableLayoutPanel2.ResumeLayout(false);
             this.groupBox1.ResumeLayout(false);
+            this.multiclickGroupBox.ResumeLayout(false);
             this.tabPage5.ResumeLayout(false);
             this.tabPage5.PerformLayout();
             this.tabPage2.ResumeLayout(false);
-            this.groupBox4.ResumeLayout(false);
-            this.groupBox4.PerformLayout();
             this.groupBox6.ResumeLayout(false);
             this.groupBox6.PerformLayout();
             this.groupBox5.ResumeLayout(false);
@@ -949,6 +942,7 @@ namespace TTMulti.Forms
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tabPage3;
         private TTMulti.Controls.KeyPicker keyPicker1;
+        private TTMulti.Controls.KeyPicker multiclickKeyPicker;
         private System.Windows.Forms.TabPage tabPage2;
         private System.Windows.Forms.CheckBox checkBox2;
         private System.Windows.Forms.ToolTip toolTip1;
@@ -965,12 +959,11 @@ namespace TTMulti.Forms
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel3;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.GroupBox groupBox1;
+        private System.Windows.Forms.GroupBox multiclickGroupBox;
         private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.Label multiclickLabel;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
-        private System.Windows.Forms.CheckBox mouseChk;
         private System.Windows.Forms.Label label7;
-        private KeyPicker keyPicker5;
-        private System.Windows.Forms.GroupBox groupBox4;
         private System.Windows.Forms.GroupBox groupBox5;
         private System.Windows.Forms.GroupBox groupBox6;
         private System.Windows.Forms.TabPage tabPage1;

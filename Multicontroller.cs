@@ -619,11 +619,26 @@ namespace TTMulti
             }
             else if (keysPressed == (Keys)Properties.Settings.Default.replicateMouseKeyCode)
             {
-                if (msg == Win32.WM.KEYDOWN)
+                // If we are pressing the key down to activate multiclick and the multiclick setting is off, turn it on.
+                if (msg == Win32.WM.KEYDOWN && !Properties.Settings.Default.replicateMouse)
                 {
-                    Properties.Settings.Default.replicateMouse = !Properties.Settings.Default.replicateMouse;
+                    Properties.Settings.Default.replicateMouse = true;
                     Properties.Settings.Default.Save();
-
+                    SettingChanged?.Invoke(this, EventArgs.Empty);
+                    
+                    // Update fake cursor positions to make them render immediately.
+                    foreach (var controller in AllControllers)
+                    {
+                        controller.FakeCursorPosition = new Point(lastMoveX, lastMoveY);
+                        controller.ShowFakeCursor = true;
+                    }
+                }
+                
+                // If we are releasing the key to deactivate multiclick then turn it off.
+                if (msg == Win32.WM.KEYUP)
+                {
+                    Properties.Settings.Default.replicateMouse = false;
+                    Properties.Settings.Default.Save();
                     SettingChanged?.Invoke(this, EventArgs.Empty);
                 }
             }
