@@ -163,6 +163,13 @@ namespace TTMulti
             Interval = 60000
         };
 
+        // Timer to periodically validate window handles and detect ghost windows
+        System.Timers.Timer windowValidationTimer = new System.Timers.Timer()
+        {
+            AutoReset = true,
+            Interval = 1000 // Check every second
+        };
+
         Multicontroller multicontroller = Multicontroller.Instance;
 
         public ToontownController(int groupNumber, int pairNumber, ControllerType type)
@@ -187,6 +194,8 @@ namespace TTMulti
             _overlayWnd.MouseEvent += _overlayWnd_MouseEvent;
 
             keepAliveTimer.Elapsed += KeepAliveTimer_Elapsed;
+            windowValidationTimer.Elapsed += WindowValidationTimer_Elapsed;
+            windowValidationTimer.Start();
         }
 
         private void Multicontroller_SettingChanged(object sender, EventArgs e)
@@ -225,6 +234,16 @@ namespace TTMulti
                 PostMessage(Win32.WM.KEYUP, (IntPtr)Properties.Settings.Default.keepAliveKeyCode, IntPtr.Zero);
 
                 keepAliveTimer.Start();
+            }
+        }
+
+        private void WindowValidationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            // Periodically validate that the window handle is still valid
+            if (HasWindow && !Win32.IsWindow(WindowHandle))
+            {
+                // Window is no longer valid - disconnect the controller
+                WindowHandle = IntPtr.Zero;
             }
         }
 
@@ -273,9 +292,18 @@ namespace TTMulti
 
         private void WindowWatcher_WindowClosed(object sender, Events.WindowClosedEventArgs e)
         {
-            if (e.ClosedWindowHandle == WindowHandle)
+            // Check if this closed window matches our window handle
+            // Use a local copy to avoid race conditions if WindowHandle changes
+            IntPtr currentWindowHandle = WindowHandle;
+            
+            if (e.ClosedWindowHandle == currentWindowHandle && currentWindowHandle != IntPtr.Zero)
             {
-                WindowHandle = IntPtr.Zero;
+                // Verify the window is actually closed before disconnecting
+                // This prevents issues if the event fires but the window is still valid
+                if (!Win32.IsWindow(currentWindowHandle))
+                {
+                    WindowHandle = IntPtr.Zero;
+                }
             }
         }
 
@@ -524,6 +552,16 @@ namespace TTMulti
             {
                 keepAliveTimer.Start();
             }
+
+            // Window validation timer should always run if we have a window
+            if (!HasWindow && windowValidationTimer.Enabled)
+            {
+                windowValidationTimer.Stop();
+            }
+            else if (HasWindow && !windowValidationTimer.Enabled)
+            {
+                windowValidationTimer.Start();
+            }
         }
 
         private void ReorderUtilityWindowsProc(object state)
@@ -537,6 +575,15 @@ namespace TTMulti
             * The border and overlay windows are above the multicontroller window at first, so we move them to be 
             * underneath the Toontown window first to prevent the multicontroller window from ending up in the back.
             */
+
+            // Validate window is still valid before reordering
+            if (!HasWindow || !Win32.IsWindow(WindowHandle))
+            {
+                // Window is no longer valid - disconnect the controller
+                // Note: We can't directly set WindowHandle here as we're on a background thread,
+                // but the validation timer will catch it soon
+                return;
+            }
 
             ReorderUtilityWindowsState handles = (ReorderUtilityWindowsState)state;
 
@@ -570,6 +617,14 @@ namespace TTMulti
             if (!HasWindow)
                 return;
 
+            // Validate window is still valid before accessing it
+            if (!Win32.IsWindow(WindowHandle))
+            {
+                // Window is no longer valid - disconnect the controller
+                WindowHandle = IntPtr.Zero;
+                return;
+            }
+
             Win32.RECT clientRect;
             if (Win32.GetClientRect(WindowHandle, out clientRect))
             {
@@ -583,6 +638,16 @@ namespace TTMulti
                     _borderWnd.Location = _overlayWnd.Location = clientLocation;
                 }
             }
+            else
+            {
+                // GetClientRect failed - window might be closing
+                // Verify with IsWindow
+                if (!Win32.IsWindow(WindowHandle))
+                {
+                    // Window closed - disconnect the controller
+                    WindowHandle = IntPtr.Zero;
+                }
+            }
         }
 
         /// <summary>
@@ -592,15 +657,36 @@ namespace TTMulti
         {
             if (WindowHandle != IntPtr.Zero)
             {
+                // Validate window is still valid before posting
+                if (!Win32.IsWindow(WindowHandle))
+                {
+                    // Window is no longer valid - disconnect the controller
+                    WindowHandle = IntPtr.Zero;
+                    return;
+                }
+
                 if (!Win32.PostMessage(WindowHandle, (uint)msg, wParam, lParam))
                 {
-                    ErrorOccurredPostingMessage = true;
+                    // PostMessage failed - check if window is still valid
+                    // If window is invalid, disconnect; otherwise just mark error
+                    if (!Win32.IsWindow(WindowHandle))
+                    {
+                        // Window closed - disconnect the controller
+                        WindowHandle = IntPtr.Zero;
+                    }
+                    else
+                    {
+                        ErrorOccurredPostingMessage = true;
+                    }
                 }
             }
         }
 
         public void Shutdown()
         {
+            windowValidationTimer.Stop();
+            windowValidationTimer.Dispose();
+
             _borderWnd.Close();
             _overlayWnd.Close();
 

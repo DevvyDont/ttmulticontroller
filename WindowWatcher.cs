@@ -117,22 +117,73 @@ namespace TTMulti
                 lastActiveWindowHandle = activeWindowHandle;
             }
 
+            // Collect all closed windows first, then process them
+            // This prevents issues when multiple windows close simultaneously
+            List<IntPtr> closedWindows = new List<IntPtr>();
+            
             foreach (IntPtr windowHandle in watchedWindowHandles.ToArray())
             {
                 // Check if window has been closed
+                if (!Win32.IsWindow(windowHandle))
+                {
+                    closedWindows.Add(windowHandle);
+                }
+            }
+            
+            // Process all closed windows - fire events and remove from tracking
+            foreach (IntPtr windowHandle in closedWindows)
+            {
+                // Double-check the window is still closed (it shouldn't have been recreated)
                 if (!Win32.IsWindow(windowHandle))
                 {
                     WindowClosed?.Invoke(this, new Events.WindowClosedEventArgs(windowHandle));
 
                     watchedWindowHandles.Remove(windowHandle);
                     lastWindowInfos.Remove(windowHandle);
+                }
+            }
+            
+            // Continue processing remaining windows
+            foreach (IntPtr windowHandle in watchedWindowHandles.ToArray())
+            {
 
+                // Try to get window info - if this fails, the window might be closing
+                Size clientAreaSize;
+                Point clientAreaLocation;
+                Win32.ShowWindowCommands showState;
+                
+                try
+                {
+                    clientAreaSize = Win32.GetWindowClientAreaSize(windowHandle);
+                    clientAreaLocation = Win32.GetWindowClientAreaLocation(windowHandle);
+                    showState = Win32.GetWindowShowState(windowHandle);
+                    
+                    // Double-check window is still valid after getting info
+                    // (window might have closed between IsWindow check and getting info)
+                    if (!Win32.IsWindow(windowHandle))
+                    {
+                        WindowClosed?.Invoke(this, new Events.WindowClosedEventArgs(windowHandle));
+
+                        watchedWindowHandles.Remove(windowHandle);
+                        lastWindowInfos.Remove(windowHandle);
+
+                        continue;
+                    }
+                }
+                catch
+                {
+                    // Error getting window info - window is likely closed
+                    // Verify with IsWindow one more time
+                    if (!Win32.IsWindow(windowHandle))
+                    {
+                        WindowClosed?.Invoke(this, new Events.WindowClosedEventArgs(windowHandle));
+
+                        watchedWindowHandles.Remove(windowHandle);
+                        lastWindowInfos.Remove(windowHandle);
+                    }
+                    
                     continue;
                 }
-
-                Size clientAreaSize = Win32.GetWindowClientAreaSize(windowHandle);
-                Point clientAreaLocation = Win32.GetWindowClientAreaLocation(windowHandle);
-                Win32.ShowWindowCommands showState = Win32.GetWindowShowState(windowHandle);
                 
                 if (lastWindowInfos.ContainsKey(windowHandle))
                 {
