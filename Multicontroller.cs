@@ -469,6 +469,20 @@ namespace TTMulti
                 return;
             }
 
+            // Check if Alt key is still pressed
+            // If Alt+Tab was used, Windows might consume the Alt key release event,
+            // so we need to check the actual key state
+            short altKeyState = Win32.GetAsyncKeyState(Keys.Menu);
+            bool altIsPressed = (altKeyState & 0x8000) != 0;
+
+            // If Alt is no longer pressed, exit switching mode
+            // This handles the case where Alt+Tab consumes the Alt key release event
+            if (!altIsPressed)
+            {
+                ExitSwitchingMode();
+                return;
+            }
+
             // Update switching mode display for all controllers
             // Don't trigger SettingChanged here - it's called when state actually changes
             UpdateSwitchingModeDisplay(false);
@@ -1440,6 +1454,13 @@ namespace TTMulti
             if (!AllControllersWithWindows.Any(c => c.IsWindowActive))
             {
                 AllWindowsInactive?.Invoke(this, EventArgs.Empty);
+                
+                // Exit switching mode when all windows become inactive
+                // This handles cases where Alt+Tab switches away from all controlled windows
+                if (_switchingMode)
+                {
+                    ExitSwitchingMode();
+                }
             }
         }
 

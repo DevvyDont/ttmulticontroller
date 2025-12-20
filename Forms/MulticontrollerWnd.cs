@@ -867,6 +867,9 @@ namespace TTMulti.Forms
         {
             controller.IsActive = false;
             
+            // Note: Switching mode will automatically exit via the timer check
+            // which detects when Alt is no longer pressed (handles Alt+Tab cases)
+            
             // Unregister all hotkeys first
             UnregisterHotkey();
             UnregisterLayoutHotkeys();
