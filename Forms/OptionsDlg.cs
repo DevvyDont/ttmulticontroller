@@ -248,6 +248,8 @@ namespace TTMulti.Forms
         private Button switchingSelectedColorButton;
         private Button switchingSwitchedColorButton;
         private Button switchingRemovedColorButton;
+        private Button focusedModeFocusedColorButton;
+        private Button focusedModeUnfocusedColorButton;
         
         // Caption color control
         private CheckBox enableCaptionColorCheckBox;
@@ -280,6 +282,16 @@ namespace TTMulti.Forms
             
             CreateCaptionColorUI();
             LoadCaptionColorSettings();
+            
+            // Load Keep-Alive checkbox state
+            // disableKeepAlive = True (default) means Keep-Alive is disabled, so checkbox should be unchecked
+            // disableKeepAlive = False means Keep-Alive is enabled, so checkbox should be checked
+            if (checkBox4 != null)
+            {
+                // Attach event handler after loading state to prevent it from firing during load
+                checkBox4.CheckedChanged += checkBox4_CheckedChanged;
+                checkBox4.Checked = !Properties.Settings.Default.disableKeepAlive;
+            }
             
             // Reorder tabs to match desired order:
             // 1. Multi-Mode Key Bindings (tabPage6)
@@ -797,7 +809,7 @@ namespace TTMulti.Forms
             {
                 Text = "Border Colors",
                 Location = new Point(10, 10),
-                Size = new Size(720, 400),
+                Size = new Size(720, 480),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             colorsTabPage.Controls.Add(colorsGroupBox);
@@ -822,7 +834,7 @@ namespace TTMulti.Forms
                 Text = "",
                 Location = new Point(labelWidth + 20, yPos - 2),
                 Size = new Size(40, buttonHeight),
-                BackColor = Color.FromArgb(Properties.Settings.Default.mirrorModeBorderColor),
+                BackColor = Color.FromArgb(238, 130, 238), // Default RGB color
                 FlatStyle = FlatStyle.Flat,
                 UseVisualStyleBackColor = false
             };
@@ -837,7 +849,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 70, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            mirrorChangeBtn.Click += (s, e) => ShowColorDialog(mirrorModeBorderColorButton, Color.Violet);
+            mirrorChangeBtn.Click += (s, e) => ShowColorDialog(mirrorModeBorderColorButton, Color.FromArgb(238, 130, 238));
             colorsGroupBox.Controls.Add(mirrorChangeBtn);
 
             // Reset button
@@ -847,7 +859,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 150, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            mirrorResetBtn.Click += (s, e) => { mirrorModeBorderColorButton.BackColor = Color.Violet; };
+            mirrorResetBtn.Click += (s, e) => { mirrorModeBorderColorButton.BackColor = Color.FromArgb(238, 130, 238); };
             colorsGroupBox.Controls.Add(mirrorResetBtn);
 
             yPos += spacing;
@@ -866,7 +878,7 @@ namespace TTMulti.Forms
                 Text = "",
                 Location = new Point(labelWidth + 20, yPos - 2),
                 Size = new Size(40, buttonHeight),
-                BackColor = Color.FromArgb(Properties.Settings.Default.multiModeLeftBorderColor),
+                BackColor = Color.FromArgb(50, 205, 50), // Default RGB color
                 FlatStyle = FlatStyle.Flat,
                 UseVisualStyleBackColor = false
             };
@@ -880,7 +892,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 70, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            multiLeftChangeBtn.Click += (s, e) => ShowColorDialog(multiModeLeftBorderColorButton, Color.LimeGreen);
+            multiLeftChangeBtn.Click += (s, e) => ShowColorDialog(multiModeLeftBorderColorButton, Color.FromArgb(50, 205, 50));
             colorsGroupBox.Controls.Add(multiLeftChangeBtn);
 
             var multiLeftResetBtn = new Button
@@ -889,7 +901,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 150, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            multiLeftResetBtn.Click += (s, e) => { multiModeLeftBorderColorButton.BackColor = Color.LimeGreen; };
+            multiLeftResetBtn.Click += (s, e) => { multiModeLeftBorderColorButton.BackColor = Color.FromArgb(50, 205, 50); };
             colorsGroupBox.Controls.Add(multiLeftResetBtn);
 
             yPos += spacing;
@@ -908,7 +920,7 @@ namespace TTMulti.Forms
                 Text = "",
                 Location = new Point(labelWidth + 20, yPos - 2),
                 Size = new Size(40, buttonHeight),
-                BackColor = Color.FromArgb(Properties.Settings.Default.multiModeRightBorderColor),
+                BackColor = Color.FromArgb(0, 100, 0), // Default RGB color
                 FlatStyle = FlatStyle.Flat,
                 UseVisualStyleBackColor = false
             };
@@ -922,7 +934,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 70, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            multiRightChangeBtn.Click += (s, e) => ShowColorDialog(multiModeRightBorderColorButton, Color.DarkGreen);
+            multiRightChangeBtn.Click += (s, e) => ShowColorDialog(multiModeRightBorderColorButton, Color.FromArgb(0, 100, 0));
             colorsGroupBox.Controls.Add(multiRightChangeBtn);
 
             var multiRightResetBtn = new Button
@@ -931,7 +943,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 150, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            multiRightResetBtn.Click += (s, e) => { multiModeRightBorderColorButton.BackColor = Color.DarkGreen; };
+            multiRightResetBtn.Click += (s, e) => { multiModeRightBorderColorButton.BackColor = Color.FromArgb(0, 100, 0); };
             colorsGroupBox.Controls.Add(multiRightResetBtn);
 
             yPos += spacing;
@@ -950,7 +962,7 @@ namespace TTMulti.Forms
                 Text = "",
                 Location = new Point(labelWidth + 20, yPos - 2),
                 Size = new Size(40, buttonHeight),
-                BackColor = Color.FromArgb(Properties.Settings.Default.switchingModeColor),
+                BackColor = Color.FromArgb(245, 75, 80), // Default RGB color
                 FlatStyle = FlatStyle.Flat,
                 UseVisualStyleBackColor = false
             };
@@ -964,7 +976,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 70, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            switchingChangeBtn.Click += (s, e) => ShowColorDialog(switchingModeColorButton, Color.Red);
+            switchingChangeBtn.Click += (s, e) => ShowColorDialog(switchingModeColorButton, Color.FromArgb(245, 75, 80));
             colorsGroupBox.Controls.Add(switchingChangeBtn);
 
             var switchingResetBtn = new Button
@@ -973,7 +985,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 150, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            switchingResetBtn.Click += (s, e) => { switchingModeColorButton.BackColor = Color.Red; };
+            switchingResetBtn.Click += (s, e) => { switchingModeColorButton.BackColor = Color.FromArgb(245, 75, 80); };
             colorsGroupBox.Controls.Add(switchingResetBtn);
 
             yPos += spacing;
@@ -992,7 +1004,7 @@ namespace TTMulti.Forms
                 Text = "",
                 Location = new Point(labelWidth + 20, yPos - 2),
                 Size = new Size(40, buttonHeight),
-                BackColor = Color.FromArgb(Properties.Settings.Default.switchingSelectedColor),
+                BackColor = Color.FromArgb(244, 194, 140), // Default RGB color
                 FlatStyle = FlatStyle.Flat,
                 UseVisualStyleBackColor = false
             };
@@ -1006,7 +1018,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 70, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            selectedChangeBtn.Click += (s, e) => ShowColorDialog(switchingSelectedColorButton, Color.Yellow);
+            selectedChangeBtn.Click += (s, e) => ShowColorDialog(switchingSelectedColorButton, Color.FromArgb(244, 194, 140));
             colorsGroupBox.Controls.Add(selectedChangeBtn);
 
             var selectedResetBtn = new Button
@@ -1015,7 +1027,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 150, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            selectedResetBtn.Click += (s, e) => { switchingSelectedColorButton.BackColor = Color.Yellow; };
+            selectedResetBtn.Click += (s, e) => { switchingSelectedColorButton.BackColor = Color.FromArgb(244, 194, 140); };
             colorsGroupBox.Controls.Add(selectedResetBtn);
 
             yPos += spacing;
@@ -1034,7 +1046,7 @@ namespace TTMulti.Forms
                 Text = "",
                 Location = new Point(labelWidth + 20, yPos - 2),
                 Size = new Size(40, buttonHeight),
-                BackColor = Color.FromArgb(Properties.Settings.Default.switchingSwitchedColor),
+                BackColor = Color.FromArgb(237, 152, 58), // Default RGB color
                 FlatStyle = FlatStyle.Flat,
                 UseVisualStyleBackColor = false
             };
@@ -1048,7 +1060,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 70, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            pendingChangeBtn.Click += (s, e) => ShowColorDialog(switchingSwitchedColorButton, Color.Orange);
+            pendingChangeBtn.Click += (s, e) => ShowColorDialog(switchingSwitchedColorButton, Color.FromArgb(237, 152, 58));
             colorsGroupBox.Controls.Add(pendingChangeBtn);
 
             var pendingResetBtn = new Button
@@ -1057,7 +1069,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 150, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            pendingResetBtn.Click += (s, e) => { switchingSwitchedColorButton.BackColor = Color.Orange; };
+            pendingResetBtn.Click += (s, e) => { switchingSwitchedColorButton.BackColor = Color.FromArgb(237, 152, 58); };
             colorsGroupBox.Controls.Add(pendingResetBtn);
 
             yPos += spacing;
@@ -1076,7 +1088,7 @@ namespace TTMulti.Forms
                 Text = "",
                 Location = new Point(labelWidth + 20, yPos - 2),
                 Size = new Size(40, buttonHeight),
-                BackColor = Color.FromArgb(Properties.Settings.Default.switchingRemovedColor),
+                BackColor = Color.FromArgb(105, 105, 105), // Default RGB color
                 FlatStyle = FlatStyle.Flat,
                 UseVisualStyleBackColor = false
             };
@@ -1090,7 +1102,7 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 70, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            removedChangeBtn.Click += (s, e) => ShowColorDialog(switchingRemovedColorButton, Color.Black);
+            removedChangeBtn.Click += (s, e) => ShowColorDialog(switchingRemovedColorButton, Color.FromArgb(105, 105, 105));
             colorsGroupBox.Controls.Add(removedChangeBtn);
 
             var removedResetBtn = new Button
@@ -1099,8 +1111,92 @@ namespace TTMulti.Forms
                 Location = new Point(labelWidth + 150, yPos - 2),
                 Size = new Size(70, buttonHeight)
             };
-            removedResetBtn.Click += (s, e) => { switchingRemovedColorButton.BackColor = Color.Black; };
+            removedResetBtn.Click += (s, e) => { switchingRemovedColorButton.BackColor = Color.FromArgb(105, 105, 105); };
             colorsGroupBox.Controls.Add(removedResetBtn);
+
+            yPos += spacing;
+
+            // Focused Mode - Focused Window Color
+            var focusedFocusedLabel = new Label
+            {
+                Text = "Focused Mode (Focused Window):",
+                Location = new Point(10, yPos),
+                Size = new Size(labelWidth, 20)
+            };
+            colorsGroupBox.Controls.Add(focusedFocusedLabel);
+
+            focusedModeFocusedColorButton = new Button
+            {
+                Text = "",
+                Location = new Point(labelWidth + 20, yPos - 2),
+                Size = new Size(40, buttonHeight),
+                BackColor = Color.FromArgb(123, 208, 223), // Default RGB color
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false
+            };
+            focusedModeFocusedColorButton.FlatAppearance.BorderSize = 1;
+            focusedModeFocusedColorButton.FlatAppearance.BorderColor = Color.Gray;
+            colorsGroupBox.Controls.Add(focusedModeFocusedColorButton);
+
+            var focusedFocusedChangeBtn = new Button
+            {
+                Text = "Change",
+                Location = new Point(labelWidth + 70, yPos - 2),
+                Size = new Size(70, buttonHeight)
+            };
+            focusedFocusedChangeBtn.Click += (s, e) => ShowColorDialog(focusedModeFocusedColorButton, Color.FromArgb(123, 208, 223));
+            colorsGroupBox.Controls.Add(focusedFocusedChangeBtn);
+
+            var focusedFocusedResetBtn = new Button
+            {
+                Text = "Reset",
+                Location = new Point(labelWidth + 150, yPos - 2),
+                Size = new Size(70, buttonHeight)
+            };
+            focusedFocusedResetBtn.Click += (s, e) => { focusedModeFocusedColorButton.BackColor = Color.FromArgb(123, 208, 223); };
+            colorsGroupBox.Controls.Add(focusedFocusedResetBtn);
+
+            yPos += spacing;
+
+            // Focused Mode - Unfocused Windows Color
+            var focusedUnfocusedLabel = new Label
+            {
+                Text = "Focused Mode (Unfocused Windows):",
+                Location = new Point(10, yPos),
+                Size = new Size(labelWidth, 20)
+            };
+            colorsGroupBox.Controls.Add(focusedUnfocusedLabel);
+
+            focusedModeUnfocusedColorButton = new Button
+            {
+                Text = "",
+                Location = new Point(labelWidth + 20, yPos - 2),
+                Size = new Size(40, buttonHeight),
+                BackColor = Color.FromArgb(95, 134, 207), // Default RGB color
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false
+            };
+            focusedModeUnfocusedColorButton.FlatAppearance.BorderSize = 1;
+            focusedModeUnfocusedColorButton.FlatAppearance.BorderColor = Color.Gray;
+            colorsGroupBox.Controls.Add(focusedModeUnfocusedColorButton);
+
+            var focusedUnfocusedChangeBtn = new Button
+            {
+                Text = "Change",
+                Location = new Point(labelWidth + 70, yPos - 2),
+                Size = new Size(70, buttonHeight)
+            };
+            focusedUnfocusedChangeBtn.Click += (s, e) => ShowColorDialog(focusedModeUnfocusedColorButton, Color.FromArgb(95, 134, 207));
+            colorsGroupBox.Controls.Add(focusedUnfocusedChangeBtn);
+
+            var focusedUnfocusedResetBtn = new Button
+            {
+                Text = "Reset",
+                Location = new Point(labelWidth + 150, yPos - 2),
+                Size = new Size(70, buttonHeight)
+            };
+            focusedUnfocusedResetBtn.Click += (s, e) => { focusedModeUnfocusedColorButton.BackColor = Color.FromArgb(95, 134, 207); };
+            colorsGroupBox.Controls.Add(focusedUnfocusedResetBtn);
         }
 
         private void ShowColorDialog(Button colorButton, Color defaultColor)
@@ -1124,13 +1220,45 @@ namespace TTMulti.Forms
             if (mirrorModeBorderColorButton == null)
                 return;
 
-            mirrorModeBorderColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.mirrorModeBorderColor);
-            multiModeLeftBorderColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.multiModeLeftBorderColor);
-            multiModeRightBorderColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.multiModeRightBorderColor);
-            switchingModeColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.switchingModeColor);
-            switchingSelectedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.switchingSelectedColor);
-            switchingSwitchedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.switchingSwitchedColor);
-            switchingRemovedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.switchingRemovedColor);
+            // Define default RGB colors
+            var defaultMirror = Color.FromArgb(238, 130, 238);
+            var defaultMultiLeft = Color.FromArgb(50, 205, 50);
+            var defaultMultiRight = Color.FromArgb(0, 100, 0);
+            var defaultSwitching = Color.FromArgb(245, 75, 80);
+            var defaultSelected = Color.FromArgb(244, 194, 140);
+            var defaultPending = Color.FromArgb(237, 152, 58);
+            var defaultRemoved = Color.FromArgb(105, 105, 105);
+            var defaultFocused = Color.FromArgb(123, 208, 223);
+            var defaultUnfocused = Color.FromArgb(95, 134, 207);
+
+            // Only load from settings if they differ from defaults (user has customized them)
+            // This prevents ARGB conversion issues from overwriting correct RGB-based defaults
+            if (Properties.Settings.Default.mirrorModeBorderColor != defaultMirror.ToArgb())
+                mirrorModeBorderColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.mirrorModeBorderColor);
+            
+            if (Properties.Settings.Default.multiModeLeftBorderColor != defaultMultiLeft.ToArgb())
+                multiModeLeftBorderColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.multiModeLeftBorderColor);
+            
+            if (Properties.Settings.Default.multiModeRightBorderColor != defaultMultiRight.ToArgb())
+                multiModeRightBorderColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.multiModeRightBorderColor);
+            
+            if (Properties.Settings.Default.switchingModeColor != defaultSwitching.ToArgb())
+                switchingModeColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.switchingModeColor);
+            
+            if (Properties.Settings.Default.switchingSelectedColor != defaultSelected.ToArgb())
+                switchingSelectedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.switchingSelectedColor);
+            
+            if (Properties.Settings.Default.switchingSwitchedColor != defaultPending.ToArgb())
+                switchingSwitchedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.switchingSwitchedColor);
+            
+            if (Properties.Settings.Default.switchingRemovedColor != defaultRemoved.ToArgb())
+                switchingRemovedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.switchingRemovedColor);
+            
+            if (Properties.Settings.Default.focusedModeFocusedColor != defaultFocused.ToArgb())
+                focusedModeFocusedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.focusedModeFocusedColor);
+            
+            if (Properties.Settings.Default.focusedModeUnfocusedColor != defaultUnfocused.ToArgb())
+                focusedModeUnfocusedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.focusedModeUnfocusedColor);
         }
 
         private void SaveColorsSettings()
@@ -1145,6 +1273,8 @@ namespace TTMulti.Forms
             Properties.Settings.Default.switchingSelectedColor = switchingSelectedColorButton.BackColor.ToArgb();
             Properties.Settings.Default.switchingSwitchedColor = switchingSwitchedColorButton.BackColor.ToArgb();
             Properties.Settings.Default.switchingRemovedColor = switchingRemovedColorButton.BackColor.ToArgb();
+            Properties.Settings.Default.focusedModeFocusedColor = focusedModeFocusedColorButton.BackColor.ToArgb();
+            Properties.Settings.Default.focusedModeUnfocusedColor = focusedModeUnfocusedColorButton.BackColor.ToArgb();
         }
 
 
@@ -1159,9 +1289,8 @@ namespace TTMulti.Forms
             var captionColorGroupBox = new GroupBox
             {
                 Text = "Title Bar Color",
-                Location = new Point(4, 180), // Position after Keep-Alive group box
-                Size = new Size(734, 48),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                Dock = DockStyle.Top, // Dock to top so it positions right after Keep-Alive group box
+                Size = new Size(734, 48)
             };
 
             // Create checkbox
@@ -1175,7 +1304,28 @@ namespace TTMulti.Forms
             captionColorGroupBox.Controls.Add(enableCaptionColorCheckBox);
 
             // Add to Other tab
+            // When controls are docked to Top, they stack from top to bottom in the order they appear in the collection
+            // The Designer adds: groupBox7 (Keep-Alive) -> groupBox6 (Compact) -> groupBox5 (Keep On Top)
+            // So visual order is: Keep-Alive (top) -> Compact -> Keep On Top (bottom)
+            // We want Title Bar Color to appear AFTER Keep-Alive, so it should be at index 0 (before groupBox7)
+            // But actually, we want it at the bottom, so it should be added first (index 0) or last
+            // Let's find groupBox7 and place Title Bar Color right after it in the collection
             otherTab.Controls.Add(captionColorGroupBox);
+            
+            // Find groupBox7 (Keep-Alive) and place Title Bar Color right after it
+            // Since docked controls stack in collection order, placing it after groupBox7 means it appears below it
+            var groupBox7 = otherTab.Controls.OfType<GroupBox>().FirstOrDefault(gb => gb.Text == "Keep-Alive");
+            if (groupBox7 != null)
+            {
+                int groupBox7Index = otherTab.Controls.GetChildIndex(groupBox7);
+                // Place it right after groupBox7 (so it appears below Keep-Alive)
+                otherTab.Controls.SetChildIndex(captionColorGroupBox, groupBox7Index + 1);
+            }
+            else
+            {
+                // Fallback: place at index 0 (bottom of stack)
+                otherTab.Controls.SetChildIndex(captionColorGroupBox, 0);
+            }
         }
 
         private void LoadCaptionColorSettings()
@@ -1358,6 +1508,12 @@ namespace TTMulti.Forms
         private void aboutBtn_Click(object sender, EventArgs e)
         {
             new AboutWnd().ShowDialog(this);
+        }
+
+        private void checkBox4_CheckedChanged(object sender, EventArgs e)
+        {
+            // Invert the value: checkbox says "Enable Keep-Alive", so checked = disableKeepAlive = false
+            Properties.Settings.Default.disableKeepAlive = !checkBox4.Checked;
         }
 
         private void checkUpdateBtn_Click(object sender, EventArgs e)

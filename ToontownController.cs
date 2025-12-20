@@ -424,7 +424,15 @@ namespace TTMulti
                                     borderColor = Colors.AllGroups;
                                     break;
                                 case MulticontrollerMode.Focused:
-                                    borderColor = Colors.Focused;
+                                    // Use different colors for focused vs unfocused windows
+                                    if (multicontroller.IsFocusedController(this))
+                                    {
+                                        borderColor = Colors.FocusedFocused;
+                                    }
+                                    else
+                                    {
+                                        borderColor = Colors.FocusedUnfocused;
+                                    }
                                     break;
                                 default:
                                     borderColor = _borderWnd.BorderColor; // Keep current color
@@ -508,7 +516,15 @@ namespace TTMulti
                                 borderColor = Colors.AllGroups;
                                 break;
                             case MulticontrollerMode.Focused:
-                                borderColor = Colors.Focused;
+                                // Use different colors for focused vs unfocused windows
+                                if (multicontroller.IsFocusedController(this))
+                                {
+                                    borderColor = Colors.FocusedFocused;
+                                }
+                                else
+                                {
+                                    borderColor = Colors.FocusedUnfocused;
+                                }
                                 break;
                             default:
                                 borderColor = _borderWnd.BorderColor; // Keep current color

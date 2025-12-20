@@ -353,6 +353,9 @@ namespace TTMulti.Forms
             panel1.Visible = !Properties.Settings.Default.compactUI;
             controller.UpdateOptions();
             
+            // Update UI colors to reflect any changes
+            UpdateUIColors();
+            
             // Unregister all hotkeys
             UnregisterHotkey();
             UnregisterLayoutHotkeys();
@@ -369,6 +372,28 @@ namespace TTMulti.Forms
                 RegisterAutoFindHotkey();
                 RegisterLayoutPriorityHotkey();
             }
+        }
+        
+        /// <summary>
+        /// Updates the colors of the mode buttons and crosshair controls to reflect current color settings.
+        /// </summary>
+        private void UpdateUIColors()
+        {
+            // Update Multi-Mode button colors
+            multiModeRadio.FlatAppearance.BorderColor = Colors.LeftGroup;
+            multiModeRadio.FlatAppearance.CheckedBackColor = Colors.LeftGroup;
+            
+            // Update Mirror Mode button colors
+            mirrorModeRadio.FlatAppearance.BorderColor = Colors.AllGroups;
+            mirrorModeRadio.FlatAppearance.CheckedBackColor = Colors.AllGroups;
+            
+            // Update crosshair colors
+            leftToonCrosshair.SelectedBorderColor = Colors.LeftGroup;
+            rightToonCrosshair.SelectedBorderColor = Colors.RightGroup;
+            
+            // Force a repaint of the buttons to show the updated colors
+            multiModeRadio.Invalidate();
+            mirrorModeRadio.Invalidate();
         }
 
         private void RegisterHotkey()
@@ -776,7 +801,9 @@ namespace TTMulti.Forms
                         borderColor = Colors.AllGroups;
                         break;
                     case MulticontrollerMode.Focused:
-                        borderColor = Colors.Focused;
+                        // Blend focused and unfocused colors to represent both types of windows
+                        // This creates a middle color since DWM doesn't support split colors
+                        borderColor = BlendColors(Colors.FocusedFocused, Colors.FocusedUnfocused);
                         break;
                     default:
                         // Keep current color or use a default

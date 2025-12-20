@@ -10,7 +10,9 @@ namespace TTMulti
         public static readonly Color Individual = Color.Lime;
         public static readonly Color Multiclick = Color.IndianRed;
         public static readonly Color ChromaKey = Color.Fuchsia;
-        public static readonly Color Focused = Color.DarkBlue;
+        public static Color FocusedFocused => Color.FromArgb(Properties.Settings.Default.focusedModeFocusedColor);
+        public static Color FocusedUnfocused => Color.FromArgb(Properties.Settings.Default.focusedModeUnfocusedColor);
+        public static readonly Color Focused = Color.DarkBlue; // Legacy, kept for backwards compatibility
         public static Color SwitchingMode => Color.FromArgb(Properties.Settings.Default.switchingModeColor);
         public static Color SwitchingSelected => Color.FromArgb(Properties.Settings.Default.switchingSelectedColor);
         public static Color SwitchingSwitched => Color.FromArgb(Properties.Settings.Default.switchingSwitchedColor);

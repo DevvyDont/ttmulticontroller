@@ -300,7 +300,9 @@ namespace TTMulti.Forms
             {
                 // Draw large number in center of window
                 // Font size is slightly larger than half of window height
-                float fontSize = this.ClientRectangle.Height / 1.7f;
+                // Account for DPI scaling to prevent oversized text on high-DPI displays
+                float dpiScale = e.Graphics.DpiX / 96.0f; // 96 is standard DPI
+                float fontSize = (this.ClientRectangle.Height / 1.7f) / dpiScale;
                 using (Font switchingModeFont = new Font(FontFamily.GenericSansSerif, fontSize, FontStyle.Bold))
                 {
                     e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;

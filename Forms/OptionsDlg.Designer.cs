@@ -85,6 +85,7 @@ namespace TTMulti.Forms
             this.modeHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
             this.multiclickHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
             this.zeroPowerHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
+            this.zeroPowerThrowEnableFocusModeCheckBox = new System.Windows.Forms.CheckBox();
             this.tabControl1.SuspendLayout();
             this.tabPage6.SuspendLayout();
             this.tableLayoutPanel3.SuspendLayout();
@@ -462,6 +463,7 @@ namespace TTMulti.Forms
             // 
             // zeroPowerThrowGroupBox
             // 
+            this.zeroPowerThrowGroupBox.Controls.Add(this.zeroPowerThrowEnableFocusModeCheckBox);
             this.zeroPowerThrowGroupBox.Controls.Add(this.zeroPowerHotkeyGlobalCheckBox);
             this.zeroPowerThrowGroupBox.Controls.Add(this.zeroPowerThrowLabel);
             this.zeroPowerThrowGroupBox.Controls.Add(this.zeroPowerThrowKeyPicker);
@@ -470,7 +472,7 @@ namespace TTMulti.Forms
             this.zeroPowerThrowGroupBox.Margin = new System.Windows.Forms.Padding(4);
             this.zeroPowerThrowGroupBox.Name = "zeroPowerThrowGroupBox";
             this.zeroPowerThrowGroupBox.Padding = new System.Windows.Forms.Padding(4);
-            this.zeroPowerThrowGroupBox.Size = new System.Drawing.Size(726, 100);
+            this.zeroPowerThrowGroupBox.Size = new System.Drawing.Size(726, 125);
             this.zeroPowerThrowGroupBox.TabIndex = 14;
             this.zeroPowerThrowGroupBox.TabStop = false;
             this.zeroPowerThrowGroupBox.Text = "Zero Power Throw Hotkey:";
@@ -585,15 +587,15 @@ namespace TTMulti.Forms
             // checkBox4
             // 
             this.checkBox4.AutoSize = true;
-            this.checkBox4.Checked = global::TTMulti.Properties.Settings.Default.disableKeepAlive;
-            this.checkBox4.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "disableKeepAlive", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.checkBox4.Checked = false; // Default to unchecked (Keep-Alive disabled)
+            // Note: CheckedChanged handler is attached in OptionsDlg_Load after settings are loaded
             this.checkBox4.Location = new System.Drawing.Point(7, 22);
             this.checkBox4.Margin = new System.Windows.Forms.Padding(4);
             this.checkBox4.Name = "checkBox4";
             this.checkBox4.Size = new System.Drawing.Size(149, 21);
             this.checkBox4.TabIndex = 3;
-            this.checkBox4.Text = "Disable Keep-Alive";
-            this.toolTip1.SetToolTip(this.checkBox4, "If checked, your toons will no longer be kept awake automatically.");
+            this.checkBox4.Text = "Enable Keep-Alive";
+            this.toolTip1.SetToolTip(this.checkBox4, "If checked, your toons will be kept awake automatically.");
             this.checkBox4.UseVisualStyleBackColor = true;
             // 
             // checkBox3
@@ -753,6 +755,19 @@ namespace TTMulti.Forms
             this.zeroPowerHotkeyGlobalCheckBox.Text = "Global";
             this.zeroPowerHotkeyGlobalCheckBox.UseVisualStyleBackColor = true;
             // 
+            // zeroPowerThrowEnableFocusModeCheckBox
+            // 
+            this.zeroPowerThrowEnableFocusModeCheckBox.AutoSize = true;
+            this.zeroPowerThrowEnableFocusModeCheckBox.Checked = global::TTMulti.Properties.Settings.Default.zeroPowerThrowEnableFocusMode;
+            this.zeroPowerThrowEnableFocusModeCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "zeroPowerThrowEnableFocusMode", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.zeroPowerThrowEnableFocusModeCheckBox.Location = new System.Drawing.Point(280, 63);
+            this.zeroPowerThrowEnableFocusModeCheckBox.Name = "zeroPowerThrowEnableFocusModeCheckBox";
+            this.zeroPowerThrowEnableFocusModeCheckBox.Size = new System.Drawing.Size(200, 21);
+            this.zeroPowerThrowEnableFocusModeCheckBox.TabIndex = 17;
+            this.zeroPowerThrowEnableFocusModeCheckBox.Text = "Enable Focus Mode on activation";
+            this.toolTip1.SetToolTip(this.zeroPowerThrowEnableFocusModeCheckBox, "When enabled, pressing Zero Power Throw while a window is focused will activate the controller in Focused Mode. In Focused Mode, directional movement keys only affect the focused window, while all other keys work on all windows.");
+            this.zeroPowerThrowEnableFocusModeCheckBox.UseVisualStyleBackColor = true;
+            // 
             // keyPicker2
             // 
             this.keyPicker2.ChosenKey = System.Windows.Forms.Keys.Home;
@@ -847,6 +862,7 @@ namespace TTMulti.Forms
         private System.Windows.Forms.CheckBox modeHotkeyGlobalCheckBox;
         private System.Windows.Forms.CheckBox multiclickHotkeyGlobalCheckBox;
         private System.Windows.Forms.CheckBox zeroPowerHotkeyGlobalCheckBox;
+        private System.Windows.Forms.CheckBox zeroPowerThrowEnableFocusModeCheckBox;
         private TTMulti.Controls.KeyPicker zeroPowerThrowKeyPicker;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         private System.Windows.Forms.Label label7;

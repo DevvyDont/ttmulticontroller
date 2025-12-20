@@ -73,7 +73,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool enableCaptionColor {
             get {
                 return ((bool)(this["enableCaptionColor"]));
@@ -97,7 +97,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool disableKeepAlive {
             get {
                 return ((bool)(this["disableKeepAlive"]));
@@ -550,7 +550,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        [global::System.Configuration.DefaultSettingValueAttribute("70")]
         public int autoFindWindowsKeyCode {
             get {
                 return ((int)(this["autoFindWindowsKeyCode"]));
@@ -562,7 +562,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
         public int autoFindWindowsKeyModifiers {
             get {
                 return ((int)(this["autoFindWindowsKeyModifiers"]));
@@ -574,7 +574,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("TTREngine64.exe;CorporateClash.exe;ppython.exe")]
+        [global::System.Configuration.DefaultSettingValueAttribute("CorporateClash.exe;TTREngine64.exe")]
         public string autoFindExecutables {
             get {
                 return ((string)(this["autoFindExecutables"]));
@@ -586,7 +586,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int lastUsedLayoutPreset {
             get {
                 return ((int)(this["lastUsedLayoutPreset"]));
@@ -646,7 +646,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool replicateMouseHotkeyGlobal {
             get {
                 return ((bool)(this["replicateMouseHotkeyGlobal"]));
@@ -658,7 +658,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool zeroPowerThrowHotkeyGlobal {
             get {
                 return ((bool)(this["zeroPowerThrowHotkeyGlobal"]));
@@ -982,7 +982,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool switchingModeEnabled {
             get {
                 return ((bool)(this["switchingModeEnabled"]));
@@ -994,7 +994,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("-10223615")]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1146130")]
         public int mirrorModeBorderColor {
             get {
                 return ((int)(this["mirrorModeBorderColor"]));
@@ -1006,7 +1006,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("-3323085")]
+        [global::System.Configuration.DefaultSettingValueAttribute("-13447886")]
         public int multiModeLeftBorderColor {
             get {
                 return ((int)(this["multiModeLeftBorderColor"]));
@@ -1018,7 +1018,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("-16744448")]
+        [global::System.Configuration.DefaultSettingValueAttribute("-16751616")]
         public int multiModeRightBorderColor {
             get {
                 return ((int)(this["multiModeRightBorderColor"]));
@@ -1030,7 +1030,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("-65536")]
+        [global::System.Configuration.DefaultSettingValueAttribute("-701616")]
         public int switchingModeColor {
             get {
                 return ((int)(this["switchingModeColor"]));
@@ -1042,7 +1042,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("-256")]
+        [global::System.Configuration.DefaultSettingValueAttribute("-736628")]
         public int switchingSelectedColor {
             get {
                 return ((int)(this["switchingSelectedColor"]));
@@ -1054,7 +1054,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("-23296")]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1206214")]
         public int switchingSwitchedColor {
             get {
                 return ((int)(this["switchingSwitchedColor"]));
@@ -1066,13 +1066,49 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("-16777216")]
+        [global::System.Configuration.DefaultSettingValueAttribute("-9868951")]
         public int switchingRemovedColor {
             get {
                 return ((int)(this["switchingRemovedColor"]));
             }
             set {
                 this["switchingRemovedColor"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-8662817")]
+        public int focusedModeFocusedColor {
+            get {
+                return ((int)(this["focusedModeFocusedColor"]));
+            }
+            set {
+                this["focusedModeFocusedColor"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-10516785")]
+        public int focusedModeUnfocusedColor {
+            get {
+                return ((int)(this["focusedModeUnfocusedColor"]));
+            }
+            set {
+                this["focusedModeUnfocusedColor"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool zeroPowerThrowEnableFocusMode {
+            get {
+                return ((bool)(this["zeroPowerThrowEnableFocusMode"]));
+            }
+            set {
+                this["zeroPowerThrowEnableFocusMode"] = value;
             }
         }
     }
