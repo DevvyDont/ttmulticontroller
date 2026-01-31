@@ -60,6 +60,8 @@ namespace TTMulti
     /// at apply time via GetMonitorWorkAreaByIndex so work-area bounds match that space (fixes 125%/150% scaling).
     /// Manual regions use stored X,Y,Width,Height as-is (user responsibility to match their display).
     /// Frame thickness is taken from one sample window; if windows span monitors with different DPI, frame may vary slightly.
+    /// Window origin: We place windows so the window rect (including frame) stays inside the region—first window at (rx, ry), not (rx - frame.Left, ry - frame.Top).
+    /// That avoids the window's top-left landing on another monitor (e.g. -6 on a 100% monitor) which caused DWM to apply the wrong DPI. We inset the tiling area by the frame so client area starts at (rx + frame.Left, ry + frame.Top).
     /// </summary>
     internal class LayoutPreset
     {
@@ -129,17 +131,36 @@ namespace TTMulti
         }
 
         /// <summary>
-        /// Calculate window size and positions for the given number of windows using grid layout across multiple regions
+        /// Scale frame thickness from sample monitor DPI to region monitor DPI so sizing/placement are correct when regions span different DPIs.
         /// </summary>
-        public (Size windowSize, Point[] positions) CalculateGridLayout(int windowCount, IntPtr sampleWindowHandle)
+        private static Win32.FrameThickness ScaleFrameForRegion(Win32.FrameThickness frame, uint sampleDpiX, uint sampleDpiY, uint regionDpiX, uint regionDpiY)
+        {
+            if (sampleDpiX == 0) sampleDpiX = 96;
+            if (sampleDpiY == 0) sampleDpiY = 96;
+            return new Win32.FrameThickness
+            {
+                Left = (int)((long)frame.Left * regionDpiX / sampleDpiX),
+                Right = (int)((long)frame.Right * regionDpiX / sampleDpiX),
+                Top = (int)((long)frame.Top * regionDpiY / sampleDpiY),
+                Bottom = (int)((long)frame.Bottom * regionDpiY / sampleDpiY)
+            };
+        }
+
+        /// <summary>
+        /// Calculate window size and positions for the given number of windows using grid layout across multiple regions.
+        /// Frame and DPI are taken from the REGION's monitor only. Windows are placed so the window rect stays inside the region
+        /// (first window at rx, ry)—we inset the tiling area by the frame so we don't place at (rx - frame.Left) which would put the origin on another monitor.
+        /// </summary>
+        public (Size[] windowSizes, Point[] positions) CalculateGridLayout(int windowCount, IntPtr sampleWindowHandle)
         {
             if (windowCount == 0 || Columns <= 0 || Rows <= 0 || Regions == null || Regions.Count == 0)
-                return (Size.Empty, Array.Empty<Point>());
+                return (Array.Empty<Size>(), Array.Empty<Point>());
 
-            // Get true frame values including caption height
-            var frame = Win32.GetFrameThickness(sampleWindowHandle);
+            var frameSample = Win32.GetFrameThickness(sampleWindowHandle);
+            var (sampleDpiX, sampleDpiY) = Win32.GetDpiForWindow(sampleWindowHandle);
 
             List<Point> positions = new List<Point>();
+            List<Size> sizes = new List<Size>();
             int windowsPlaced = 0;
             int maxPerRegion = Columns * Rows;
 
@@ -149,10 +170,18 @@ namespace TTMulti
                     break;
 
                 GetRegionBounds(region, out int rx, out int ry, out int rw, out int rh);
+                var (regionDpiX, regionDpiY) = Win32.GetDpiForRegion(region, rx, ry);
+                var frame = ScaleFrameForRegion(frameSample, sampleDpiX, sampleDpiY, regionDpiX, regionDpiY);
 
-                // Client area desired per window
-                int clientWidth = rw / Columns;
-                int clientHeight = rh / Rows;
+                // Inset region by frame so window rect stays inside region (origin at rx, ry for first cell, not rx - frame.Left).
+                int rwInset = Math.Max(0, rw - frame.Left - frame.Right);
+                int rhInset = Math.Max(0, rh - frame.Top - frame.Bottom);
+                int clientWidth = rwInset / Columns;
+                int clientHeight = rhInset / Rows;
+                Size regionWindowSize = new Size(
+                    clientWidth + frame.Left + frame.Right,
+                    clientHeight + frame.Top + frame.Bottom
+                );
 
                 int windowsInRegion = Math.Min(maxPerRegion, windowCount - windowsPlaced);
 
@@ -161,31 +190,20 @@ namespace TTMulti
                     int row = i / Columns;
                     int col = i % Columns;
 
-                    // Where the CLIENT RECT should appear
-                    int clientX = rx + (col * clientWidth);
-                    int clientY = ry + (row * clientHeight);
-
-                    // Convert client origin → window origin by subtracting borders
+                    // Client area starts at (rx + frame.Left, ry + frame.Top) so window origin is (rx, ry) for first cell.
+                    int clientX = rx + frame.Left + (col * clientWidth);
+                    int clientY = ry + frame.Top + (row * clientHeight);
                     int windowX = clientX - frame.Left;
                     int windowY = clientY - frame.Top;
 
                     positions.Add(new Point(windowX, windowY));
+                    sizes.Add(regionWindowSize);
                 }
 
                 windowsPlaced += windowsInRegion;
             }
 
-            // Compute size from first region (same formula as per-window clientHeight to avoid misalignment)
-            GetRegionBounds(Regions[0], out int firstRx, out int firstRy, out int firstRw, out int firstRh);
-            int firstClientWidth = firstRw / Columns;
-            int firstClientHeight = firstRh / Rows;
-
-            Size finalWindowSize = new Size(
-                firstClientWidth + frame.Left + frame.Right,
-                firstClientHeight + frame.Top + frame.Bottom
-            );
-
-            return (finalWindowSize, positions.ToArray());
+            return (sizes.ToArray(), positions.ToArray());
         }
 
         /// <summary>
