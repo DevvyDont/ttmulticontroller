@@ -255,6 +255,14 @@ namespace TTMulti.Forms
         // Caption color control
         private CheckBox enableCaptionColorCheckBox;
 
+        // Minimize unconnected Toontown windows controls
+        private GroupBox minimizeUnconnectedGroupBox;
+        private KeyPicker minimizeUnconnectedKeyPicker;
+        private CheckBox minimizeUnconnectedAltCheckBox;
+        private CheckBox minimizeUnconnectedCtrlCheckBox;
+        private CheckBox minimizeUnconnectedShiftCheckBox;
+        private CheckBox minimizeUnconnectedHotkeyGlobalCheckBox;
+
         private void OptionsDlg_Load(object sender, EventArgs e)
         {
             controlsPicker.KeyMappings = Properties.SerializedSettings.Default.Bindings;
@@ -283,6 +291,9 @@ namespace TTMulti.Forms
             
             CreateCaptionColorUI();
             LoadCaptionColorSettings();
+
+            CreateMinimizeUnconnectedUI();
+            LoadMinimizeUnconnectedSettings();
             
             // Load Keep-Alive checkbox state
             // disableKeepAlive = True (default) means Keep-Alive is disabled, so checkbox should be unchecked
@@ -1339,6 +1350,63 @@ namespace TTMulti.Forms
             }
         }
 
+        private void CreateMinimizeUnconnectedUI()
+        {
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            if (otherTab == null)
+                return;
+
+            minimizeUnconnectedGroupBox = new GroupBox
+            {
+                Text = "Minimize unconnected Toontown windows",
+                Dock = DockStyle.Top,
+                Size = new Size(734, 80)
+            };
+
+            var descLabel = new Label
+            {
+                Text = "Toggle keybind: minimize all game windows not connected to the multicontroller, or restore them. Uses the same executable list as Auto-Find.",
+                Location = new Point(10, 20),
+                Size = new Size(710, 32),
+                AutoSize = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            minimizeUnconnectedGroupBox.Controls.Add(descLabel);
+
+            var hotkeyLabel = new Label { Text = "Hotkey:", Location = new Point(10, 52), Size = new Size(45, 20) };
+            minimizeUnconnectedGroupBox.Controls.Add(hotkeyLabel);
+
+            minimizeUnconnectedKeyPicker = new KeyPicker
+            {
+                Location = new Point(60, 50),
+                Size = new Size(120, 23)
+            };
+            minimizeUnconnectedGroupBox.Controls.Add(minimizeUnconnectedKeyPicker);
+
+            minimizeUnconnectedAltCheckBox = new CheckBox { Text = "Alt", Location = new Point(190, 52), Size = new Size(45, 20) };
+            minimizeUnconnectedGroupBox.Controls.Add(minimizeUnconnectedAltCheckBox);
+            minimizeUnconnectedCtrlCheckBox = new CheckBox { Text = "Ctrl", Location = new Point(240, 52), Size = new Size(50, 20) };
+            minimizeUnconnectedGroupBox.Controls.Add(minimizeUnconnectedCtrlCheckBox);
+            minimizeUnconnectedShiftCheckBox = new CheckBox { Text = "Shift", Location = new Point(295, 52), Size = new Size(55, 20) };
+            minimizeUnconnectedGroupBox.Controls.Add(minimizeUnconnectedShiftCheckBox);
+
+            minimizeUnconnectedHotkeyGlobalCheckBox = new CheckBox
+            {
+                Text = "Global (works when game window is focused)",
+                Location = new Point(360, 52),
+                Size = new Size(280, 20)
+            };
+            minimizeUnconnectedGroupBox.Controls.Add(minimizeUnconnectedHotkeyGlobalCheckBox);
+
+            otherTab.Controls.Add(minimizeUnconnectedGroupBox);
+            var captionColorGroupBox = otherTab.Controls.OfType<GroupBox>().FirstOrDefault(gb => gb.Text == "Title Bar Color");
+            if (captionColorGroupBox != null)
+            {
+                int idx = otherTab.Controls.GetChildIndex(captionColorGroupBox);
+                otherTab.Controls.SetChildIndex(minimizeUnconnectedGroupBox, idx + 1);
+            }
+        }
+
         private void LoadCaptionColorSettings()
         {
             if (enableCaptionColorCheckBox == null)
@@ -1353,6 +1421,30 @@ namespace TTMulti.Forms
                 return;
 
             Properties.Settings.Default.enableCaptionColor = enableCaptionColorCheckBox.Checked;
+        }
+
+        private void LoadMinimizeUnconnectedSettings()
+        {
+            if (minimizeUnconnectedKeyPicker == null)
+                return;
+            minimizeUnconnectedKeyPicker.ChosenKey = (Keys)Properties.Settings.Default.minimizeUnconnectedKeyCode;
+            minimizeUnconnectedAltCheckBox.Checked = ((Win32.KeyModifiers)Properties.Settings.Default.minimizeUnconnectedKeyModifiers & Win32.KeyModifiers.Alt) != 0;
+            minimizeUnconnectedCtrlCheckBox.Checked = ((Win32.KeyModifiers)Properties.Settings.Default.minimizeUnconnectedKeyModifiers & Win32.KeyModifiers.Control) != 0;
+            minimizeUnconnectedShiftCheckBox.Checked = ((Win32.KeyModifiers)Properties.Settings.Default.minimizeUnconnectedKeyModifiers & Win32.KeyModifiers.Shift) != 0;
+            minimizeUnconnectedHotkeyGlobalCheckBox.Checked = Properties.Settings.Default.minimizeUnconnectedHotkeyGlobal;
+        }
+
+        private void SaveMinimizeUnconnectedSettings()
+        {
+            if (minimizeUnconnectedKeyPicker == null)
+                return;
+            Properties.Settings.Default.minimizeUnconnectedKeyCode = (int)minimizeUnconnectedKeyPicker.ChosenKey;
+            Win32.KeyModifiers modifiers = Win32.KeyModifiers.None;
+            if (minimizeUnconnectedAltCheckBox.Checked) modifiers |= Win32.KeyModifiers.Alt;
+            if (minimizeUnconnectedCtrlCheckBox.Checked) modifiers |= Win32.KeyModifiers.Control;
+            if (minimizeUnconnectedShiftCheckBox.Checked) modifiers |= Win32.KeyModifiers.Shift;
+            Properties.Settings.Default.minimizeUnconnectedKeyModifiers = (int)modifiers;
+            Properties.Settings.Default.minimizeUnconnectedHotkeyGlobal = minimizeUnconnectedHotkeyGlobalCheckBox.Checked;
         }
 
         private void LoadAutoFindSettings()
@@ -1462,6 +1554,9 @@ namespace TTMulti.Forms
             
             // Save caption color settings
             SaveCaptionColorSettings();
+
+            // Save minimize unconnected settings
+            SaveMinimizeUnconnectedSettings();
             
             Properties.Settings.Default.Save();
             DialogResult = DialogResult.OK;

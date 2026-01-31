@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -1294,6 +1294,16 @@ namespace TTMulti
         {
             internal Point pt;
             internal uint mouseData;
+            internal uint flags;
+            internal uint time;
+            internal IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct KBDLLHOOKSTRUCT
+        {
+            internal uint vkCode;
+            internal uint scanCode;
             internal uint flags;
             internal uint time;
             internal IntPtr dwExtraInfo;

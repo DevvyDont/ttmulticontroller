@@ -1771,6 +1771,74 @@ namespace TTMulti
         }
 
         /// <summary>
+        /// Toggle minimize/restore for all Toontown windows that are not connected to the multicontroller.
+        /// Uses the same executable list as auto-find. Minimized windows are restored; others are minimized.
+        /// </summary>
+        public void ToggleMinimizeUnconnectedWindows()
+        {
+            var executableNames = Properties.Settings.Default.autoFindExecutables
+                .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(e => e.Trim())
+                .Where(e => !string.IsNullOrEmpty(e))
+                .ToList();
+
+            if (executableNames.Count == 0)
+                return;
+
+            var connectedHandles = new HashSet<IntPtr>(
+                AllControllersWithWindows.Select(c => c.WindowHandle).Where(h => h != IntPtr.Zero)
+            );
+
+            var processNames = new HashSet<string>(executableNames, StringComparer.OrdinalIgnoreCase);
+            var processNamesNoExt = new HashSet<string>(
+                executableNames.Select(e => System.IO.Path.GetFileNameWithoutExtension(e)),
+                StringComparer.OrdinalIgnoreCase
+            );
+
+            foreach (var process in Process.GetProcesses())
+            {
+                try
+                {
+                    bool matches = processNames.Contains(process.ProcessName) ||
+                                   processNamesNoExt.Contains(process.ProcessName);
+                    if (!matches)
+                        continue;
+
+                    IntPtr mainWindowHandle = process.MainWindowHandle;
+                    if (mainWindowHandle == IntPtr.Zero)
+                    {
+                        Win32.EnumWindows((hWnd, lParam) =>
+                        {
+                            uint processId;
+                            Win32.GetWindowThreadProcessId(hWnd, out processId);
+                            if (processId == process.Id && Win32.IsWindowVisible(hWnd))
+                            {
+                                mainWindowHandle = hWnd;
+                                return false;
+                            }
+                            return true;
+                        }, IntPtr.Zero);
+                    }
+
+                    if (mainWindowHandle == IntPtr.Zero || !Win32.IsWindow(mainWindowHandle))
+                        continue;
+                    if (connectedHandles.Contains(mainWindowHandle))
+                        continue;
+
+                    var showState = Win32.GetWindowShowState(mainWindowHandle);
+                    if (showState == Win32.ShowWindowCommands.ShowMinimized)
+                        Win32.ShowWindow(mainWindowHandle, Win32.ShowWindowCommands.Restore);
+                    else
+                        Win32.ShowWindow(mainWindowHandle, Win32.ShowWindowCommands.Minimize);
+                }
+                catch
+                {
+                    // Process may have exited or we don't have access
+                }
+            }
+        }
+
+        /// <summary>
         /// Apply a layout preset to all windows with handles
         /// </summary>
         public void ApplyLayoutPreset(LayoutPreset preset, int? presetNumber = null)

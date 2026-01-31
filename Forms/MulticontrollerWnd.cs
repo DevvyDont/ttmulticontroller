@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -35,6 +35,12 @@ namespace TTMulti.Forms
 
         bool hotkeyRegistered = false;
         bool userPromptedForAdminRights = false;
+
+        // Low-level keyboard hook for minimize-unconnected when no modifier is set (RegisterHotKey doesn't work globally for single keys)
+        private static IntPtr _minimizeUnconnectedKeyboardHookHandle = IntPtr.Zero;
+        private static MulticontrollerWnd _minimizeUnconnectedHookForm = null;
+        private static int _minimizeUnconnectedHookKeyCode = 0;
+        private static Win32.HookProc _minimizeUnconnectedKeyboardHookProc = null;
         internal MulticontrollerWnd()
         {
             InitializeComponent();
@@ -188,11 +194,11 @@ namespace TTMulti.Forms
                     ret = controller.ProcessInput(m.Msg, m.WParam, m.LParam);
                     break;
                 case Win32.WM.HOTKEY:
-                    // Check if this is a layout preset hotkey (IDs 3-6) or auto-find (ID 7)
+                    // Check if this is a layout preset hotkey (IDs 3-6), auto-find (ID 7), layout priority (ID 8), or minimize unconnected (ID 9)
                     int hotkeyId = m.WParam.ToInt32();
-                    if (hotkeyId >= 3 && hotkeyId <= 6 || hotkeyId == 7 || hotkeyId == 8)
+                    if (hotkeyId >= 3 && hotkeyId <= 6 || hotkeyId == 7 || hotkeyId == 8 || hotkeyId == 9)
                     {
-                        // Let layout, auto-find, and layout priority toggle hotkeys pass through to WndProc
+                        // Let these hotkeys pass through to WndProc
                         ret = false;
                     }
                     else
@@ -243,6 +249,11 @@ namespace TTMulti.Forms
                 else if (hotkeyId == 8)
                 {
                     controller.ToggleLayoutPriority();
+                }
+                // Check if this is minimize unconnected Toontown windows hotkey (ID 9)
+                else if (hotkeyId == 9)
+                {
+                    controller.ToggleMinimizeUnconnectedWindows();
                 }
                 else if (hotkeyId == 0)
                 {
@@ -361,17 +372,19 @@ namespace TTMulti.Forms
             UnregisterLayoutHotkeys();
             UnregisterAutoFindHotkey();
             UnregisterLayoutPriorityHotkey();
+            UnregisterMinimizeUnconnectedHotkey();
             
             // Re-register all hotkeys based on current settings and state
             RegisterHotkey();
 
-            // Re-register layout hotkeys, auto-find, and layout priority only if multicontroller window is active
+            // Re-register layout hotkeys, auto-find, layout priority, and minimize unconnected only if multicontroller window is active (or global for minimize unconnected)
             if (controller.IsActive)
             {
                 RegisterLayoutHotkeys();
                 RegisterAutoFindHotkey();
                 RegisterLayoutPriorityHotkey();
             }
+            RegisterMinimizeUnconnectedHotkey();
         }
         
         /// <summary>
@@ -531,6 +544,104 @@ namespace TTMulti.Forms
             Win32.UnregisterHotKey(this.Handle, 8);
         }
 
+        private void RegisterMinimizeUnconnectedHotkey()
+        {
+            // Register minimize unconnected Toontown windows hotkey (ID 9)
+            // When no modifier: RegisterHotKey doesn't work globally for single keys on Windows, so use a low-level keyboard hook instead.
+            // When modifier is set: use RegisterHotKey as normal.
+            int keyCode = Properties.Settings.Default.minimizeUnconnectedKeyCode;
+            int modifiers = Properties.Settings.Default.minimizeUnconnectedKeyModifiers;
+            if (keyCode == 0)
+            {
+                UnregisterMinimizeUnconnectedHotkey();
+                return;
+            }
+            bool shouldRegister = Properties.Settings.Default.minimizeUnconnectedHotkeyGlobal
+                || controller.IsActive
+                || controller.AllControllersWithWindows.Any(c => c.IsWindowActive);
+            if (!shouldRegister)
+            {
+                UnregisterMinimizeUnconnectedHotkey();
+                return;
+            }
+            bool noModifiers = (modifiers == 0 || modifiers == (int)Win32.KeyModifiers.None);
+            if (noModifiers)
+            {
+                Win32.UnregisterHotKey(this.Handle, 9);
+                InstallMinimizeUnconnectedKeyboardHook(keyCode);
+            }
+            else
+            {
+                UninstallMinimizeUnconnectedKeyboardHook();
+                bool success = Win32.RegisterHotKey(this.Handle, 9, (Win32.KeyModifiers)modifiers, (Keys)keyCode);
+                if (!success)
+                {
+                    Win32.UnregisterHotKey(this.Handle, 9);
+                    Win32.RegisterHotKey(this.Handle, 9, (Win32.KeyModifiers)modifiers, (Keys)keyCode);
+                }
+            }
+        }
+
+        private void UnregisterMinimizeUnconnectedHotkey()
+        {
+            Win32.UnregisterHotKey(this.Handle, 9);
+            UninstallMinimizeUnconnectedKeyboardHook();
+        }
+
+        private void InstallMinimizeUnconnectedKeyboardHook(int keyCode)
+        {
+            if (_minimizeUnconnectedKeyboardHookHandle != IntPtr.Zero)
+            {
+                if (_minimizeUnconnectedHookKeyCode == keyCode)
+                    return;
+                UninstallMinimizeUnconnectedKeyboardHook();
+            }
+            _minimizeUnconnectedHookForm = this;
+            _minimizeUnconnectedHookKeyCode = keyCode;
+            if (_minimizeUnconnectedKeyboardHookProc == null)
+                _minimizeUnconnectedKeyboardHookProc = MinimizeUnconnectedKeyboardHookProc;
+            IntPtr hModule = Win32.GetModuleHandle(null);
+            _minimizeUnconnectedKeyboardHookHandle = Win32.SetWindowsHookEx(Win32.WH_KEYBOARD_LL, _minimizeUnconnectedKeyboardHookProc, hModule, 0);
+        }
+
+        private void UninstallMinimizeUnconnectedKeyboardHook()
+        {
+            if (_minimizeUnconnectedKeyboardHookHandle != IntPtr.Zero)
+            {
+                Win32.UnhookWindowsHookEx(_minimizeUnconnectedKeyboardHookHandle);
+                _minimizeUnconnectedKeyboardHookHandle = IntPtr.Zero;
+            }
+            _minimizeUnconnectedHookForm = null;
+            _minimizeUnconnectedHookKeyCode = 0;
+        }
+
+        private static IntPtr MinimizeUnconnectedKeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode < 0)
+                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
+            int msg = wParam.ToInt32();
+            // WM_KEYDOWN = 0x100, WM_SYSKEYDOWN = 0x104
+            if (msg != 0x100 && msg != 0x104)
+                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
+            if (_minimizeUnconnectedHookForm == null || _minimizeUnconnectedHookKeyCode == 0)
+                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
+            var hookStruct = (Win32.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.KBDLLHOOKSTRUCT));
+            if ((uint)hookStruct.vkCode != _minimizeUnconnectedHookKeyCode)
+                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
+            // No modifiers: Alt, Ctrl, Shift must not be pressed
+            short alt = Win32.GetAsyncKeyState(Keys.Menu);
+            short ctrl = Win32.GetAsyncKeyState(Keys.ControlKey);
+            short shift = Win32.GetAsyncKeyState(Keys.ShiftKey);
+            if ((alt & 0x8000) != 0 || (ctrl & 0x8000) != 0 || (shift & 0x8000) != 0)
+                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
+            _minimizeUnconnectedHookForm.BeginInvoke(new Action(() =>
+            {
+                if (_minimizeUnconnectedHookForm != null && _minimizeUnconnectedHookForm.controller != null)
+                    _minimizeUnconnectedHookForm.controller.ToggleMinimizeUnconnectedWindows();
+            }));
+            return (IntPtr)1; // Consume the key
+        }
+
         private void MulticontrollerWnd_Load(object sender, EventArgs e)
         {
             controller = Multicontroller.Instance;
@@ -605,6 +716,7 @@ namespace TTMulti.Forms
                 RegisterLayoutHotkeys();
                 RegisterAutoFindHotkey();
                 RegisterLayoutPriorityHotkey();
+                RegisterMinimizeUnconnectedHotkey();
             }
         }
 
@@ -633,6 +745,7 @@ namespace TTMulti.Forms
             UnregisterLayoutHotkeys();
             UnregisterAutoFindHotkey();
             UnregisterLayoutPriorityHotkey();
+            UnregisterMinimizeUnconnectedHotkey();
             
             // Re-register only global hotkeys (non-global ones will be re-registered when multicontroller window becomes active)
             // Mode/Activate (ID 0)
@@ -660,6 +773,7 @@ namespace TTMulti.Forms
                 RegisterAutoFindHotkey();
                 RegisterLayoutPriorityHotkey();
             }
+            RegisterMinimizeUnconnectedHotkey();
         }
 
         private void Controller_WindowActivated(object sender, EventArgs e)
@@ -673,6 +787,7 @@ namespace TTMulti.Forms
                 RegisterAutoFindHotkey();
                 RegisterLayoutPriorityHotkey();
             }
+            RegisterMinimizeUnconnectedHotkey();
         }
 
         private void MainWnd_FormClosing(object sender, FormClosingEventArgs e)
@@ -703,6 +818,7 @@ namespace TTMulti.Forms
                 RegisterAutoFindHotkey();
                 RegisterLayoutPriorityHotkey();
             }
+            RegisterMinimizeUnconnectedHotkey();
         }
 
         private void Controller_ActiveControllersChanged(object sender, EventArgs e)
@@ -888,6 +1004,7 @@ namespace TTMulti.Forms
             RegisterAutoFindHotkey();
             // Register layout priority toggle hotkey when multicontroller window is active
             RegisterLayoutPriorityHotkey();
+            RegisterMinimizeUnconnectedHotkey();
         }
 
         private void MulticontrollerWnd_Deactivate(object sender, EventArgs e)
@@ -902,6 +1019,7 @@ namespace TTMulti.Forms
             UnregisterLayoutHotkeys();
             UnregisterAutoFindHotkey();
             UnregisterLayoutPriorityHotkey();
+            UnregisterMinimizeUnconnectedHotkey();
             
             // Re-register only global hotkeys (non-global ones will be re-registered when window becomes active or Toontown window becomes active)
             // Mode/Activate (ID 0)
@@ -921,6 +1039,9 @@ namespace TTMulti.Forms
             {
                 Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
             }
+            
+            // Minimize unconnected (ID 9) - can be global
+            RegisterMinimizeUnconnectedHotkey();
             
             // Layout hotkeys, auto-find, and layout priority are NEVER global - they stay unregistered when multicontroller window is inactive
         }

@@ -1123,5 +1123,41 @@ namespace TTMulti.Properties {
                 this["zeroPowerThrowEnableFocusMode"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int minimizeUnconnectedKeyCode {
+            get {
+                return ((int)(this["minimizeUnconnectedKeyCode"]));
+            }
+            set {
+                this["minimizeUnconnectedKeyCode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int minimizeUnconnectedKeyModifiers {
+            get {
+                return ((int)(this["minimizeUnconnectedKeyModifiers"]));
+            }
+            set {
+                this["minimizeUnconnectedKeyModifiers"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool minimizeUnconnectedHotkeyGlobal {
+            get {
+                return ((bool)(this["minimizeUnconnectedHotkeyGlobal"]));
+            }
+            set {
+                this["minimizeUnconnectedHotkeyGlobal"] = value;
+            }
+        }
     }
 }
