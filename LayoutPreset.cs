@@ -54,7 +54,12 @@ namespace TTMulti
     }
 
     /// <summary>
-    /// Represents a window layout preset with grid-based layout and hotkey configuration
+    /// Represents a window layout preset with grid-based layout and hotkey configuration.
+    /// Layout and DPI: The app is system-DPI aware (SetProcessDPIAware). GetWindowRect, SetWindowPos,
+    /// and GetMonitorInfo use the same virtualized coordinate space. Display-mode regions are resolved
+    /// at apply time via GetMonitorWorkAreaByIndex so work-area bounds match that space (fixes 125%/150% scaling).
+    /// Manual regions use stored X,Y,Width,Height as-is (user responsibility to match their display).
+    /// Frame thickness is taken from one sample window; if windows span monitors with different DPI, frame may vary slightly.
     /// </summary>
     internal class LayoutPreset
     {
@@ -99,6 +104,31 @@ namespace TTMulti
         }
 
         /// <summary>
+        /// Resolves a region to effective bounds (X, Y, Width, Height) in the same coordinate space as GetWindowRect/SetWindowPos.
+        /// For Display mode, re-queries the monitor work area via Win32 so layout is correct under DPI scaling (100%, 125%, 150%, etc.).
+        /// </summary>
+        private static void GetRegionBounds(LayoutRegion region, out int x, out int y, out int width, out int height)
+        {
+            if (region.Mode == LayoutRegionMode.Display && region.DisplayIndex >= 0)
+            {
+                var work = Win32.GetMonitorWorkAreaByIndex(region.DisplayIndex);
+                if (work.HasValue)
+                {
+                    var r = work.Value;
+                    x = r.Left;
+                    y = r.Top;
+                    width = r.Right - r.Left;
+                    height = r.Bottom - r.Top;
+                    return;
+                }
+            }
+            x = region.X;
+            y = region.Y;
+            width = region.Width;
+            height = region.Height;
+        }
+
+        /// <summary>
         /// Calculate window size and positions for the given number of windows using grid layout across multiple regions
         /// </summary>
         public (Size windowSize, Point[] positions) CalculateGridLayout(int windowCount, IntPtr sampleWindowHandle)
@@ -118,9 +148,11 @@ namespace TTMulti
                 if (windowsPlaced >= windowCount)
                     break;
 
+                GetRegionBounds(region, out int rx, out int ry, out int rw, out int rh);
+
                 // Client area desired per window
-                int clientWidth = region.Width / Columns;
-                int clientHeight = region.Height / Rows;
+                int clientWidth = rw / Columns;
+                int clientHeight = rh / Rows;
 
                 int windowsInRegion = Math.Min(maxPerRegion, windowCount - windowsPlaced);
 
@@ -130,8 +162,8 @@ namespace TTMulti
                     int col = i % Columns;
 
                     // Where the CLIENT RECT should appear
-                    int clientX = region.X + (col * clientWidth);
-                    int clientY = region.Y + (row * clientHeight);
+                    int clientX = rx + (col * clientWidth);
+                    int clientY = ry + (row * clientHeight);
 
                     // Convert client origin → window origin by subtracting borders
                     int windowX = clientX - frame.Left;
@@ -143,10 +175,10 @@ namespace TTMulti
                 windowsPlaced += windowsInRegion;
             }
 
-            // Compute size from first region
-            var first = Regions[0];
-            int firstClientWidth = first.Width / Columns;
-            int firstClientHeight = first.Height / Rows + 1;
+            // Compute size from first region (same formula as per-window clientHeight to avoid misalignment)
+            GetRegionBounds(Regions[0], out int firstRx, out int firstRy, out int firstRw, out int firstRh);
+            int firstClientWidth = firstRw / Columns;
+            int firstClientHeight = firstRh / Rows;
 
             Size finalWindowSize = new Size(
                 firstClientWidth + frame.Left + frame.Right,

@@ -150,7 +150,28 @@ namespace TTMulti
             public override string ToString()
                 => $"L={Left} T={Top} R={Right} B={Bottom}";
         }
-        
+
+        /// <summary>
+        /// Gets the work area (usable desktop excluding taskbar) for the monitor at the given 0-based index.
+        /// Returns the same coordinate space as GetWindowRect/SetWindowPos (DPI-virtualized when process is system-DPI aware).
+        /// Returns null if the index is out of range.
+        /// </summary>
+        public static RECT? GetMonitorWorkAreaByIndex(int displayIndex)
+        {
+            var workAreas = new List<RECT>();
+            MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
+            {
+                var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+                if (GetMonitorInfo(hMonitor, ref mi))
+                    workAreas.Add(mi.rcWork);
+                return true;
+            };
+            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+            if (displayIndex < 0 || displayIndex >= workAreas.Count)
+                return null;
+            return workAreas[displayIndex];
+        }
+
         [DllImport("dwmapi.dll")]
         private static extern int DwmGetWindowAttribute(
             IntPtr hwnd,
@@ -181,6 +202,24 @@ namespace TTMulti
 
         [DllImport("user32.dll", SetLastError=true)]
         internal static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
+
+        // Monitor enumeration for layout preset Display-mode regions (same coordinate space as GetWindowRect/SetWindowPos under DPI virtualization)
+        internal delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        internal struct MONITORINFO
+        {
+            internal int cbSize;
+            internal RECT rcMonitor;
+            internal RECT rcWork;
+            internal int dwFlags;
+        }
+        internal const int MONITORINFOF_PRIMARY = 0x00000001;
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 
         [DllImport("user32.dll")]
         internal static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
