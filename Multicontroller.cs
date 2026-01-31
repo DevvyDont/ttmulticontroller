@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -1751,23 +1751,22 @@ namespace TTMulti
                 controller.UpdateBorderPosition();
             }
 
-            // Automatically set to mirror mode and apply the last used layout preset (or preset 1 if none used)
+            // Automatically set to mirror mode
             CurrentMode = MulticontrollerMode.MirrorAll;
             
-            // Get the last used preset number, defaulting to 1 if none has been used
-            int lastUsedPreset = Properties.Settings.Default.lastUsedLayoutPreset;
-            if (lastUsedPreset < 1 || lastUsedPreset > 4)
+            // Optionally apply the last used layout preset (only if user has enabled auto-place)
+            if (Properties.Settings.Default.autoFindApplyLayout)
             {
-                lastUsedPreset = 1;
-            }
-            
-            // Load and apply the last used preset
-            var preset = LayoutPreset.LoadFromSettings(lastUsedPreset);
-
-            
-            if (preset.Enabled)
-            {
-                ApplyLayoutPreset(preset, lastUsedPreset);
+                int lastUsedPreset = Properties.Settings.Default.lastUsedLayoutPreset;
+                if (lastUsedPreset < 1 || lastUsedPreset > 4)
+                {
+                    lastUsedPreset = 1;
+                }
+                var preset = LayoutPreset.LoadFromSettings(lastUsedPreset);
+                if (preset.Enabled)
+                {
+                    ApplyLayoutPreset(preset, lastUsedPreset);
+                }
             }
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -222,6 +222,7 @@ namespace TTMulti.Forms
         private CheckBox autoFindShiftCheckBox;
         private TextBox autoFindExecutablesTextBox;
         private Label autoFindExecutablesLabel;
+        private CheckBox autoFindApplyLayoutCheckBox;
 
         // Layout priority toggle controls
         private GroupBox layoutPriorityGroupBox;
@@ -336,7 +337,7 @@ namespace TTMulti.Forms
             {
                 Text = "Auto-Find Windows",
                 Location = new Point(10, 10),
-                Size = new Size(720, 200),
+                Size = new Size(720, 230),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
@@ -369,11 +370,21 @@ namespace TTMulti.Forms
             };
             autoFindGroupBox.Controls.Add(autoFindExecutablesTextBox);
 
+            // Apply layout after auto-find checkbox
+            autoFindApplyLayoutCheckBox = new CheckBox
+            {
+                Text = "Apply layout preset after auto-find",
+                Location = new Point(10, 135),
+                Size = new Size(400, 24),
+                Checked = false
+            };
+            autoFindGroupBox.Controls.Add(autoFindApplyLayoutCheckBox);
+
             // Hotkey section label
             var hotkeySectionLabel = new Label
             {
                 Text = "Hotkey Configuration:",
-                Location = new Point(10, 140),
+                Location = new Point(10, 170),
                 Size = new Size(200, 20),
                 Font = new Font(autoFindGroupBox.Font, FontStyle.Bold)
             };
@@ -383,7 +394,7 @@ namespace TTMulti.Forms
             var hotkeyLabel = new Label
             {
                 Text = "Hotkey:",
-                Location = new Point(10, 165),
+                Location = new Point(10, 195),
                 Size = new Size(60, 20)
             };
             autoFindGroupBox.Controls.Add(hotkeyLabel);
@@ -391,7 +402,7 @@ namespace TTMulti.Forms
             // Hotkey picker
             autoFindKeyPicker = new KeyPicker
             {
-                Location = new Point(80, 163),
+                Location = new Point(80, 193),
                 Size = new Size(120, 23)
             };
             autoFindGroupBox.Controls.Add(autoFindKeyPicker);
@@ -400,7 +411,7 @@ namespace TTMulti.Forms
             autoFindAltCheckBox = new CheckBox
             {
                 Text = "Alt",
-                Location = new Point(210, 165),
+                Location = new Point(210, 195),
                 Size = new Size(50, 20)
             };
             autoFindGroupBox.Controls.Add(autoFindAltCheckBox);
@@ -408,7 +419,7 @@ namespace TTMulti.Forms
             autoFindCtrlCheckBox = new CheckBox
             {
                 Text = "Ctrl",
-                Location = new Point(270, 165),
+                Location = new Point(270, 195),
                 Size = new Size(50, 20)
             };
             autoFindGroupBox.Controls.Add(autoFindCtrlCheckBox);
@@ -416,7 +427,7 @@ namespace TTMulti.Forms
             autoFindShiftCheckBox = new CheckBox
             {
                 Text = "Shift",
-                Location = new Point(330, 165),
+                Location = new Point(330, 195),
                 Size = new Size(60, 20)
             };
             autoFindGroupBox.Controls.Add(autoFindShiftCheckBox);
@@ -1350,6 +1361,7 @@ namespace TTMulti.Forms
                 return;
 
             autoFindExecutablesTextBox.Text = Properties.Settings.Default.autoFindExecutables;
+            autoFindApplyLayoutCheckBox.Checked = Properties.Settings.Default.autoFindApplyLayout;
             autoFindKeyPicker.ChosenKey = (Keys)Properties.Settings.Default.autoFindWindowsKeyCode;
             autoFindAltCheckBox.Checked = ((Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers & Win32.KeyModifiers.Alt) != 0;
             autoFindCtrlCheckBox.Checked = ((Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers & Win32.KeyModifiers.Control) != 0;
@@ -1362,6 +1374,7 @@ namespace TTMulti.Forms
                 return;
 
             Properties.Settings.Default.autoFindExecutables = autoFindExecutablesTextBox.Text;
+            Properties.Settings.Default.autoFindApplyLayout = autoFindApplyLayoutCheckBox.Checked;
             Properties.Settings.Default.autoFindWindowsKeyCode = (int)autoFindKeyPicker.ChosenKey;
 
             Win32.KeyModifiers modifiers = Win32.KeyModifiers.None;
