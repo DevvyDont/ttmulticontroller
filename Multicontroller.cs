@@ -1880,22 +1880,21 @@ namespace TTMulti
                     .ToList();
             }
 
-            // Calculate grid layout (per-window sizes and positions; windows stay inside region with origin at rx, ry)
-            var (windowSizes, positions) = preset.CalculateGridLayout(controllersWithWindows.Count, controllersWithWindows.First().WindowHandle);
+            // Calculate grid layout (window size and positions)
+            var (windowSize, positions) = preset.CalculateGridLayout(controllersWithWindows.Count, controllersWithWindows.First().WindowHandle);
 
-            if (windowSizes.Length == 0 || positions.Length == 0)
+            if (windowSize.IsEmpty || positions.Length == 0)
                 return;
 
             // Collect windows that need to be moved/resized (skip windows already in correct position)
-            var windowsToMove = new List<(ToontownController controller, Point position, Size size)>();
-            const int positionTolerance = 0;
-            const int sizeTolerance = 0;
+            var windowsToMove = new List<(ToontownController controller, Point position)>();
+            const int positionTolerance = 0; // Allow 2 pixels tolerance for position
+            const int sizeTolerance = 0; // Allow 2 pixels tolerance for size
 
-            for (int i = 0; i < controllersWithWindows.Count && i < positions.Length && i < windowSizes.Length; i++)
+            for (int i = 0; i < controllersWithWindows.Count && i < positions.Length; i++)
             {
                 var controller = controllersWithWindows[i];
                 Point targetPosition = positions[i];
-                Size targetSize = windowSizes[i];
 
                 // Get current window position and size
                 Win32.RECT currentRect;
@@ -1906,22 +1905,22 @@ namespace TTMulti
                     int currentWidth = currentRect.Right - currentRect.Left;
                     int currentHeight = currentRect.Bottom - currentRect.Top;
 
-                    // Check if window is already in the correct position and size (per-window size)
+                    // Check if window is already in the correct position and size
                     bool positionMatches = Math.Abs(currentX - targetPosition.X) <= positionTolerance &&
                                           Math.Abs(currentY - targetPosition.Y) <= positionTolerance;
-                    bool sizeMatches = Math.Abs(currentWidth - targetSize.Width) <= sizeTolerance &&
-                                      Math.Abs(currentHeight - targetSize.Height) <= sizeTolerance;
+                    bool sizeMatches = Math.Abs(currentWidth - windowSize.Width) <= sizeTolerance &&
+                                      Math.Abs(currentHeight - windowSize.Height) <= sizeTolerance;
 
                     // Only add to move list if position or size doesn't match
                     if (!positionMatches || !sizeMatches)
                     {
-                        windowsToMove.Add((controller, targetPosition, targetSize));
+                        windowsToMove.Add((controller, targetPosition));
                     }
                 }
                 else
                 {
                     // If we can't get the current position, assume it needs to be moved
-                    windowsToMove.Add((controller, targetPosition, targetSize));
+                    windowsToMove.Add((controller, targetPosition));
                 }
             }
 
@@ -1930,20 +1929,23 @@ namespace TTMulti
                 return;
 
             // Batch all window position/size operations for better performance
+            // BeginDeferWindowPos allows Windows to optimize multiple window operations
             IntPtr hdwp = Win32.BeginDeferWindowPos(windowsToMove.Count);
             
             if (hdwp != IntPtr.Zero)
             {
-                foreach (var (controller, position, size) in windowsToMove)
+                // Apply layout only to windows that need to be moved
+                foreach (var (controller, position) in windowsToMove)
                 {
+                    // Defer the SetWindowPos operation (batched for performance)
                     hdwp = Win32.DeferWindowPos(
                         hdwp,
                         controller.WindowHandle,
                         IntPtr.Zero,
                         position.X,
                         position.Y,
-                        size.Width,
-                        size.Height,
+                        windowSize.Width,
+                        windowSize.Height,
                         Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate
                     );
                     
@@ -1976,15 +1978,15 @@ namespace TTMulti
             else
             {
                 // Fallback to individual SetWindowPos calls if batching fails
-                foreach (var (controller, position, size) in windowsToMove)
+                foreach (var (controller, position) in windowsToMove)
                 {
                     Win32.SetWindowPos(
                         controller.WindowHandle,
                         IntPtr.Zero,
                         position.X,
                         position.Y,
-                        size.Width,
-                        size.Height,
+                        windowSize.Width,
+                        windowSize.Height,
                         Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate
                     );
                     
