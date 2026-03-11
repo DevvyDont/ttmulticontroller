@@ -1,4 +1,4 @@
-﻿using TTMulti.Controls;
+using TTMulti.Controls;
 
 namespace TTMulti.Forms
 {
@@ -62,6 +62,8 @@ namespace TTMulti.Forms
             this.multiclickLabel = new System.Windows.Forms.Label();
             this.zeroPowerThrowLabel = new System.Windows.Forms.Label();
             this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.releaseKeysOnWindowFocusGroupBox = new System.Windows.Forms.GroupBox();
+            this.releaseKeysOnWindowFocusCheckBox = new System.Windows.Forms.CheckBox();
             this.label7 = new System.Windows.Forms.Label();
             this.groupBox7 = new System.Windows.Forms.GroupBox();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
@@ -80,9 +82,14 @@ namespace TTMulti.Forms
             this.groupModeHotkeyPicker = new TTMulti.Controls.KeyPicker();
             this.keyPicker1 = new TTMulti.Controls.KeyPicker();
             this.multiclickKeyPicker = new TTMulti.Controls.KeyPicker();
+            this.multiclickUseMouseCheckBox = new System.Windows.Forms.CheckBox();
+            this.multiclickMouseButtonCombo = new System.Windows.Forms.ComboBox();
+            this.multiclickOrderLabel = new System.Windows.Forms.Label();
+            this.multiclickOrderCombo = new System.Windows.Forms.ComboBox();
             this.zeroPowerThrowKeyPicker = new TTMulti.Controls.KeyPicker();
             this.keyPicker2 = new TTMulti.Controls.KeyPicker();
             this.modeHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
+            this.defaultModeOnLaunchCheckBox = new System.Windows.Forms.CheckBox();
             this.multiclickHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
             this.zeroPowerHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
             this.zeroPowerThrowEnableFocusModeCheckBox = new System.Windows.Forms.CheckBox();
@@ -397,6 +404,7 @@ namespace TTMulti.Forms
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.defaultModeOnLaunchCheckBox);
             this.groupBox1.Controls.Add(this.modeHotkeyGlobalCheckBox);
             this.groupBox1.Controls.Add(this.label4);
             this.groupBox1.Controls.Add(this.keyPicker1);
@@ -405,10 +413,11 @@ namespace TTMulti.Forms
             this.groupBox1.Margin = new System.Windows.Forms.Padding(4);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Padding = new System.Windows.Forms.Padding(4);
-            this.groupBox1.Size = new System.Drawing.Size(726, 94);
+            this.groupBox1.Size = new System.Drawing.Size(726, 118);
             this.groupBox1.TabIndex = 14;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Mode/Activate Hotkey:";
+            this.toolTip1.SetToolTip(this.groupBox1, "Activates the controller when a game window is focused, and switches between Multi and Mirror mode. Use the key picker below.");
             // 
             // label4
             // 
@@ -433,9 +442,14 @@ namespace TTMulti.Forms
             this.multiclickLabel.TabIndex = 13;
             this.multiclickLabel.Text = "Instantly sends a click to all windows at your current cursor position. " +
                                         "If the multicontroller is not active, it will activate and switch to mirror mode.";
+            this.toolTip1.SetToolTip(this.multiclickGroupBox, "Click order: by group, then pair, then Left/Right. Or choose \"Window order\" below for position-based order (top-left to bottom-right).");
             // 
             // multiclickGroupBox
             // 
+            this.multiclickGroupBox.Controls.Add(this.multiclickOrderCombo);
+            this.multiclickGroupBox.Controls.Add(this.multiclickOrderLabel);
+            this.multiclickGroupBox.Controls.Add(this.multiclickUseMouseCheckBox);
+            this.multiclickGroupBox.Controls.Add(this.multiclickMouseButtonCombo);
             this.multiclickGroupBox.Controls.Add(this.multiclickHotkeyGlobalCheckBox);
             this.multiclickGroupBox.Controls.Add(this.multiclickLabel);
             this.multiclickGroupBox.Controls.Add(this.multiclickKeyPicker);
@@ -444,10 +458,53 @@ namespace TTMulti.Forms
             this.multiclickGroupBox.Margin = new System.Windows.Forms.Padding(4);
             this.multiclickGroupBox.Name = "multiclickGroupBox";
             this.multiclickGroupBox.Padding = new System.Windows.Forms.Padding(4);
-            this.multiclickGroupBox.Size = new System.Drawing.Size(726, 100);
+            this.multiclickGroupBox.Size = new System.Drawing.Size(726, 122);
             this.multiclickGroupBox.TabIndex = 14;
             this.multiclickGroupBox.TabStop = false;
             this.multiclickGroupBox.Text = "Instant Multi-Click Hotkey:";
+            // 
+            // multiclickUseMouseCheckBox
+            // 
+            this.multiclickUseMouseCheckBox.AutoSize = true;
+            this.multiclickUseMouseCheckBox.Location = new System.Drawing.Point(290, 63);
+            this.multiclickUseMouseCheckBox.Name = "multiclickUseMouseCheckBox";
+            this.multiclickUseMouseCheckBox.Size = new System.Drawing.Size(130, 21);
+            this.multiclickUseMouseCheckBox.TabIndex = 16;
+            this.multiclickUseMouseCheckBox.Text = "Use mouse button";
+            this.multiclickUseMouseCheckBox.UseVisualStyleBackColor = true;
+            this.multiclickUseMouseCheckBox.CheckedChanged += new System.EventHandler(this.multiclickUseMouseCheckBox_CheckedChanged);
+            // 
+            // multiclickMouseButtonCombo
+            // 
+            this.multiclickMouseButtonCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.multiclickMouseButtonCombo.FormattingEnabled = true;
+            this.multiclickMouseButtonCombo.Items.AddRange(new object[] { "Middle (wheel click)", "Mouse 4", "Mouse 5" });
+            this.multiclickMouseButtonCombo.Location = new System.Drawing.Point(9, 60);
+            this.multiclickMouseButtonCombo.Name = "multiclickMouseButtonCombo";
+            this.multiclickMouseButtonCombo.Size = new System.Drawing.Size(188, 24);
+            this.multiclickMouseButtonCombo.TabIndex = 17;
+            this.multiclickMouseButtonCombo.Visible = false;
+            this.multiclickUseMouseCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "replicateMouseUseMouseButton", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            // 
+            // multiclickOrderLabel
+            // 
+            this.multiclickOrderLabel.AutoSize = true;
+            this.multiclickOrderLabel.Location = new System.Drawing.Point(9, 92);
+            this.multiclickOrderLabel.Name = "multiclickOrderLabel";
+            this.multiclickOrderLabel.Size = new System.Drawing.Size(76, 17);
+            this.multiclickOrderLabel.TabIndex = 18;
+            this.multiclickOrderLabel.Text = "Click order:";
+            // 
+            // multiclickOrderCombo
+            // 
+            this.multiclickOrderCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.multiclickOrderCombo.FormattingEnabled = true;
+            this.multiclickOrderCombo.Items.AddRange(new object[] { "Controller order (group, pair, L/R)", "Window order (by position)" });
+            this.multiclickOrderCombo.Location = new System.Drawing.Point(95, 89);
+            this.multiclickOrderCombo.Name = "multiclickOrderCombo";
+            this.multiclickOrderCombo.Size = new System.Drawing.Size(250, 24);
+            this.multiclickOrderCombo.TabIndex = 19;
+            this.multiclickOrderCombo.SelectedIndexChanged += new System.EventHandler(this.multiclickOrderCombo_SelectedIndexChanged);
             // 
             // zeroPowerThrowLabel
             // 
@@ -479,6 +536,7 @@ namespace TTMulti.Forms
             // 
             // tabPage2
             // 
+            this.tabPage2.Controls.Add(this.releaseKeysOnWindowFocusGroupBox);
             this.tabPage2.Controls.Add(this.groupBox7);
             this.tabPage2.Controls.Add(this.groupBox6);
             this.tabPage2.Controls.Add(this.groupBox5);
@@ -490,6 +548,30 @@ namespace TTMulti.Forms
             this.tabPage2.TabIndex = 3;
             this.tabPage2.Text = "Other";
             this.tabPage2.UseVisualStyleBackColor = true;
+            // 
+            // releaseKeysOnWindowFocusGroupBox
+            // 
+            this.releaseKeysOnWindowFocusGroupBox.SuspendLayout();
+            this.releaseKeysOnWindowFocusGroupBox.Controls.Add(this.releaseKeysOnWindowFocusCheckBox);
+            this.releaseKeysOnWindowFocusGroupBox.Dock = System.Windows.Forms.DockStyle.Top;
+            this.releaseKeysOnWindowFocusGroupBox.Location = new System.Drawing.Point(4, 100);
+            this.releaseKeysOnWindowFocusGroupBox.Name = "releaseKeysOnWindowFocusGroupBox";
+            this.releaseKeysOnWindowFocusGroupBox.Size = new System.Drawing.Size(734, 60);
+            this.releaseKeysOnWindowFocusGroupBox.TabIndex = 3;
+            this.releaseKeysOnWindowFocusGroupBox.TabStop = false;
+            this.releaseKeysOnWindowFocusGroupBox.Text = "Sticky Controls Toggle";
+            this.releaseKeysOnWindowFocusCheckBox.AutoSize = true;
+            this.releaseKeysOnWindowFocusCheckBox.Checked = global::TTMulti.Properties.Settings.Default.releaseKeysOnWindowFocus;
+            this.releaseKeysOnWindowFocusCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "releaseKeysOnWindowFocus", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.releaseKeysOnWindowFocusCheckBox.Location = new System.Drawing.Point(7, 22);
+            this.releaseKeysOnWindowFocusCheckBox.Name = "releaseKeysOnWindowFocusCheckBox";
+            this.releaseKeysOnWindowFocusCheckBox.Size = new System.Drawing.Size(500, 21);
+            this.releaseKeysOnWindowFocusCheckBox.TabIndex = 0;
+            this.releaseKeysOnWindowFocusCheckBox.Text = "Force releases any movement keys upon switching groups or clicking (focusing) into a window.";
+            this.toolTip1.SetToolTip(this.releaseKeysOnWindowFocusCheckBox, "When you click on a game window to focus it, send key-up for movement keys (WASD, arrows) to the other windows. Prevents other toons from getting stuck moving if you were holding a key when you clicked.");
+            this.releaseKeysOnWindowFocusCheckBox.UseVisualStyleBackColor = true;
+            this.releaseKeysOnWindowFocusGroupBox.ResumeLayout(false);
+            this.releaseKeysOnWindowFocusGroupBox.PerformLayout();
             // 
             // label7
             // 
@@ -556,6 +638,7 @@ namespace TTMulti.Forms
             this.allGroupModeCycleToggleChk.Size = new System.Drawing.Size(243, 21);
             this.allGroupModeCycleToggleChk.TabIndex = 8;
             this.allGroupModeCycleToggleChk.Text = "Toggle with Mode/Activate Hotkey";
+            this.toolTip1.SetToolTip(this.allGroupModeCycleToggleChk, "When checked, pressing the Mode/Activate hotkey cycles through the modes that have this option enabled (e.g. Multi-Mode, Mirror Mode, All-Group).");
             this.allGroupModeCycleToggleChk.UseVisualStyleBackColor = true;
             // 
             // mirrorModeCycleToggleChk
@@ -569,6 +652,7 @@ namespace TTMulti.Forms
             this.mirrorModeCycleToggleChk.Size = new System.Drawing.Size(243, 21);
             this.mirrorModeCycleToggleChk.TabIndex = 7;
             this.mirrorModeCycleToggleChk.Text = "Toggle with Mode/Activate Hotkey";
+            this.toolTip1.SetToolTip(this.mirrorModeCycleToggleChk, "When checked, pressing the Mode/Activate hotkey cycles through the modes that have this option enabled.");
             this.mirrorModeCycleToggleChk.UseVisualStyleBackColor = true;
             // 
             // groupModeCycleToggleChk
@@ -582,6 +666,7 @@ namespace TTMulti.Forms
             this.groupModeCycleToggleChk.Size = new System.Drawing.Size(243, 21);
             this.groupModeCycleToggleChk.TabIndex = 6;
             this.groupModeCycleToggleChk.Text = "Toggle with Mode/Activate Hotkey";
+            this.toolTip1.SetToolTip(this.groupModeCycleToggleChk, "When checked, pressing the Mode/Activate hotkey cycles through the modes that have this option enabled.");
             this.groupModeCycleToggleChk.UseVisualStyleBackColor = true;
             // 
             // checkBox4
@@ -702,6 +787,18 @@ namespace TTMulti.Forms
             this.modeHotkeyGlobalCheckBox.TabIndex = 14;
             this.modeHotkeyGlobalCheckBox.Text = "Global";
             this.modeHotkeyGlobalCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // defaultModeOnLaunchCheckBox
+            // 
+            this.defaultModeOnLaunchCheckBox.AutoSize = true;
+            this.defaultModeOnLaunchCheckBox.Checked = global::TTMulti.Properties.Settings.Default.defaultModeOnLaunch;
+            this.defaultModeOnLaunchCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "defaultModeOnLaunch", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.defaultModeOnLaunchCheckBox.Location = new System.Drawing.Point(9, 88);
+            this.defaultModeOnLaunchCheckBox.Name = "defaultModeOnLaunchCheckBox";
+            this.defaultModeOnLaunchCheckBox.Size = new System.Drawing.Size(230, 21);
+            this.defaultModeOnLaunchCheckBox.TabIndex = 16;
+            this.defaultModeOnLaunchCheckBox.Text = "Default to Mirror Mode on launch";
+            this.defaultModeOnLaunchCheckBox.UseVisualStyleBackColor = true;
             // 
             // multiclickKeyPicker
             // 
@@ -860,7 +957,12 @@ namespace TTMulti.Forms
         private System.Windows.Forms.Label multiclickLabel;
         private System.Windows.Forms.Label zeroPowerThrowLabel;
         private System.Windows.Forms.CheckBox modeHotkeyGlobalCheckBox;
+        private System.Windows.Forms.CheckBox defaultModeOnLaunchCheckBox;
         private System.Windows.Forms.CheckBox multiclickHotkeyGlobalCheckBox;
+        private System.Windows.Forms.CheckBox multiclickUseMouseCheckBox;
+        private System.Windows.Forms.ComboBox multiclickMouseButtonCombo;
+        private System.Windows.Forms.Label multiclickOrderLabel;
+        private System.Windows.Forms.ComboBox multiclickOrderCombo;
         private System.Windows.Forms.CheckBox zeroPowerHotkeyGlobalCheckBox;
         private System.Windows.Forms.CheckBox zeroPowerThrowEnableFocusModeCheckBox;
         private TTMulti.Controls.KeyPicker zeroPowerThrowKeyPicker;
@@ -868,6 +970,8 @@ namespace TTMulti.Forms
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.GroupBox groupBox5;
         private System.Windows.Forms.GroupBox groupBox6;
+        private System.Windows.Forms.GroupBox releaseKeysOnWindowFocusGroupBox;
+        private System.Windows.Forms.CheckBox releaseKeysOnWindowFocusCheckBox;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.GroupBox groupModeGroupBox;
         private KeyPicker groupModeHotkeyPicker;

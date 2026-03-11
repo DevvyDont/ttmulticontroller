@@ -152,6 +152,68 @@ namespace TTMulti
             return controllers.Where(c => c.HasWindow && Win32.GetWindowShowState(c.WindowHandle) != Win32.ShowWindowCommands.ShowMinimized);
         }
 
+        /// <summary>
+        /// Performs instant multi-click: sends a left click at the current cursor position to all active, non-minimized windows.
+        /// Used by both keyboard hotkey and mouse-button trigger.
+        /// </summary>
+        public void TriggerInstantMultiClick()
+        {
+            Point cursorPos = System.Windows.Forms.Control.MousePosition;
+            int relativeX = 0;
+            int relativeY = 0;
+            bool foundCursorWindow = false;
+
+            foreach (ToontownController c in WhereNotMinimized(AllControllersWithWindows))
+            {
+                Point clientAreaLocation = Win32.GetWindowClientAreaLocation(c.WindowHandle);
+                Size clientAreaSize = c.WindowSize;
+                if (cursorPos.X >= clientAreaLocation.X && cursorPos.X < clientAreaLocation.X + clientAreaSize.Width &&
+                    cursorPos.Y >= clientAreaLocation.Y && cursorPos.Y < clientAreaLocation.Y + clientAreaSize.Height)
+                {
+                    relativeX = cursorPos.X - clientAreaLocation.X;
+                    relativeY = cursorPos.Y - clientAreaLocation.Y;
+                    foundCursorWindow = true;
+                    break;
+                }
+            }
+
+            if (!foundCursorWindow)
+            {
+                if (!IsActive)
+                {
+                    ShouldActivate?.Invoke(this, EventArgs.Empty);
+                    CurrentMode = MulticontrollerMode.MirrorAll;
+                }
+                return;
+            }
+
+            if (!IsActive)
+            {
+                ShouldActivate?.Invoke(this, EventArgs.Empty);
+                CurrentMode = MulticontrollerMode.MirrorAll;
+                System.Threading.Thread.Sleep(50);
+            }
+
+            IEnumerable<ToontownController> toClick = WhereNotMinimized(ActiveControllers);
+            if (Properties.Settings.Default.multiclickOrder == 1)
+            {
+                // Window order: sort by position (top to bottom, left to right) for consistent "Toon 1, 2, 3, 4" style order
+                toClick = toClick.OrderBy(c => Win32.GetWindowClientAreaLocation(c.WindowHandle).Y)
+                    .ThenBy(c => Win32.GetWindowClientAreaLocation(c.WindowHandle).X)
+                    .ToList();
+            }
+
+            foreach (ToontownController c in toClick)
+            {
+                if (c.HasWindow)
+                {
+                    IntPtr clickLParam = (IntPtr)((relativeY << 16) | (relativeX & 0xFFFF));
+                    c.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
+                    c.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
+                }
+            }
+        }
+
         int currentGroupIndex = 0;
 
         /// <summary>
@@ -175,6 +237,7 @@ namespace TTMulti
                     currentGroupIndex = value;
 
                     ActiveControllersChanged?.Invoke(this, EventArgs.Empty);
+                    TryReleaseKeysOnInactiveControllers();
                 }
             }
         }
@@ -202,6 +265,7 @@ namespace TTMulti
                     _currentPairIndex = value;
 
                     ActiveControllersChanged?.Invoke(this, EventArgs.Empty);
+                    TryReleaseKeysOnInactiveControllers();
                 }
             }
         }
@@ -226,6 +290,7 @@ namespace TTMulti
                     _currentIndividualControllerIndex = value;
 
                     ActiveControllersChanged?.Invoke(this, EventArgs.Empty);
+                    TryReleaseKeysOnInactiveControllers();
                 }
             }
         }
@@ -404,6 +469,7 @@ namespace TTMulti
                     
                     ModeChanged?.Invoke(this, EventArgs.Empty);
                     ActiveControllersChanged?.Invoke(this, EventArgs.Empty);
+                    TryReleaseKeysOnInactiveControllers();
                 }
             }
         }
@@ -433,7 +499,8 @@ namespace TTMulti
         private System.Windows.Forms.Timer _switchingModeTimer = null;
         private HashSet<ToontownController> _switchedControllers = new HashSet<ToontownController>();
         private HashSet<ToontownController> _markedForRemoval = new HashSet<ToontownController>();
-        
+        private bool _hadSwapInSwitchingSession = false;
+
         // Global mouse hook for blocking clicks in switching mode
         private static IntPtr _mouseHookHandle = IntPtr.Zero;
         private static Multicontroller _hookInstance = null;
@@ -577,6 +644,10 @@ namespace TTMulti
 
         private void ExitSwitchingMode()
         {
+            // Capture whether user swapped windows (not removal only) for optional auto-placement
+            bool hadSwap = _hadSwapInSwitchingSession;
+            _hadSwapInSwitchingSession = false;
+
             _switchingMode = false;
             _switchingModeTimer.Stop();
             _firstSelectedController = null;
@@ -595,7 +666,11 @@ namespace TTMulti
             }
             _markedForRemoval.Clear();
 
-            // Reset all border windows, but keep SwitchingSelected true for switched controllers
+            // Capture which controllers were switched before clearing (for layout: only move those windows)
+            var switchedSet = new HashSet<ToontownController>(_switchedControllers);
+            _switchedControllers.Clear();
+
+            // Reset all border windows so switching colors clear when Alt is released
             foreach (var controller in AllControllersWithWindows)
             {
                 var borderWnd = GetBorderWindow(controller);
@@ -603,18 +678,32 @@ namespace TTMulti
                 {
                     borderWnd.SwitchingMode = false;
                     borderWnd.SwitchingNumber = 0;
+                    borderWnd.SwitchingSelected = false;
                     borderWnd.SwitchingSwitched = false;
                     borderWnd.SwitchingMarkedForRemoval = false;
-                    // Keep SwitchingSelected true for controllers that were switched
-                    if (!_switchedControllers.Contains(controller))
-                    {
-                        borderWnd.SwitchingSelected = false;
-                    }
                 }
             }
-            
-            // Trigger refresh so border windows are hidden for inactive controllers (if not showing all borders)
+
+            // Refresh all controllers so border color returns to normal (mirror/group) on every window
             SettingChanged?.Invoke(this, EventArgs.Empty);
+
+            // Optionally apply last used layout preset on Alt release only if user swapped windows (not when only removing).
+            // Only move the windows that were switched (e.g. 2), not all 16, to avoid lag.
+            if (hadSwap && Properties.Settings.Default.autoFindPlacementOnAltRelease && switchedSet.Count > 0)
+            {
+                var file = LayoutPresetStorage.Load();
+                if (file?.Presets != null && file.Presets.Count > 0 && AllControllersWithWindows.Any())
+                {
+                    int idx = Properties.Settings.Default.lastUsedLayoutPresetIndex;
+                    if (idx < 0 || idx >= file.Presets.Count)
+                        idx = 0;
+                    try
+                    {
+                        ApplyLayoutPreset(file.Presets[idx], switchedSet);
+                    }
+                    catch { /* ignore placement errors */ }
+                }
+            }
         }
 
         /// <summary>
@@ -715,9 +804,10 @@ namespace TTMulti
             controller1.WindowHandle = handle2;
             controller2.WindowHandle = handle1;
 
-            // Mark these controllers as switched so they stay yellow until user resizes
+            // Show switched (blue) during switching mode; color clears to normal when Alt is released
             _switchedControllers.Add(controller1);
             _switchedControllers.Add(controller2);
+            _hadSwapInSwitchingSession = true;
 
             // Update border positions after switching
             System.Windows.Forms.Application.DoEvents();
@@ -929,69 +1019,8 @@ namespace TTMulti
                 // Instant Multi-Click: Send a click to all windows at current cursor position
                 if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY)
                 {
-                    // Get the current global cursor position FIRST
-                    Point cursorPos = System.Windows.Forms.Control.MousePosition;
-                    
-                    // Find which window the cursor is over to get relative coordinates (only consider non-minimized windows)
-                    int relativeX = 0;
-                    int relativeY = 0;
-                    bool foundCursorWindow = false;
-                    
-                    foreach (ToontownController controller in WhereNotMinimized(AllControllersWithWindows))
-                    {
-                        // Get client area location (screen coordinates of the game area, excluding title bar/borders)
-                        Point clientAreaLocation = Win32.GetWindowClientAreaLocation(controller.WindowHandle);
-                        Size clientAreaSize = controller.WindowSize;
-                        
-                        // Check if cursor is within this window's client area bounds
-                        if (cursorPos.X >= clientAreaLocation.X && cursorPos.X < clientAreaLocation.X + clientAreaSize.Width &&
-                            cursorPos.Y >= clientAreaLocation.Y && cursorPos.Y < clientAreaLocation.Y + clientAreaSize.Height)
-                        {
-                            relativeX = cursorPos.X - clientAreaLocation.X;
-                            relativeY = cursorPos.Y - clientAreaLocation.Y;
-                            foundCursorWindow = true;
-                            break;
-                        }
-                    }
-                    
-                    // If cursor is not over any window, don't do anything
-                    if (!foundCursorWindow)
-                    {
-                        // Just activate if not active, but don't send any clicks
-                        if (!IsActive)
-                        {
-                            ShouldActivate?.Invoke(this, EventArgs.Empty);
-                            CurrentMode = MulticontrollerMode.MirrorAll;
-                        }
-                        return true;
-                    }
-                    
-                    // If multicontroller is not active, activate it and switch to mirror mode
-                    if (!IsActive)
-                    {
-                        ShouldActivate?.Invoke(this, EventArgs.Empty);
-                        CurrentMode = MulticontrollerMode.MirrorAll;
-                        
-                        // Small delay to ensure activation completes before sending clicks
-                        System.Threading.Thread.Sleep(50);
-                    }
-                    
-                    // Send click to active controllers only (respects group selection); skip minimized windows
-                    IEnumerable<ToontownController> affectedControllers = WhereNotMinimized(ActiveControllers);
-                    
-                    foreach (ToontownController controller in affectedControllers)
-                    {
-                        if (controller.HasWindow)
-                        {
-                            // Use the same relative position for all windows
-                            // Create lParam with x,y coordinates (x in low word, y in high word)
-                            IntPtr clickLParam = (IntPtr)((relativeY << 16) | (relativeX & 0xFFFF));
-                            
-                            // Send left button down and up (instant click)
-                            controller.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
-                            controller.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
-                        }
-                    }
+                    TriggerInstantMultiClick();
+                    return true;
                 }
             }
             else if (keysPressed == (Keys)Properties.Settings.Default.controlAllGroupsKeyCode)
@@ -1023,6 +1052,7 @@ namespace TTMulti
                         _switchingMode = true;
                         _firstSelectedController = null;
                         _secondSelectedController = null;
+                        _hadSwapInSwitchingSession = false;
                         _markedForRemoval.Clear(); // Clear removal marks when entering switching mode
                         _switchingModeTimer.Start();
                         
@@ -1565,7 +1595,62 @@ namespace TTMulti
 
         private void Controller_WindowActivated(object sender, EventArgs e)
         {
+            if (Properties.Settings.Default.releaseKeysOnWindowFocus && sender is ToontownController focused)
+                ReleaseMovementKeysOnOtherWindows(focused);
             WindowActivated?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Sends KEYUP for movement keys to the given controllers (e.g. so they stop moving when focus/active group changes).
+        /// Uses the actual bound LeftToonKey/RightToonKey for movement actions so custom key bindings are respected.
+        /// </summary>
+        private void ReleaseMovementKeysOnControllers(IEnumerable<ToontownController> controllers)
+        {
+            if (controllers == null) return;
+
+            // Build per-type key sets from the actual bindings for movement actions
+            var movementTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { "forward", "left", "backward", "right", "jump" };
+            var leftMovementKeys = new HashSet<Keys>();
+            var rightMovementKeys = new HashSet<Keys>();
+            foreach (var binding in Properties.SerializedSettings.Default.Bindings)
+            {
+                if (!movementTitles.Contains(binding.Title)) continue;
+                if (binding.LeftToonKey != Keys.None) leftMovementKeys.Add(binding.LeftToonKey);
+                if (binding.RightToonKey != Keys.None) rightMovementKeys.Add(binding.RightToonKey);
+            }
+
+            foreach (ToontownController c in controllers)
+            {
+                if (c == null || !c.HasWindow) continue;
+                var keysToRelease = c.Type == ControllerType.Left ? leftMovementKeys : rightMovementKeys;
+                foreach (Keys k in keysToRelease)
+                {
+                    c.PostMessage(Win32.WM.KEYUP, (IntPtr)k, IntPtr.Zero);
+                    c.PostMessage(Win32.WM.SYSKEYUP, (IntPtr)k, IntPtr.Zero);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends KEYUP for movement keys to all controlled windows except the focused one.
+        /// Used when releaseKeysOnWindowFocus is enabled: when user focuses a window by clicking (or switches group), other windows get key-up so they don't keep moving.
+        /// </summary>
+        internal void ReleaseMovementKeysOnOtherWindows(ToontownController focusedController)
+        {
+            if (focusedController == null) return;
+            var others = WhereNotMinimized(AllControllersWithWindows).Where(c => c != focusedController);
+            ReleaseMovementKeysOnControllers(others);
+        }
+
+        /// <summary>
+        /// When releaseKeysOnWindowFocus is enabled, release movement keys on controllers that are no longer active (e.g. after switching group).
+        /// </summary>
+        private void TryReleaseKeysOnInactiveControllers()
+        {
+            if (!Properties.Settings.Default.releaseKeysOnWindowFocus) return;
+            var inactive = WhereNotMinimized(AllControllersWithWindows).Except(ActiveControllers);
+            ReleaseMovementKeysOnControllers(inactive);
         }
 
         private void Controller_WindowDeactivated(object sender, EventArgs e)
@@ -1821,8 +1906,9 @@ namespace TTMulti
         /// <summary>
         /// Apply a layout preset: order controllers by layout priority, then assign slot rects and minimized state.
         /// Extra windows (beyond slot count) are left unchanged. Extra slots (beyond window count) are ignored.
+        /// When onlyControllers is non-null, only those controllers are moved (e.g. after a swap so only the swapped windows are repositioned).
         /// </summary>
-        public void ApplyLayoutPreset(LayoutPreset preset)
+        public void ApplyLayoutPreset(LayoutPreset preset, IReadOnlyCollection<ToontownController> onlyControllers = null)
         {
             if (preset == null) return;
             var controllers = AllControllersWithWindows.ToList();
@@ -1836,22 +1922,23 @@ namespace TTMulti
             var slots = LayoutPresetBuilder.BuildSlots(preset);
             int applyCount = Math.Min(slots.Count, ordered.Count);
 
-            // Build list of all windows to place (including those we'll minimize after); unminimize first then place.
+            // Build list of windows to place. If onlyControllers is set, only include those (e.g. just the 2 swapped windows).
             var toMove = new List<(ToontownController controller, SlotApplyInfo info)>();
             var toMinimizeAfter = new List<ToontownController>();
             for (int i = 0; i < applyCount; i++)
             {
+                var controller = ordered[i];
+                if (onlyControllers != null && onlyControllers.Count > 0 && !onlyControllers.Contains(controller))
+                    continue;
                 var info = slots[i];
-                toMove.Add((ordered[i], info));
+                toMove.Add((controller, info));
                 if (info.Minimized)
-                    toMinimizeAfter.Add(ordered[i]);
+                    toMinimizeAfter.Add(controller);
             }
 
             if (toMove.Count == 0)
             {
                 System.Windows.Forms.Application.DoEvents();
-                foreach (var c in ordered.Take(applyCount))
-                    c.UpdateBorderPosition();
                 return;
             }
 
@@ -1894,7 +1981,7 @@ namespace TTMulti
                 Win32.ShowWindow(controller.WindowHandle, Win32.ShowWindowCommands.ShowMinimized);
 
             System.Windows.Forms.Application.DoEvents();
-            foreach (var c in ordered.Take(applyCount))
+            foreach (var (c, _) in toMove)
                 c.UpdateBorderPosition();
         }
 

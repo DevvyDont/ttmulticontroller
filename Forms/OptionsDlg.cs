@@ -161,6 +161,7 @@ namespace TTMulti.Forms
         private CheckBox autoFindAltCheckBox;
         private CheckBox autoFindCtrlCheckBox;
         private CheckBox autoFindShiftCheckBox;
+        private CheckBox autoFindPlacementOnAltReleaseCheckBox;
         private TextBox autoFindExecutablesTextBox;
         private Label autoFindExecutablesLabel;
         // Switching Mode controls
@@ -220,6 +221,8 @@ namespace TTMulti.Forms
 
             CreateMinimizeUnconnectedUI();
             LoadMinimizeUnconnectedSettings();
+
+            LoadMulticlickMouseSettings();
             
             // Load Keep-Alive checkbox state
             // disableKeepAlive = True (default) means Keep-Alive is disabled, so checkbox should be unchecked
@@ -267,7 +270,7 @@ namespace TTMulti.Forms
             {
                 Text = "Auto-Find Windows",
                 Location = new Point(10, 10),
-                Size = new Size(720, 230),
+                Size = new Size(720, 255),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
@@ -351,6 +354,18 @@ namespace TTMulti.Forms
                 Size = new Size(60, 20)
             };
             autoFindGroupBox.Controls.Add(autoFindShiftCheckBox);
+
+            // Auto-placement on Alt release (when exiting switching mode)
+            autoFindPlacementOnAltReleaseCheckBox = new CheckBox
+            {
+                Text = "Apply last used layout preset when releasing Alt (after switching/removing windows)",
+                Location = new Point(10, 225),
+                Size = new Size(690, 20),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Checked = Properties.Settings.Default.autoFindPlacementOnAltRelease
+            };
+            autoFindPlacementOnAltReleaseCheckBox.DataBindings.Add(new Binding("Checked", Properties.Settings.Default, "autoFindPlacementOnAltRelease", true, DataSourceUpdateMode.OnPropertyChanged));
+            autoFindGroupBox.Controls.Add(autoFindPlacementOnAltReleaseCheckBox);
 
             // Add group box to tab
             autoFindTab.Controls.Add(autoFindGroupBox);
@@ -1017,6 +1032,7 @@ namespace TTMulti.Forms
                 Location = new Point(10, yPos),
                 Size = new Size(labelWidth, 20)
             };
+            toolTip1.SetToolTip(focusedFocusedLabel, "Focused Mode: one window receives movement keys (WASD/arrows); all windows receive other keys. This color is for the window that has focus.");
             colorsGroupBox.Controls.Add(focusedFocusedLabel);
 
             focusedModeFocusedColorButton = new Button
@@ -1059,6 +1075,7 @@ namespace TTMulti.Forms
                 Location = new Point(10, yPos),
                 Size = new Size(labelWidth, 20)
             };
+            toolTip1.SetToolTip(focusedUnfocusedLabel, "Focused Mode: one window receives movement keys; all others receive other keys. This color is for the windows that do not have focus.");
             colorsGroupBox.Controls.Add(focusedUnfocusedLabel);
 
             focusedModeUnfocusedColorButton = new Button
@@ -1319,6 +1336,40 @@ namespace TTMulti.Forms
             Properties.Settings.Default.minimizeUnconnectedHotkeyGlobal = minimizeUnconnectedHotkeyGlobalCheckBox.Checked;
         }
 
+        private void LoadMulticlickMouseSettings()
+        {
+            if (multiclickUseMouseCheckBox == null)
+                return;
+            multiclickUseMouseCheckBox.Checked = Properties.Settings.Default.replicateMouseUseMouseButton;
+            int btn = Math.Max(0, Math.Min(2, Properties.Settings.Default.replicateMouseMouseButton));
+            multiclickMouseButtonCombo.SelectedIndex = btn;
+            if (multiclickOrderCombo != null)
+            {
+                multiclickOrderCombo.SelectedIndex = Math.Max(0, Math.Min(1, Properties.Settings.Default.multiclickOrder));
+            }
+            multiclickMouseButtonCombo.SelectedIndexChanged += (s, ev) =>
+            {
+                if (multiclickMouseButtonCombo.SelectedIndex >= 0)
+                    Properties.Settings.Default.replicateMouseMouseButton = multiclickMouseButtonCombo.SelectedIndex;
+            };
+            multiclickUseMouseCheckBox_CheckedChanged(null, null);
+        }
+
+        private void multiclickUseMouseCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (multiclickUseMouseCheckBox == null)
+                return;
+            bool useMouse = multiclickUseMouseCheckBox.Checked;
+            multiclickKeyPicker.Visible = !useMouse;
+            multiclickMouseButtonCombo.Visible = useMouse;
+        }
+
+        private void multiclickOrderCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (multiclickOrderCombo != null && multiclickOrderCombo.SelectedIndex >= 0)
+                Properties.Settings.Default.multiclickOrder = multiclickOrderCombo.SelectedIndex;
+        }
+
         private void LoadAutoFindSettings()
         {
             if (autoFindExecutablesTextBox == null)
@@ -1329,6 +1380,8 @@ namespace TTMulti.Forms
             autoFindAltCheckBox.Checked = ((Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers & Win32.KeyModifiers.Alt) != 0;
             autoFindCtrlCheckBox.Checked = ((Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers & Win32.KeyModifiers.Control) != 0;
             autoFindShiftCheckBox.Checked = ((Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers & Win32.KeyModifiers.Shift) != 0;
+            if (autoFindPlacementOnAltReleaseCheckBox != null)
+                autoFindPlacementOnAltReleaseCheckBox.Checked = Properties.Settings.Default.autoFindPlacementOnAltRelease;
         }
 
         private void SaveAutoFindSettings()
@@ -1348,6 +1401,8 @@ namespace TTMulti.Forms
                 modifiers |= Win32.KeyModifiers.Shift;
 
             Properties.Settings.Default.autoFindWindowsKeyModifiers = (int)modifiers;
+            if (autoFindPlacementOnAltReleaseCheckBox != null)
+                Properties.Settings.Default.autoFindPlacementOnAltRelease = autoFindPlacementOnAltReleaseCheckBox.Checked;
         }
 
         private void okBtn_Click(object sender, EventArgs e)

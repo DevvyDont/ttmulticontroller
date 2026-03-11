@@ -327,15 +327,20 @@ namespace TTMulti.Forms
         {
             if (_preset.Regions == null || _preset.Regions.Count == 0) return;
             var list = new List<LayoutOverlayForm.RegionOverlayItem>();
+            int nextSlot = 1;
             foreach (var region in _preset.Regions)
             {
                 var rect = LayoutPresetBuilder.GetRegionRect(region);
+                int rows = Math.Max(1, region.Rows);
+                int cols = Math.Max(1, region.Cols);
                 list.Add(new LayoutOverlayForm.RegionOverlayItem
                 {
                     Rect = rect,
-                    Rows = Math.Max(1, region.Rows),
-                    Cols = Math.Max(1, region.Cols)
+                    Rows = rows,
+                    Cols = cols,
+                    StartSlotIndex = nextSlot
                 });
+                nextSlot += rows * cols;
             }
             using (var overlay = new LayoutOverlayForm(list))
             {

@@ -338,7 +338,7 @@ namespace TTMulti
         /// <summary>
         /// Refresh settings of the controller and its utility windows
         /// </summary>
-        private void Refresh()
+        internal void Refresh()
         {
             bool isActiveController = multicontroller.ActiveControllers.Contains(this);
 
@@ -396,11 +396,6 @@ namespace TTMulti
                         {
                             borderColor = Colors.SwitchingMode;
                         }
-                    }
-                    else if (_borderWnd.SwitchingSelected)
-                    {
-                        // Keep yellow border even after switching mode exits, until user resizes
-                        borderColor = Colors.SwitchingSelected;
                     }
                     else
                     {
@@ -488,11 +483,6 @@ namespace TTMulti
                     {
                         borderColor = Colors.SwitchingMode;
                     }
-                }
-                else if (_borderWnd.SwitchingSelected)
-                {
-                    // Keep yellow border even after switching mode exits, until user resizes
-                    borderColor = Colors.SwitchingSelected;
                 }
                 else
                 {

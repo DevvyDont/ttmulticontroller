@@ -41,6 +41,12 @@ namespace TTMulti.Forms
         private static MulticontrollerWnd _minimizeUnconnectedHookForm = null;
         private static int _minimizeUnconnectedHookKeyCode = 0;
         private static Win32.HookProc _minimizeUnconnectedKeyboardHookProc = null;
+
+        // Low-level mouse hook for multi-click when using a mouse button (RegisterHotKey does not support mouse)
+        private static IntPtr _multiclickMouseHookHandle = IntPtr.Zero;
+        private static MulticontrollerWnd _multiclickMouseHookForm = null;
+        private static int _multiclickMouseHookButton = -1; // 0=Middle, 1=XButton1, 2=XButton2
+        private static Win32.HookProc _multiclickMouseHookProc = null;
         internal MulticontrollerWnd()
         {
             InitializeComponent();
@@ -247,6 +253,8 @@ namespace TTMulti.Forms
                     if (file?.Presets != null && presetIndex < file.Presets.Count)
                     {
                         controller.ApplyLayoutPreset(file.Presets[presetIndex]);
+                        Properties.Settings.Default.lastUsedLayoutPresetIndex = presetIndex;
+                        Properties.Settings.Default.Save();
                         BeginInvoke(new Action(() => TryActivate()));
                     }
                 }
@@ -419,22 +427,33 @@ namespace TTMulti.Forms
                 }
             }
 
-            // Instant Multi-Click (ID 1)
-            if (Properties.Settings.Default.replicateMouseKeyCode != 0)
+            // Instant Multi-Click (ID 1) - keyboard hotkey or mouse hook (RegisterHotKey does not support mouse buttons)
+            UninstallMulticlickMouseHook();
+            Win32.UnregisterHotKey(this.Handle, 1);
+            if (Properties.Settings.Default.replicateMouseUseMouseButton)
+            {
+                int btn = Properties.Settings.Default.replicateMouseMouseButton;
+                if (btn >= 0 && btn <= 2)
+                {
+                    bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
+                    if (multiGlobal || controller.IsActive)
+                        InstallMulticlickMouseHook(btn);
+                }
+            }
+            else if (Properties.Settings.Default.replicateMouseKeyCode != 0)
             {
                 bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
                 if (multiGlobal)
                 {
-                    // Global: Always register (works from anywhere)
-                    Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
-                }
-                else
-                {
-                    // Non-global: Only register when multicontroller window is active (not merely a game window)
-                    if (controller.IsActive)
-                    {
+                    bool success = Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                    if (!success)
                         Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
-                    }
+                }
+                else if (controller.IsActive)
+                {
+                    bool success = Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                    if (!success)
+                        Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
                 }
             }
 
@@ -465,6 +484,7 @@ namespace TTMulti.Forms
             Win32.UnregisterHotKey(this.Handle, 0);
             Win32.UnregisterHotKey(this.Handle, 1);
             Win32.UnregisterHotKey(this.Handle, 2);
+            UninstallMulticlickMouseHook();
         }
 
         private void RegisterAutoFindHotkey()
@@ -609,6 +629,63 @@ namespace TTMulti.Forms
             return (IntPtr)1; // Consume the key
         }
 
+        private void InstallMulticlickMouseHook(int buttonIndex)
+        {
+            if (_multiclickMouseHookHandle != IntPtr.Zero)
+            {
+                if (_multiclickMouseHookButton == buttonIndex)
+                    return;
+                UninstallMulticlickMouseHook();
+            }
+            _multiclickMouseHookForm = this;
+            _multiclickMouseHookButton = buttonIndex;
+            if (_multiclickMouseHookProc == null)
+                _multiclickMouseHookProc = MulticlickMouseHookProc;
+            IntPtr hModule = Win32.GetModuleHandle(null);
+            _multiclickMouseHookHandle = Win32.SetWindowsHookEx(Win32.WH_MOUSE_LL, _multiclickMouseHookProc, hModule, 0);
+        }
+
+        private void UninstallMulticlickMouseHook()
+        {
+            if (_multiclickMouseHookHandle != IntPtr.Zero)
+            {
+                Win32.UnhookWindowsHookEx(_multiclickMouseHookHandle);
+                _multiclickMouseHookHandle = IntPtr.Zero;
+            }
+            _multiclickMouseHookForm = null;
+            _multiclickMouseHookButton = -1;
+        }
+
+        private static IntPtr MulticlickMouseHookProc(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode < 0)
+                return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
+            if (_multiclickMouseHookForm == null || _multiclickMouseHookButton < 0)
+                return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
+            int msg = wParam.ToInt32();
+            bool match = false;
+            if (_multiclickMouseHookButton == 0 && msg == (int)Win32.WM.MBUTTONDOWN)
+                match = true;
+            if (_multiclickMouseHookButton >= 1 && msg == (int)Win32.WM.XBUTTONDOWN)
+            {
+                var hookStruct = (Win32.MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.MSLLHOOKSTRUCT));
+                int xButton = (int)(hookStruct.mouseData >> 16);
+                if ((_multiclickMouseHookButton == 1 && xButton == 1) || (_multiclickMouseHookButton == 2 && xButton == 2))
+                    match = true;
+            }
+            if (!match)
+                return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
+            Keys mods = Control.ModifierKeys;
+            if ((mods & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None)
+                return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
+            _multiclickMouseHookForm.BeginInvoke(new Action(() =>
+            {
+                if (_multiclickMouseHookForm != null && _multiclickMouseHookForm.controller != null)
+                    _multiclickMouseHookForm.controller.TriggerInstantMultiClick();
+            }));
+            return (IntPtr)1;
+        }
+
         private void MulticontrollerWnd_Load(object sender, EventArgs e)
         {
             controller = Multicontroller.Instance;
@@ -636,6 +713,12 @@ namespace TTMulti.Forms
 
             controller.ControllerGroups[0].ControllerPairs[0].LeftController.WindowHandleChanged += LeftController_WindowHandleChanged;
             controller.ControllerGroups[0].ControllerPairs[0].RightController.WindowHandleChanged += RightController_WindowHandleChanged;
+
+            // Apply default mode on launch (Mirror vs Multi)
+            if (Properties.Settings.Default.defaultModeOnLaunch)
+                controller.CurrentMode = MulticontrollerMode.MirrorAll;
+            else
+                controller.CurrentMode = MulticontrollerMode.Group;
 
             // Removes the extra padding on the right side of the status strip.
             // Apparently this is "not relevant for this class" but still has an effect.
@@ -719,10 +802,21 @@ namespace TTMulti.Forms
                 Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
             }
             
-            // Instant Multi-Click (ID 1)
-            if (Properties.Settings.Default.replicateMouseKeyCode != 0 && Properties.Settings.Default.replicateMouseHotkeyGlobal)
+            // Instant Multi-Click (ID 1) - keyboard hotkey or mouse hook
+            if (Properties.Settings.Default.replicateMouseHotkeyGlobal)
             {
-                Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                if (Properties.Settings.Default.replicateMouseUseMouseButton)
+                {
+                    int btn = Properties.Settings.Default.replicateMouseMouseButton;
+                    if (btn >= 0 && btn <= 2)
+                        InstallMulticlickMouseHook(btn);
+                }
+                else if (Properties.Settings.Default.replicateMouseKeyCode != 0)
+                {
+                    bool success = Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                    if (!success)
+                        Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                }
             }
             
             // Zero Power Throw (ID 2)
@@ -915,6 +1009,24 @@ namespace TTMulti.Forms
 
             ignoreMessages = false;
 
+            UpdateWindowStatus();
+        }
+
+        private void refreshBtn_Click(object sender, EventArgs e)
+        {
+            UnregisterHotkey();
+            UnregisterAutoFindHotkey();
+            UnregisterLayoutPresetHotkeys();
+            UnregisterMinimizeUnconnectedHotkey();
+            RegisterHotkey();
+            if (controller.IsActive)
+            {
+                RegisterAutoFindHotkey();
+                RegisterLayoutPresetHotkeys();
+            }
+            RegisterMinimizeUnconnectedHotkey();
+            foreach (var c in controller.AllControllersWithWindows)
+                c.Refresh();
             UpdateWindowStatus();
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -21,7 +21,18 @@ namespace TTMulti.Forms
         private void AboutWnd_Load(object sender, EventArgs e)
         {
             label1.Text += Application.ProductVersion;
-            linkLabel1.Text += Properties.Settings.Default.homepageUrl;
+
+            string prefix = "Homepage: ";
+            string url = Properties.Settings.Default.homepageUrl;
+            linkLabel1.Text = prefix + url;
+            // Update LinkArea to cover exactly the URL portion regardless of its length
+            linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(prefix.Length, url.Length);
+
+            // Ensure the form is wide enough to show the full URL without clipping
+            // Leave 40px margin (20 each side)
+            int requiredWidth = linkLabel1.PreferredWidth + 40;
+            if (this.ClientSize.Width < requiredWidth)
+                this.ClientSize = new System.Drawing.Size(requiredWidth, this.ClientSize.Height);
         }
 
         private void button1_Click(object sender, EventArgs e)

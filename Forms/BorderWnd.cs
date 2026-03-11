@@ -284,11 +284,8 @@ namespace TTMulti.Forms
                     borderColor = Colors.SwitchingMode; // Red for normal switching mode
                 }
             }
-            else if (SwitchingSelected)
-            {
-                // Keep yellow border even after switching mode exits, until user resizes
-                borderColor = Colors.SwitchingSelected;
-            }
+            // When not in switching mode, use stored BorderColor (normal mode); no persistence of selected/switched colors
+            // (BorderColor is updated by ToontownController.Refresh() when exiting switching mode)
 
             ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle,
                 borderColor, BorderWidth, ButtonBorderStyle.Solid,

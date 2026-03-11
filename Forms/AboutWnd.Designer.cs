@@ -1,4 +1,4 @@
-﻿namespace TTMulti.Forms
+namespace TTMulti.Forms
 {
     partial class AboutWnd
     {
@@ -48,7 +48,7 @@
             // linkLabel1
             // 
             this.linkLabel1.AutoSize = true;
-            this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(10, 42);
+            this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(0, 0); // set dynamically in Load
             this.linkLabel1.Location = new System.Drawing.Point(17, 16);
             this.linkLabel1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.linkLabel1.Name = "linkLabel1";

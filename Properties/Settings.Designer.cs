@@ -373,7 +373,7 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("https://danfresneda.com/tt/multicontroller")]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://github.com/kittkittlou/ttmulticontroller")]
         public string homepageUrl {
             get {
                 return ((string)(this["homepageUrl"]));
@@ -586,6 +586,30 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool autoFindPlacementOnAltRelease {
+            get {
+                return ((bool)(this["autoFindPlacementOnAltRelease"]));
+            }
+            set {
+                this["autoFindPlacementOnAltRelease"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int lastUsedLayoutPresetIndex {
+            get {
+                return ((int)(this["lastUsedLayoutPresetIndex"]));
+            }
+            set {
+                this["lastUsedLayoutPresetIndex"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool layoutPriorityLeftsFirst {
             get {
@@ -617,6 +641,66 @@ namespace TTMulti.Properties {
             }
             set {
                 this["replicateMouseHotkeyGlobal"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool replicateMouseUseMouseButton {
+            get {
+                return ((bool)(this["replicateMouseUseMouseButton"]));
+            }
+            set {
+                this["replicateMouseUseMouseButton"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int replicateMouseMouseButton {
+            get {
+                return ((int)(this["replicateMouseMouseButton"]));
+            }
+            set {
+                this["replicateMouseMouseButton"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int multiclickOrder {
+            get {
+                return ((int)(this["multiclickOrder"]));
+            }
+            set {
+                this["multiclickOrder"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool defaultModeOnLaunch {
+            get {
+                return ((bool)(this["defaultModeOnLaunch"]));
+            }
+            set {
+                this["defaultModeOnLaunch"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool releaseKeysOnWindowFocus {
+            get {
+                return ((bool)(this["releaseKeysOnWindowFocus"]));
+            }
+            set {
+                this["releaseKeysOnWindowFocus"] = value;
             }
         }
         

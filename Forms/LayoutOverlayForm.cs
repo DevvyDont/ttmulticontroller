@@ -53,6 +53,8 @@ namespace TTMulti.Forms
             public int Cols;
             /// <summary>When >= 0, this item is a window slot (1-based). When -1, it's a region.</summary>
             public int SlotIndex = -1;
+            /// <summary>For region items, the 1-based slot number of the first cell (top-left). Used to label grid cells.</summary>
+            public int StartSlotIndex = 1;
         }
 
         public LayoutOverlayForm(List<RegionOverlayItem> items)
@@ -298,17 +300,34 @@ namespace TTMulti.Forms
 
                 if (isSlot)
                 {
-                    using (var font = new Font("Segoe UI", 14, FontStyle.Bold))
-                    using (var labelBrush = new SolidBrush(Color.White))
+                    // Scale font to roughly 40% of the slot's shortest side, capped so it's always legible
+                    float fontSize = Math.Max(18f, Math.Min(cr.Width, cr.Height) * 0.40f);
+                    using (var font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Pixel))
                     {
                         var label = item.SlotIndex.ToString();
-                        g.DrawString(label, font, labelBrush, cr.X + 6, cr.Y + 4);
+                        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                        SizeF textSize = g.MeasureString(label, font);
+                        float tx = cr.X + (cr.Width  - textSize.Width)  / 2f;
+                        float ty = cr.Y + (cr.Height - textSize.Height) / 2f;
+
+                        // Shadow / outline for legibility
+                        using (var shadowBrush = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
+                        {
+                            g.DrawString(label, font, shadowBrush, tx + 2, ty + 2);
+                        }
+                        using (var labelBrush = new SolidBrush(Color.White))
+                        {
+                            g.DrawString(label, font, labelBrush, tx, ty);
+                        }
                     }
                 }
                 else
                 {
                     int rows = Math.Max(1, item.Rows);
                     int cols = Math.Max(1, item.Cols);
+                    int cellW = cr.Width / cols;
+                    int cellH = cr.Height / rows;
+
                     if (rows > 1 || cols > 1)
                     {
                         using (var gridPen = new Pen(GridLineColor, 1))
@@ -322,6 +341,33 @@ namespace TTMulti.Forms
                             {
                                 int x = cr.X + cr.Width * j / cols;
                                 g.DrawLine(gridPen, x, cr.Top, x, cr.Bottom);
+                            }
+                        }
+                    }
+
+                    // Draw slot number in center of each grid cell
+                    float cellFontSize = Math.Max(12f, Math.Min(cellW, cellH) * 0.35f);
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                    using (var font = new Font("Segoe UI", cellFontSize, FontStyle.Bold, GraphicsUnit.Pixel))
+                    using (var shadowBrush = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
+                    using (var labelBrush = new SolidBrush(Color.White))
+                    {
+                        int slotNum = item.StartSlotIndex;
+                        for (int row = 0; row < rows; row++)
+                        {
+                            for (int col = 0; col < cols; col++)
+                            {
+                                int cx = cr.X + cr.Width * col / cols;
+                                int cy = cr.Y + cr.Height * row / rows;
+                                int cw = cr.Width / cols;
+                                int ch = cr.Height / rows;
+                                var label = slotNum.ToString();
+                                SizeF sz = g.MeasureString(label, font);
+                                float tx = cx + (cw - sz.Width)  / 2f;
+                                float ty = cy + (ch - sz.Height) / 2f;
+                                g.DrawString(label, font, shadowBrush, tx + 2, ty + 2);
+                                g.DrawString(label, font, labelBrush, tx, ty);
+                                slotNum++;
                             }
                         }
                     }

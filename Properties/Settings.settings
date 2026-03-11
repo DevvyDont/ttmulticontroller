@@ -87,7 +87,7 @@
       <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="homepageUrl" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">https://danfresneda.com/tt/multicontroller</Value>
+      <Value Profile="(Default)">https://github.com/kittkittlou/ttmulticontroller</Value>
     </Setting>
     <Setting Name="individualControlKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
@@ -99,6 +99,21 @@
       <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="replicateMouseHotkeyGlobal" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="replicateMouseUseMouseButton" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="replicateMouseMouseButton" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="multiclickOrder" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="defaultModeOnLaunch" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="releaseKeysOnWindowFocus" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="lastGroupsFormSize" Type="System.Drawing.Size" Scope="User">
@@ -145,6 +160,12 @@
     </Setting>
     <Setting Name="autoFindExecutables" Type="System.String" Scope="User">
       <Value Profile="(Default)">CorporateClash.exe;TTREngine64.exe</Value>
+    </Setting>
+    <Setting Name="autoFindPlacementOnAltRelease" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="lastUsedLayoutPresetIndex" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="layoutPriorityLeftsFirst" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
