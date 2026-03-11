@@ -85,6 +85,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
@@ -104,6 +105,7 @@
     <Compile Include="Colors.cs" />
     <Compile Include="ControllerGroup.cs" />
     <Compile Include="ControllerPair.cs" />
+    <Compile Include="LayoutPreset.cs" />
     <Compile Include="Events\WindowClientAreaLocationChangedEventArgs.cs" />
     <Compile Include="Events\WindowClientAreaSizeChangedEventArgs.cs" />
     <Compile Include="Events\WindowClosedEventArgs.cs" />
@@ -171,6 +173,15 @@
     </Compile>
     <Compile Include="Multicontroller.cs" />
     <Compile Include="Forms\OptionsDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\LayoutPresetEditorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\LayoutOverlayForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\MonitorPickerForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\OptionsDlg.Designer.cs">

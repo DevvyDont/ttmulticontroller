@@ -146,6 +146,9 @@
     <Setting Name="autoFindExecutables" Type="System.String" Scope="User">
       <Value Profile="(Default)">CorporateClash.exe;TTREngine64.exe</Value>
     </Setting>
+    <Setting Name="layoutPriorityLeftsFirst" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
     <Setting Name="modeHotkeyGlobal" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>

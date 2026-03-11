@@ -194,9 +194,9 @@ namespace TTMulti.Forms
                     ret = controller.ProcessInput(m.Msg, m.WParam, m.LParam);
                     break;
                 case Win32.WM.HOTKEY:
-                    // Check if this is auto-find (ID 7) or minimize unconnected (ID 9)
+                    // Check if this is auto-find (ID 7), minimize unconnected (ID 9), or layout preset (ID 10-25)
                     int hotkeyId = m.WParam.ToInt32();
-                    if (hotkeyId == 7 || hotkeyId == 9)
+                    if (hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25))
                     {
                         // Let these hotkeys pass through to WndProc
                         ret = false;
@@ -231,12 +231,24 @@ namespace TTMulti.Forms
                     if (controller.IsActive)
                     {
                         RegisterAutoFindHotkey();
+                        RegisterLayoutPresetHotkeys();
                     }
                 }
                 // Check if this is minimize unconnected Toontown windows hotkey (ID 9)
                 else if (hotkeyId == 9)
                 {
                     controller.ToggleMinimizeUnconnectedWindows();
+                }
+                // Layout preset hotkeys (ID 10-25)
+                else if (hotkeyId >= 10 && hotkeyId <= 25)
+                {
+                    int presetIndex = hotkeyId - 10;
+                    var file = LayoutPresetStorage.Load();
+                    if (file?.Presets != null && presetIndex < file.Presets.Count)
+                    {
+                        controller.ApplyLayoutPreset(file.Presets[presetIndex]);
+                        BeginInvoke(new Action(() => TryActivate()));
+                    }
                 }
                 else if (hotkeyId == 0)
                 {
@@ -353,6 +365,7 @@ namespace TTMulti.Forms
             // Unregister all hotkeys
             UnregisterHotkey();
             UnregisterAutoFindHotkey();
+            UnregisterLayoutPresetHotkeys();
             UnregisterMinimizeUnconnectedHotkey();
             
             // Re-register all hotkeys based on current settings and state
@@ -361,6 +374,7 @@ namespace TTMulti.Forms
             if (controller.IsActive)
             {
                 RegisterAutoFindHotkey();
+                RegisterLayoutPresetHotkeys();
             }
             RegisterMinimizeUnconnectedHotkey();
         }
@@ -442,7 +456,7 @@ namespace TTMulti.Forms
                     }
                 }
             }
-            // Note: ID 7 (auto-find) handled separately
+            // Note: ID 7 (auto-find), ID 10-25 (layout presets) handled separately
         }
 
         private void UnregisterHotkey()
@@ -473,6 +487,28 @@ namespace TTMulti.Forms
         {
             // Unregister auto-find hotkey (ID 7)
             Win32.UnregisterHotKey(this.Handle, 7);
+        }
+
+        private const int LayoutPresetHotkeyIdStart = 10;
+        private const int LayoutPresetHotkeyIdEnd = 25;
+
+        private void RegisterLayoutPresetHotkeys()
+        {
+            if (!controller.IsActive) return;
+            var file = LayoutPresetStorage.Load();
+            if (file?.Presets == null) return;
+            for (int i = 0; i < file.Presets.Count && i <= LayoutPresetHotkeyIdEnd - LayoutPresetHotkeyIdStart; i++)
+            {
+                var p = file.Presets[i];
+                if (p.HotkeyCode == 0) continue;
+                Win32.RegisterHotKey(this.Handle, LayoutPresetHotkeyIdStart + i, (Win32.KeyModifiers)p.HotkeyModifiers, (Keys)p.HotkeyCode);
+            }
+        }
+
+        private void UnregisterLayoutPresetHotkeys()
+        {
+            for (int id = LayoutPresetHotkeyIdStart; id <= LayoutPresetHotkeyIdEnd; id++)
+                Win32.UnregisterHotKey(this.Handle, id);
         }
 
         private void RegisterMinimizeUnconnectedHotkey()
@@ -645,6 +681,7 @@ namespace TTMulti.Forms
             {
                 controller.IsActive = true;
                 RegisterAutoFindHotkey();
+                RegisterLayoutPresetHotkeys();
                 RegisterMinimizeUnconnectedHotkey();
             }
         }
@@ -672,6 +709,7 @@ namespace TTMulti.Forms
             // Unregister all hotkeys first
             UnregisterHotkey();
             UnregisterAutoFindHotkey();
+            UnregisterLayoutPresetHotkeys();
             UnregisterMinimizeUnconnectedHotkey();
             
             // Re-register only global hotkeys (non-global ones will be re-registered when multicontroller window becomes active)
@@ -697,6 +735,7 @@ namespace TTMulti.Forms
             if (controller.IsActive)
             {
                 RegisterAutoFindHotkey();
+                RegisterLayoutPresetHotkeys();
             }
             RegisterMinimizeUnconnectedHotkey();
         }
@@ -709,6 +748,7 @@ namespace TTMulti.Forms
             if (controller.IsActive)
             {
                 RegisterAutoFindHotkey();
+                RegisterLayoutPresetHotkeys();
             }
             RegisterMinimizeUnconnectedHotkey();
         }
@@ -738,6 +778,7 @@ namespace TTMulti.Forms
             if (controller.IsActive)
             {
                 RegisterAutoFindHotkey();
+                RegisterLayoutPresetHotkeys();
             }
             RegisterMinimizeUnconnectedHotkey();
         }
@@ -919,8 +960,9 @@ namespace TTMulti.Forms
         private void MulticontrollerWnd_Activated(object sender, EventArgs e)
         {
             controller.IsActive = true;
-            // Register auto-find hotkey when multicontroller window is active
+            // Register auto-find and layout preset hotkeys when multicontroller window is active
             RegisterAutoFindHotkey();
+            RegisterLayoutPresetHotkeys();
             RegisterMinimizeUnconnectedHotkey();
         }
 
@@ -934,6 +976,7 @@ namespace TTMulti.Forms
             // Unregister all hotkeys first
             UnregisterHotkey();
             UnregisterAutoFindHotkey();
+            UnregisterLayoutPresetHotkeys();
             UnregisterMinimizeUnconnectedHotkey();
             
             // Re-register only global hotkeys (non-global ones will be re-registered when window becomes active or Toontown window becomes active)

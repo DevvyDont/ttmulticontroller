@@ -404,7 +404,6 @@ namespace TTMulti
             rightKeys = new Dictionary<Keys, List<Keys>>();
         
         bool zeroPowerThrowKeyPressed = false;
-        bool multiClickKeyPressed = false;
 
         int lastMoveX, lastMoveY;
         
@@ -922,13 +921,6 @@ namespace TTMulti
                 // Instant Multi-Click: Send a click to all windows at current cursor position
                 if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY)
                 {
-                    // Prevent key repeat - only trigger on initial press
-                    if (multiClickKeyPressed)
-                    {
-                        return true;
-                    }
-                    multiClickKeyPressed = true;
-                    
                     // Get the current global cursor position FIRST
                     Point cursorPos = System.Windows.Forms.Control.MousePosition;
                     
@@ -992,11 +984,6 @@ namespace TTMulti
                             controller.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
                         }
                     }
-                }
-                else if (msg == Win32.WM.KEYUP)
-                {
-                    // Reset flag when key is released
-                    multiClickKeyPressed = false;
                 }
             }
             else if (keysPressed == (Keys)Properties.Settings.Default.controlAllGroupsKeyCode)
@@ -1804,6 +1791,101 @@ namespace TTMulti
                     // Process may have exited or we don't have access
                 }
             }
+        }
+
+        /// <summary>
+        /// Offset applied to X when auto-placing so the left edge aligns with snapped position (e.g. top-left quadrant starts at -7).
+        /// </summary>
+        private const int AutoPlacementPositionOffset = 7;
+        /// <summary>
+        /// Extra pixels added to width when auto-placing so adjacent windows meet and the rightmost reaches the monitor edge (frame/shadow gap).
+        /// </summary>
+        private const int AutoPlacementWidthOverlap = 14;
+        /// <summary>
+        /// Extra pixels added to height when auto-placing to compensate for bottom frame/shadow gap.
+        /// </summary>
+        private const int AutoPlacementHeightOverlap = 7;
+
+        /// <summary>
+        /// Apply a layout preset: order controllers by layout priority, then assign slot rects and minimized state.
+        /// Extra windows (beyond slot count) are left unchanged. Extra slots (beyond window count) are ignored.
+        /// </summary>
+        public void ApplyLayoutPreset(LayoutPreset preset)
+        {
+            if (preset == null) return;
+            var controllers = AllControllersWithWindows.ToList();
+            if (controllers.Count == 0) return;
+
+            bool leftsFirst = Properties.Settings.Default.layoutPriorityLeftsFirst;
+            var ordered = leftsFirst
+                ? controllers.OrderBy(c => c.GroupNumber).ThenBy(c => c.Type).ThenBy(c => c.PairNumber).ToList()
+                : controllers.OrderBy(c => c.GroupNumber).ThenBy(c => c.PairNumber).ThenBy(c => c.Type).ToList();
+
+            var slots = LayoutPresetBuilder.BuildSlots(preset);
+            int applyCount = Math.Min(slots.Count, ordered.Count);
+
+            var toMove = new List<(ToontownController controller, SlotApplyInfo info)>();
+            for (int i = 0; i < applyCount; i++)
+            {
+                var info = slots[i];
+                if (info.Minimized)
+                {
+                    Win32.ShowWindow(ordered[i].WindowHandle, Win32.ShowWindowCommands.ShowMinimized);
+                    continue;
+                }
+                toMove.Add((ordered[i], info));
+            }
+
+            if (toMove.Count == 0)
+            {
+                System.Windows.Forms.Application.DoEvents();
+                foreach (var c in ordered.Take(applyCount))
+                    c.UpdateBorderPosition();
+                return;
+            }
+
+            foreach (var (controller, info) in toMove)
+            {
+                if (Win32.GetWindowShowState(controller.WindowHandle) == Win32.ShowWindowCommands.ShowMinimized)
+                    Win32.ShowWindow(controller.WindowHandle, Win32.ShowWindowCommands.Restore);
+            }
+
+            int xOffset = AutoPlacementPositionOffset;
+            int wOverlap = AutoPlacementWidthOverlap;
+            int hOverlap = AutoPlacementHeightOverlap;
+            IntPtr hdwp = Win32.BeginDeferWindowPos(toMove.Count);
+            if (hdwp != IntPtr.Zero)
+            {
+                foreach (var (controller, info) in toMove)
+                {
+                    hdwp = Win32.DeferWindowPos(hdwp, controller.WindowHandle, IntPtr.Zero,
+                        info.Rect.X - xOffset, info.Rect.Y, info.Rect.Width + wOverlap, info.Rect.Height + hOverlap,
+                        Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
+                    SetWindowLayoutAttributes(controller.WindowHandle);
+                }
+                Win32.EndDeferWindowPos(hdwp);
+            }
+            else
+            {
+                foreach (var (controller, info) in toMove)
+                {
+                    Win32.SetWindowPos(controller.WindowHandle, IntPtr.Zero,
+                        info.Rect.X - xOffset, info.Rect.Y, info.Rect.Width + wOverlap, info.Rect.Height + hOverlap,
+                        Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
+                    SetWindowLayoutAttributes(controller.WindowHandle);
+                }
+            }
+
+            System.Windows.Forms.Application.DoEvents();
+            foreach (var c in ordered.Take(applyCount))
+                c.UpdateBorderPosition();
+        }
+
+        private static void SetWindowLayoutAttributes(IntPtr hWnd)
+        {
+            Win32.SetWindowAttribute(hWnd, Win32.WindowAttributeTypes.RoundedEdges, Win32.WindowAttributeValues.DWMWCP_DONOTROUND);
+            Win32.SetWindowAttribute(hWnd, Win32.WindowAttributeTypes.DropShadow, Win32.WindowAttributeValues.DWMWA_NCRENDERING_POLICY);
+            Win32.SetWindowAttribute(hWnd, Win32.WindowAttributeTypes.WindowBorderColor, 0x000000);
         }
 
         /// <summary>

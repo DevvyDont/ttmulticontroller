@@ -194,6 +194,11 @@ namespace TTMulti.Forms
         private CheckBox minimizeUnconnectedShiftCheckBox;
         private CheckBox minimizeUnconnectedHotkeyGlobalCheckBox;
 
+        // Layout presets
+        private LayoutPresetFile _layoutPresetFile;
+        private ListBox _layoutPresetsListBox;
+        private CheckBox _layoutPriorityLeftsFirstCheckBox;
+
         private void OptionsDlg_Load(object sender, EventArgs e)
         {
             controlsPicker.KeyMappings = Properties.SerializedSettings.Default.Bindings;
@@ -203,6 +208,9 @@ namespace TTMulti.Forms
 
             CreateAutoFindTab();
             LoadAutoFindSettings();
+
+            CreateLayoutPresetsTab();
+            LoadLayoutPresets();
 
             CreateColorsTab();
             LoadColorsSettings();
@@ -228,6 +236,7 @@ namespace TTMulti.Forms
             var tabPage3 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Hotkeys");
             var tabPage1 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Controller Modes");
             var autoFindTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Auto-Find");
+            var layoutPresetsTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Layout Presets");
             var colorsTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Colors");
             var tabPage2 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
             
@@ -236,6 +245,7 @@ namespace TTMulti.Forms
             if (tabPage3 != null) tabControl1.TabPages.Add(tabPage3);
             if (tabPage1 != null) tabControl1.TabPages.Add(tabPage1);
             if (autoFindTab != null) tabControl1.TabPages.Add(autoFindTab);
+            if (layoutPresetsTab != null) tabControl1.TabPages.Add(layoutPresetsTab);
             if (colorsTab != null) tabControl1.TabPages.Add(colorsTab);
             if (tabPage2 != null) tabControl1.TabPages.Add(tabPage2);
 
@@ -344,6 +354,131 @@ namespace TTMulti.Forms
 
             // Add group box to tab
             autoFindTab.Controls.Add(autoFindGroupBox);
+        }
+
+        private void CreateLayoutPresetsTab()
+        {
+            var tab = new TabPage("Layout Presets");
+            tab.AutoScroll = true;
+            tab.Padding = new Padding(10);
+            tabControl1.TabPages.Add(tab);
+
+            var groupBox = new GroupBox
+            {
+                Text = "Layout Presets",
+                Location = new Point(10, 10),
+                Size = new Size(570, 300),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            tab.Controls.Add(groupBox);
+
+            var listLabel = new Label { Text = "Presets (hotkey applies the layout to controller windows):", Location = new Point(10, 22), Size = new Size(450, 20) };
+            groupBox.Controls.Add(listLabel);
+            _layoutPresetsListBox = new ListBox
+            {
+                Location = new Point(10, 45),
+                Size = new Size(350, 160),
+                DisplayMember = "Name"
+            };
+            groupBox.Controls.Add(_layoutPresetsListBox);
+
+            var addPresetBtn = new Button { Text = "Add", Location = new Point(370, 45), Size = new Size(75, 28) };
+            addPresetBtn.Click += LayoutPresetAdd_Click;
+            groupBox.Controls.Add(addPresetBtn);
+            var editPresetBtn = new Button { Text = "Edit", Location = new Point(370, 78), Size = new Size(75, 28) };
+            editPresetBtn.Click += LayoutPresetEdit_Click;
+            groupBox.Controls.Add(editPresetBtn);
+            var deletePresetBtn = new Button { Text = "Delete", Location = new Point(370, 111), Size = new Size(75, 28) };
+            deletePresetBtn.Click += LayoutPresetDelete_Click;
+            groupBox.Controls.Add(deletePresetBtn);
+
+            _layoutPriorityLeftsFirstCheckBox = new CheckBox
+            {
+                Text = "Lefts first (controller order when applying preset)",
+                Location = new Point(10, 215),
+                Size = new Size(400, 20),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left
+            };
+            groupBox.Controls.Add(_layoutPriorityLeftsFirstCheckBox);
+            var orderExplainLabel = new Label
+            {
+                Text = "When applying: Lefts first = G1P1L, G1P2L, G1P1R, G1P2R... ; Pairs first = G1P1L, G1P1R, G1P2L, G1P2R...",
+                Location = new Point(26, 238),
+                Size = new Size(540, 36),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                AutoSize = false,
+                ForeColor = SystemColors.GrayText
+            };
+            groupBox.Controls.Add(orderExplainLabel);
+        }
+
+        private void LoadLayoutPresets()
+        {
+            _layoutPresetFile = LayoutPresetStorage.Load();
+            if (_layoutPresetFile?.Presets == null) _layoutPresetFile = new LayoutPresetFile();
+            _layoutPresetsListBox.Items.Clear();
+            foreach (var p in _layoutPresetFile.Presets)
+                _layoutPresetsListBox.Items.Add(p);
+            _layoutPriorityLeftsFirstCheckBox.Checked = Properties.Settings.Default.layoutPriorityLeftsFirst;
+        }
+
+        private void SaveLayoutPresets()
+        {
+            Properties.Settings.Default.layoutPriorityLeftsFirst = _layoutPriorityLeftsFirstCheckBox.Checked;
+            if (_layoutPresetFile != null)
+                LayoutPresetStorage.Save(_layoutPresetFile);
+        }
+
+        private void LayoutPresetAdd_Click(object sender, EventArgs e)
+        {
+            var preset = new LayoutPreset { Name = "New Preset", Regions = new List<LayoutRegion> { new LayoutRegion { Source = LayoutRegionSource.Monitor, MonitorIndex = 0, Rows = 2, Cols = 2 } }, SlotOverrides = new List<SlotOverride>() };
+            using (var editor = new LayoutPresetEditorForm(preset))
+            {
+                if (editor.ShowDialog(this) == DialogResult.OK)
+                {
+                    _layoutPresetFile.Presets.Add(editor.Preset);
+                    _layoutPresetsListBox.Items.Add(editor.Preset);
+                }
+            }
+        }
+
+        private void LayoutPresetEdit_Click(object sender, EventArgs e)
+        {
+            var selected = _layoutPresetsListBox.SelectedItem as LayoutPreset;
+            if (selected == null) { MessageBox.Show("Select a preset to edit."); return; }
+            int index = _layoutPresetsListBox.SelectedIndex;
+            var copy = new LayoutPreset
+            {
+                Name = selected.Name,
+                HotkeyCode = selected.HotkeyCode,
+                HotkeyModifiers = selected.HotkeyModifiers,
+                Regions = selected.Regions.Select(r => new LayoutRegion
+                {
+                    Source = r.Source,
+                    MonitorIndex = r.MonitorIndex,
+                    CustomX = r.CustomX, CustomY = r.CustomY, CustomWidth = r.CustomWidth, CustomHeight = r.CustomHeight,
+                    Rows = r.Rows, Cols = r.Cols,
+                    RowWeights = r.RowWeights?.ToArray(),
+                    ColWeights = r.ColWeights?.ToArray()
+                }).ToList(),
+                SlotOverrides = selected.SlotOverrides.Select(o => new SlotOverride { SlotIndex = o.SlotIndex, Rect = o.Rect != null ? new LayoutRect { X = o.Rect.X, Y = o.Rect.Y, Width = o.Rect.Width, Height = o.Rect.Height } : null, Minimized = o.Minimized }).ToList()
+            };
+            using (var editor = new LayoutPresetEditorForm(copy))
+            {
+                if (editor.ShowDialog(this) == DialogResult.OK)
+                {
+                    _layoutPresetFile.Presets[index] = editor.Preset;
+                    _layoutPresetsListBox.Items[index] = editor.Preset;
+                }
+            }
+        }
+
+        private void LayoutPresetDelete_Click(object sender, EventArgs e)
+        {
+            int index = _layoutPresetsListBox.SelectedIndex;
+            if (index < 0) { MessageBox.Show("Select a preset to delete."); return; }
+            _layoutPresetFile.Presets.RemoveAt(index);
+            _layoutPresetsListBox.Items.RemoveAt(index);
         }
 
         private void CreateSwitchingModeUI()
@@ -1220,6 +1355,8 @@ namespace TTMulti.Forms
             Properties.SerializedSettings.Default.Bindings = controlsPicker.KeyMappings;
 
             SaveAutoFindSettings();
+
+            SaveLayoutPresets();
             
             // Save switching mode settings
             SaveSwitchingModeSettings();
