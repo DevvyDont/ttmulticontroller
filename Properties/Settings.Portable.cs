@@ -29,6 +29,35 @@ namespace TTMulti.Properties
             }
         }
 
+        /// <summary>
+        /// Override Save so we always persist through our portable provider; the framework often never calls our provider's SetPropertyValues.
+        /// </summary>
+        public override void Save()
+        {
+            var propsProp = typeof(ApplicationSettingsBase).GetProperty("Properties",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var props = propsProp?.GetValue(this) as SettingsPropertyCollection;
+            if (props != null)
+            {
+                var values = new SettingsPropertyValueCollection();
+                foreach (SettingsProperty prop in props)
+                {
+                    if (!IsUserScoped(prop)) continue;
+                    try
+                    {
+                        var val = new SettingsPropertyValue(prop);
+                        val.SerializedValue = this[prop.Name];
+                        val.IsDirty = true;
+                        values.Add(val);
+                    }
+                    catch { }
+                }
+                if (values.Count > 0)
+                    PortableProvider.SetPropertyValues(null, values);
+            }
+            base.Save();
+        }
+
         private static bool IsUserScoped(SettingsProperty property)
         {
             foreach (System.Collections.DictionaryEntry attr in property.Attributes)

@@ -1,4 +1,4 @@
-﻿#define ENABLEMACRO
+#define ENABLEMACRO
 
 using System;
 using System.Collections.Generic;
@@ -33,6 +33,9 @@ namespace TTMulti
                 Properties.Settings.Default.UpgradeRequired = false;
                 Properties.Settings.Default.Save();
             }
+
+            // Force save once at startup so user.config is created next to the exe when missing (portable settings).
+            Properties.Settings.Default.Save();
 
             if (Properties.Settings.Default.runAsAdministrator)
             {

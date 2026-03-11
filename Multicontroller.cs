@@ -144,6 +144,14 @@ namespace TTMulti
             }
         }
 
+        /// <summary>
+        /// Returns only controllers that have a window and are not minimized (so input can be sent to them).
+        /// </summary>
+        private static IEnumerable<ToontownController> WhereNotMinimized(IEnumerable<ToontownController> controllers)
+        {
+            return controllers.Where(c => c.HasWindow && Win32.GetWindowShowState(c.WindowHandle) != Win32.ShowWindowCommands.ShowMinimized);
+        }
+
         int currentGroupIndex = 0;
 
         /// <summary>
@@ -924,12 +932,12 @@ namespace TTMulti
                     // Get the current global cursor position FIRST
                     Point cursorPos = System.Windows.Forms.Control.MousePosition;
                     
-                    // Find which window the cursor is over to get relative coordinates
+                    // Find which window the cursor is over to get relative coordinates (only consider non-minimized windows)
                     int relativeX = 0;
                     int relativeY = 0;
                     bool foundCursorWindow = false;
                     
-                    foreach (ToontownController controller in AllControllersWithWindows)
+                    foreach (ToontownController controller in WhereNotMinimized(AllControllersWithWindows))
                     {
                         // Get client area location (screen coordinates of the game area, excluding title bar/borders)
                         Point clientAreaLocation = Win32.GetWindowClientAreaLocation(controller.WindowHandle);
@@ -968,8 +976,8 @@ namespace TTMulti
                         System.Threading.Thread.Sleep(50);
                     }
                     
-                    // Send click to active controllers only (respects group selection)
-                    IEnumerable<ToontownController> affectedControllers = ActiveControllers;
+                    // Send click to active controllers only (respects group selection); skip minimized windows
+                    IEnumerable<ToontownController> affectedControllers = WhereNotMinimized(ActiveControllers);
                     
                     foreach (ToontownController controller in affectedControllers)
                     {
@@ -1260,8 +1268,8 @@ namespace TTMulti
                     {
                         if (IsActive)
                         {
-                            // Multicontroller is active: Send to all active controllers
-                            IEnumerable<ToontownController> affectedControllers = ActiveControllers;
+                            // Multicontroller is active: Send to all active controllers (skip minimized)
+                            IEnumerable<ToontownController> affectedControllers = WhereNotMinimized(ActiveControllers);
                             
                             // Send instant tap of the throw key to all active controllers
                             affectedControllers.ToList().ForEach(c => {
@@ -1302,8 +1310,8 @@ namespace TTMulti
                                     CurrentMode = MulticontrollerMode.Focused;
                                     _focusedController = focusedController;
                                     
-                                    // Send throw to all windows (as per normal behavior)
-                                    foreach (var controller in AllControllersWithWindows)
+                                    // Send throw to all windows (as per normal behavior); skip minimized
+                                    foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
                                     {
                                         Keys throwKey = Keys.None;
                                         
@@ -1332,7 +1340,7 @@ namespace TTMulti
                                     CurrentMode = MulticontrollerMode.MirrorAll;
                                     _focusedController = null;
 
-                                    foreach (var controller in AllControllersWithWindows)
+                                    foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
                                     {
                                         Keys throwKey = Keys.None;
                                         
@@ -1357,12 +1365,12 @@ namespace TTMulti
                             }
                             else
                             {
-                                // Focus mode disabled: activate in MirrorAll mode and send throw to all windows
+                                // Focus mode disabled: activate in MirrorAll mode and send throw to all windows; skip minimized
                                 ShouldActivate?.Invoke(this, EventArgs.Empty);
                                 CurrentMode = MulticontrollerMode.MirrorAll;
                                 _focusedController = null;
 
-                                foreach (var controller in AllControllersWithWindows)
+                                foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
                                 {
                                     Keys throwKey = Keys.None;
                                     
@@ -1509,6 +1517,8 @@ namespace TTMulti
                         keysToPress.AddRange(rightKeys[keysPressed]);
                     }
                 }
+
+                affectedControllers = WhereNotMinimized(affectedControllers);
                 
                 if (CurrentMode == MulticontrollerMode.MirrorAll)
                 {
@@ -1518,8 +1528,10 @@ namespace TTMulti
                 {
                     // In Focused mode, check if this is a directional key
                     bool isDirectionalKey = IsDirectionalKey(keysPressed);
+                    bool focusedNotMinimized = _focusedController != null && _focusedController.HasWindow
+                        && Win32.GetWindowShowState(_focusedController.WindowHandle) != Win32.ShowWindowCommands.ShowMinimized;
                     
-                    if (isDirectionalKey && _focusedController != null && _focusedController.HasWindow)
+                    if (isDirectionalKey && focusedNotMinimized)
                     {
                         // Directional keys only go to the focused window
                         _focusedController.PostMessage(msg, wParam, lParam);
@@ -1529,7 +1541,7 @@ namespace TTMulti
                         // All non-directional keys go to all windows
                         affectedControllers.ToList().ForEach(c => c.PostMessage(msg, wParam, lParam));
                     }
-                    // If isDirectionalKey is true but _focusedController is null/invalid, don't send to anyone
+                    // If isDirectionalKey is true but _focusedController is null/invalid/minimized, don't send to anyone
                 }
                 else
                 {
@@ -1824,16 +1836,15 @@ namespace TTMulti
             var slots = LayoutPresetBuilder.BuildSlots(preset);
             int applyCount = Math.Min(slots.Count, ordered.Count);
 
+            // Build list of all windows to place (including those we'll minimize after); unminimize first then place.
             var toMove = new List<(ToontownController controller, SlotApplyInfo info)>();
+            var toMinimizeAfter = new List<ToontownController>();
             for (int i = 0; i < applyCount; i++)
             {
                 var info = slots[i];
-                if (info.Minimized)
-                {
-                    Win32.ShowWindow(ordered[i].WindowHandle, Win32.ShowWindowCommands.ShowMinimized);
-                    continue;
-                }
                 toMove.Add((ordered[i], info));
+                if (info.Minimized)
+                    toMinimizeAfter.Add(ordered[i]);
             }
 
             if (toMove.Count == 0)
@@ -1844,12 +1855,14 @@ namespace TTMulti
                 return;
             }
 
+            // Unminimizing: restore first so we can position.
             foreach (var (controller, info) in toMove)
             {
                 if (Win32.GetWindowShowState(controller.WindowHandle) == Win32.ShowWindowCommands.ShowMinimized)
                     Win32.ShowWindow(controller.WindowHandle, Win32.ShowWindowCommands.Restore);
             }
 
+            // Place all windows (position/size).
             int xOffset = AutoPlacementPositionOffset;
             int wOverlap = AutoPlacementWidthOverlap;
             int hOverlap = AutoPlacementHeightOverlap;
@@ -1875,6 +1888,10 @@ namespace TTMulti
                     SetWindowLayoutAttributes(controller.WindowHandle);
                 }
             }
+
+            // Minimizing: do after placement so windows are positioned first, then minimized.
+            foreach (var controller in toMinimizeAfter)
+                Win32.ShowWindow(controller.WindowHandle, Win32.ShowWindowCommands.ShowMinimized);
 
             System.Windows.Forms.Application.DoEvents();
             foreach (var c in ordered.Take(applyCount))
