@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -286,7 +286,7 @@ namespace TTMulti.Forms
             }
             else if (SwitchingSelected)
             {
-                // Keep yellow border even after switching mode exits, until layout/resize
+                // Keep yellow border even after switching mode exits, until user resizes
                 borderColor = Colors.SwitchingSelected;
             }
 

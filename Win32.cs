@@ -203,7 +203,7 @@ namespace TTMulti
         [DllImport("user32.dll", SetLastError=true)]
         internal static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
 
-        // Monitor enumeration for layout preset Display-mode regions (same coordinate space as GetWindowRect/SetWindowPos under DPI virtualization)
+        // Monitor enumeration for Display-mode regions (same coordinate space as GetWindowRect/SetWindowPos under DPI virtualization)
         internal delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         [return: MarshalAs(UnmanagedType.Bool)]

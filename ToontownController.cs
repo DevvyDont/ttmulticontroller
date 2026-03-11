@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -399,7 +399,7 @@ namespace TTMulti
                     }
                     else if (_borderWnd.SwitchingSelected)
                     {
-                        // Keep yellow border even after switching mode exits, until layout/resize
+                        // Keep yellow border even after switching mode exits, until user resizes
                         borderColor = Colors.SwitchingSelected;
                     }
                     else
@@ -491,7 +491,7 @@ namespace TTMulti
                 }
                 else if (_borderWnd.SwitchingSelected)
                 {
-                    // Keep yellow border even after switching mode exits, until layout/resize
+                    // Keep yellow border even after switching mode exits, until user resizes
                     borderColor = Colors.SwitchingSelected;
                 }
                 else

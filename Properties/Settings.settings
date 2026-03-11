@@ -137,78 +137,6 @@
     <Setting Name="zeroPowerThrowHotkeyGlobal" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="layoutPreset1Enabled" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="layoutPreset1Columns" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">4</Value>
-    </Setting>
-    <Setting Name="layoutPreset1Rows" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">2</Value>
-    </Setting>
-    <Setting Name="layoutPreset1Regions" Type="System.String" Scope="User">
-      <Value Profile="(Default)">0,0,1920,1080</Value>
-    </Setting>
-    <Setting Name="layoutPreset1HotkeyCode" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPreset1HotkeyModifiers" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPreset2Enabled" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="layoutPreset2Columns" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">4</Value>
-    </Setting>
-    <Setting Name="layoutPreset2Rows" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">2</Value>
-    </Setting>
-    <Setting Name="layoutPreset2Regions" Type="System.String" Scope="User">
-      <Value Profile="(Default)">0,0,1920,1080</Value>
-    </Setting>
-    <Setting Name="layoutPreset2HotkeyCode" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPreset2HotkeyModifiers" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPreset3Enabled" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="layoutPreset3Columns" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">4</Value>
-    </Setting>
-    <Setting Name="layoutPreset3Rows" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">2</Value>
-    </Setting>
-    <Setting Name="layoutPreset3Regions" Type="System.String" Scope="User">
-      <Value Profile="(Default)">0,0,1920,1080</Value>
-    </Setting>
-    <Setting Name="layoutPreset3HotkeyCode" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPreset3HotkeyModifiers" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPreset4Enabled" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="layoutPreset4Columns" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">4</Value>
-    </Setting>
-    <Setting Name="layoutPreset4Rows" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">2</Value>
-    </Setting>
-    <Setting Name="layoutPreset4Regions" Type="System.String" Scope="User">
-      <Value Profile="(Default)">0,0,1920,1080</Value>
-    </Setting>
-    <Setting Name="layoutPreset4HotkeyCode" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPreset4HotkeyModifiers" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
     <Setting Name="autoFindWindowsKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">70</Value>
     </Setting>
@@ -217,21 +145,6 @@
     </Setting>
     <Setting Name="autoFindExecutables" Type="System.String" Scope="User">
       <Value Profile="(Default)">CorporateClash.exe;TTREngine64.exe</Value>
-    </Setting>
-    <Setting Name="autoFindApplyLayout" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="lastUsedLayoutPreset" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPriorityLeftsFirst" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="layoutPriorityToggleKeyCode" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="layoutPriorityToggleKeyModifiers" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="modeHotkeyGlobal" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
@@ -244,9 +157,6 @@
     </Setting>
     <Setting Name="zeroPowerThrowEnableFocusMode" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="layoutPriorityToggleKeyCode" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="switchingModeSwitchKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1</Value>

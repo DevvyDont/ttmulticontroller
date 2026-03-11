@@ -606,23 +606,6 @@ namespace TTMulti
                 }
             }
             
-            // Apply the last used layout preset when exiting switching mode
-            // Only apply if there are 2 or more pending switches (orange windows)
-            if (_switchedControllers.Count >= 2)
-            {
-                int lastUsedPreset = Properties.Settings.Default.lastUsedLayoutPreset;
-                if (lastUsedPreset < 1 || lastUsedPreset > 4)
-                {
-                    lastUsedPreset = 1;
-                }
-                
-                var preset = LayoutPreset.LoadFromSettings(lastUsedPreset);
-                if (preset.Enabled)
-                {
-                    ApplyLayoutPreset(preset, lastUsedPreset);
-                }
-            }
-            
             // Trigger refresh so border windows are hidden for inactive controllers (if not showing all borders)
             SettingChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -721,11 +704,11 @@ namespace TTMulti
                 return;
 
             // Only swap window handle assignments (group/pair assignments)
-            // Don't move or resize windows - let user apply layout presets manually if needed
+            // Don't move or resize windows
             controller1.WindowHandle = handle2;
             controller2.WindowHandle = handle1;
 
-            // Mark these controllers as switched so they stay yellow until layout/resize
+            // Mark these controllers as switched so they stay yellow until user resizes
             _switchedControllers.Add(controller1);
             _switchedControllers.Add(controller2);
 
@@ -1753,21 +1736,6 @@ namespace TTMulti
 
             // Automatically set to mirror mode
             CurrentMode = MulticontrollerMode.MirrorAll;
-            
-            // Optionally apply the last used layout preset (only if user has enabled auto-place)
-            if (Properties.Settings.Default.autoFindApplyLayout)
-            {
-                int lastUsedPreset = Properties.Settings.Default.lastUsedLayoutPreset;
-                if (lastUsedPreset < 1 || lastUsedPreset > 4)
-                {
-                    lastUsedPreset = 1;
-                }
-                var preset = LayoutPreset.LoadFromSettings(lastUsedPreset);
-                if (preset.Enabled)
-                {
-                    ApplyLayoutPreset(preset, lastUsedPreset);
-                }
-            }
         }
 
         /// <summary>
@@ -1838,218 +1806,6 @@ namespace TTMulti
             }
         }
 
-        /// <summary>
-        /// Apply a layout preset to all windows with handles
-        /// </summary>
-        public void ApplyLayoutPreset(LayoutPreset preset, int? presetNumber = null)
-        {
-            if (preset == null || !preset.Enabled)
-                return;
-            
-            // Track the last used preset number
-            if (presetNumber.HasValue && presetNumber.Value >= 1 && presetNumber.Value <= 4)
-            {
-                Properties.Settings.Default.lastUsedLayoutPreset = presetNumber.Value;
-                Properties.Settings.Default.Save();
-            }
-
-            var controllersWithWindows = AllControllersWithWindows.ToList();
-            if (controllersWithWindows.Count == 0)
-                return;
-
-            // Order controllers based on priority mode
-            // Pairs first (default): Group -> Pair -> Type (Left before Right)
-            // Lefts first: Group -> Type (Left before Right) -> Pair
-            bool leftsFirst = Properties.Settings.Default.layoutPriorityLeftsFirst;
-            if (leftsFirst)
-            {
-                // Lefts first: Group 1 Pair 1 Left, Group 1 Pair 2 Left, Group 1 Pair 1 Right, Group 1 Pair 2 Right
-                controllersWithWindows = controllersWithWindows
-                    .OrderBy(c => c.GroupNumber)
-                    .ThenBy(c => c.Type) // Left (0) before Right (1)
-                    .ThenBy(c => c.PairNumber)
-                    .ToList();
-            }
-            else
-            {
-                // Pairs first (default): Group 1 Pair 1 Left, Group 1 Pair 1 Right, Group 1 Pair 2 Left, Group 1 Pair 2 Right
-                controllersWithWindows = controllersWithWindows
-                    .OrderBy(c => c.GroupNumber)
-                    .ThenBy(c => c.PairNumber)
-                    .ThenBy(c => c.Type) // Left (0) before Right (1)
-                    .ToList();
-            }
-
-            // Calculate grid layout (window size and positions)
-            var (windowSize, positions) = preset.CalculateGridLayout(controllersWithWindows.Count, controllersWithWindows.First().WindowHandle);
-
-            if (windowSize.IsEmpty || positions.Length == 0)
-                return;
-
-            // Collect windows that need to be moved/resized (skip windows already in correct position)
-            var windowsToMove = new List<(ToontownController controller, Point position)>();
-            const int positionTolerance = 0; // Allow 2 pixels tolerance for position
-            const int sizeTolerance = 0; // Allow 2 pixels tolerance for size
-
-            for (int i = 0; i < controllersWithWindows.Count && i < positions.Length; i++)
-            {
-                var controller = controllersWithWindows[i];
-                Point targetPosition = positions[i];
-
-                // Get current window position and size
-                Win32.RECT currentRect;
-                if (Win32.GetWindowRect(controller.WindowHandle, out currentRect))
-                {
-                    int currentX = currentRect.Left;
-                    int currentY = currentRect.Top;
-                    int currentWidth = currentRect.Right - currentRect.Left;
-                    int currentHeight = currentRect.Bottom - currentRect.Top;
-
-                    // Check if window is already in the correct position and size
-                    bool positionMatches = Math.Abs(currentX - targetPosition.X) <= positionTolerance &&
-                                          Math.Abs(currentY - targetPosition.Y) <= positionTolerance;
-                    bool sizeMatches = Math.Abs(currentWidth - windowSize.Width) <= sizeTolerance &&
-                                      Math.Abs(currentHeight - windowSize.Height) <= sizeTolerance;
-
-                    // Only add to move list if position or size doesn't match
-                    if (!positionMatches || !sizeMatches)
-                    {
-                        windowsToMove.Add((controller, targetPosition));
-                    }
-                }
-                else
-                {
-                    // If we can't get the current position, assume it needs to be moved
-                    windowsToMove.Add((controller, targetPosition));
-                }
-            }
-
-            // If no windows need to be moved, skip the layout operation
-            if (windowsToMove.Count == 0)
-                return;
-
-            // Batch all window position/size operations for better performance
-            // BeginDeferWindowPos allows Windows to optimize multiple window operations
-            IntPtr hdwp = Win32.BeginDeferWindowPos(windowsToMove.Count);
-            
-            if (hdwp != IntPtr.Zero)
-            {
-                // Apply layout only to windows that need to be moved
-                foreach (var (controller, position) in windowsToMove)
-                {
-                    // Defer the SetWindowPos operation (batched for performance)
-                    hdwp = Win32.DeferWindowPos(
-                        hdwp,
-                        controller.WindowHandle,
-                        IntPtr.Zero,
-                        position.X,
-                        position.Y,
-                        windowSize.Width,
-                        windowSize.Height,
-                        Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate
-                    );
-                    
-                    // Set window attributes (these are fast, can be done individually)
-                    // Do not round window corners.
-                    Win32.SetWindowAttribute(
-                        controller.WindowHandle,
-                        Win32.WindowAttributeTypes.RoundedEdges,
-                        Win32.WindowAttributeValues.DWMWCP_DONOTROUND
-                    );
-                    
-                    // Do not show drop shadows.
-                    Win32.SetWindowAttribute(
-                        controller.WindowHandle,
-                        Win32.WindowAttributeTypes.DropShadow,
-                        Win32.WindowAttributeValues.DWMWA_NCRENDERING_POLICY
-                    );
-                    
-                    // Make the window borders opaque to prevent pixel bleed from the desktop.
-                    Win32.SetWindowAttribute(
-                        controller.WindowHandle,
-                        Win32.WindowAttributeTypes.WindowBorderColor,
-                        0x000000
-                    );
-                }
-
-                // Execute all batched window operations at once (much faster than individual calls)
-                Win32.EndDeferWindowPos(hdwp);
-            }
-            else
-            {
-                // Fallback to individual SetWindowPos calls if batching fails
-                foreach (var (controller, position) in windowsToMove)
-                {
-                    Win32.SetWindowPos(
-                        controller.WindowHandle,
-                        IntPtr.Zero,
-                        position.X,
-                        position.Y,
-                        windowSize.Width,
-                        windowSize.Height,
-                        Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate
-                    );
-                    
-                    // Set window attributes
-                    Win32.SetWindowAttribute(
-                        controller.WindowHandle,
-                        Win32.WindowAttributeTypes.RoundedEdges,
-                        Win32.WindowAttributeValues.DWMWCP_DONOTROUND
-                    );
-                    
-                    Win32.SetWindowAttribute(
-                        controller.WindowHandle,
-                        Win32.WindowAttributeTypes.DropShadow,
-                        Win32.WindowAttributeValues.DWMWA_NCRENDERING_POLICY
-                    );
-                    
-                    Win32.SetWindowAttribute(
-                        controller.WindowHandle,
-                        Win32.WindowAttributeTypes.WindowBorderColor,
-                        0x000000
-                    );
-                }
-            }
-
-            // Clear switched controllers list since layout has been applied
-            ClearSwitchedControllers();
-
-            // Force update all border positions after moving windows
-            // WindowWatcher will eventually update them, but this ensures immediate correctness
-            // Single DoEvents call is sufficient after batched operations
-            System.Windows.Forms.Application.DoEvents();
-            
-            // Update border positions (these are relatively fast operations)
-            foreach (var controller in controllersWithWindows)
-            {
-                controller.UpdateBorderPosition();
-            }
-        }
-
-        /// <summary>
-        /// Toggle layout priority mode and reapply the last used layout preset
-        /// </summary>
-        public void ToggleLayoutPriority()
-        {
-            // Toggle the priority mode
-            Properties.Settings.Default.layoutPriorityLeftsFirst = !Properties.Settings.Default.layoutPriorityLeftsFirst;
-            Properties.Settings.Default.Save();
-
-            // Get the last used preset number, defaulting to 1 if none has been used
-            int lastUsedPreset = Properties.Settings.Default.lastUsedLayoutPreset;
-            if (lastUsedPreset < 1 || lastUsedPreset > 4)
-            {
-                lastUsedPreset = 1;
-            }
-
-            // Load and reapply the last used preset with the new priority order
-            var preset = LayoutPreset.LoadFromSettings(lastUsedPreset);
-            if (preset.Enabled)
-            {
-                ApplyLayoutPreset(preset, lastUsedPreset);
-            }
-        }
-        
         /// <summary>
         /// Install global low-level mouse hook to block clicks during switching mode
         /// </summary>
