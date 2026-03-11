@@ -85,6 +85,9 @@ namespace TTMulti.Forms
             }
         }
 
+        private const int CursorSize = 32;
+        private const int CursorPad = 12;
+
         private bool _showFakeCursor;
 
         /// <summary>
@@ -115,9 +118,33 @@ namespace TTMulti.Forms
             {
                 if (_fakeCursorPosition != value)
                 {
+                    if (_showFakeCursor)
+                        Invalidate(fakeCursorRect); // erase from old position
                     _fakeCursorPosition = value;
-                    Invalidate(fakeCursorRect);
+                    fakeCursorRect = new Rectangle(value.X - CursorPad, value.Y - CursorPad, CursorSize + CursorPad * 2, CursorSize + CursorPad * 2);
+                    if (_showFakeCursor)
+                        Invalidate(fakeCursorRect); // draw at new position
                 }
+            }
+        }
+
+        /// <summary>
+        /// Atomically update both show-state and position in a single repaint cycle,
+        /// avoiding the flicker caused by two separate Invalidate calls.
+        /// </summary>
+        internal void UpdateFakeCursor(bool show, Point position)
+        {
+            bool posChanged = _fakeCursorPosition != position;
+            bool showChanged = _showFakeCursor != show;
+            if (!posChanged && !showChanged) return;
+
+            Invalidate(fakeCursorRect); // erase old position
+            _fakeCursorPosition = position;
+            _showFakeCursor = show;
+            if (show)
+            {
+                fakeCursorRect = new Rectangle(position.X - CursorPad, position.Y - CursorPad, CursorSize + CursorPad * 2, CursorSize + CursorPad * 2);
+                Invalidate(fakeCursorRect); // draw at new position
             }
         }
 
@@ -341,19 +368,8 @@ namespace TTMulti.Forms
 
             if (ShowFakeCursor)
             {
-                fakeCursorRect = new Rectangle(FakeCursorPosition.X, FakeCursorPosition.Y, 32, 32);
-
-                if (FakeCursorIsInvalid)
-                {
-                    e.Graphics.DrawImage(fakeCursorImageInvalid, fakeCursorRect);
-                }
-                else
-                {
-                    e.Graphics.DrawImage(fakeCursorImage, fakeCursorRect);
-                }
-
-                // Increase size to account for the next movement. Otherwise, clipping occurs.
-                fakeCursorRect.Inflate(10, 10);
+                var drawRect = new Rectangle(FakeCursorPosition.X, FakeCursorPosition.Y, CursorSize, CursorSize);
+                e.Graphics.DrawImage(FakeCursorIsInvalid ? fakeCursorImageInvalid : fakeCursorImage, drawRect);
             }
         }
     }

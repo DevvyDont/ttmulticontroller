@@ -47,6 +47,10 @@ namespace TTMulti.Forms
         private static MulticontrollerWnd _multiclickMouseHookForm = null;
         private static int _multiclickMouseHookButton = -1; // 0=Middle, 1=XButton1, 2=XButton2
         private static Win32.HookProc _multiclickMouseHookProc = null;
+
+        // Timer for updating duplicated cursor positions across all controlled windows
+        private System.Windows.Forms.Timer _fakeCursorTimer;
+
         internal MulticontrollerWnd()
         {
             InitializeComponent();
@@ -755,6 +759,11 @@ namespace TTMulti.Forms
             
             // Set initial caption color
             UpdateCaptionColor();
+
+            // Timer to mirror cursor position across all active windows (~30 fps)
+            _fakeCursorTimer = new System.Windows.Forms.Timer { Interval = 33 };
+            _fakeCursorTimer.Tick += FakeCursorTimer_Tick;
+            _fakeCursorTimer.Start();
         }
         
         private void MulticontrollerWnd_Shown(object sender, EventArgs e)
@@ -1028,6 +1037,65 @@ namespace TTMulti.Forms
             foreach (var c in controller.AllControllersWithWindows)
                 c.Refresh();
             UpdateWindowStatus();
+        }
+
+        private void FakeCursorTimer_Tick(object sender, EventArgs e)
+        {
+            if (!Properties.Settings.Default.showFakeCursor || !controller.IsActive)
+            {
+                foreach (var c in controller.AllControllersWithWindows)
+                    c.UpdateFakeCursor(false, c.FakeCursorPosition);
+                return;
+            }
+
+            Point cursorPos = Control.MousePosition;
+
+            // Find which active visible window the cursor is currently inside.
+            // WindowClientAreaLocation and IsBorderVisible use cached values maintained
+            // by WindowWatcher — no Win32 API call needed here.
+            ToontownController sourceController = null;
+            Point relativePos = Point.Empty;
+            foreach (var c in controller.ActiveControllers)
+            {
+                if (!c.HasWindow || !c.IsBorderVisible) continue;
+                Point clientLoc = c.WindowClientAreaLocation;
+                Size clientSize = c.WindowSize;
+                if (clientSize.Width <= 0 || clientSize.Height <= 0) continue;
+                if (cursorPos.X >= clientLoc.X && cursorPos.X < clientLoc.X + clientSize.Width &&
+                    cursorPos.Y >= clientLoc.Y && cursorPos.Y < clientLoc.Y + clientSize.Height)
+                {
+                    sourceController = c;
+                    relativePos = new Point(cursorPos.X - clientLoc.X, cursorPos.Y - clientLoc.Y);
+                    break;
+                }
+            }
+
+            if (sourceController == null)
+            {
+                foreach (var c in controller.AllControllersWithWindows)
+                    c.UpdateFakeCursor(false, c.FakeCursorPosition);
+                return;
+            }
+
+            Size sourceSize = sourceController.WindowSize;
+            float relX = (float)relativePos.X / sourceSize.Width;
+            float relY = (float)relativePos.Y / sourceSize.Height;
+
+            foreach (var c in controller.ActiveControllers)
+            {
+                if (!c.HasWindow || !c.IsBorderVisible || c == sourceController)
+                {
+                    c.UpdateFakeCursor(false, c.FakeCursorPosition);
+                    continue;
+                }
+                Size size = c.WindowSize;
+                if (size.Width <= 0 || size.Height <= 0)
+                {
+                    c.UpdateFakeCursor(false, c.FakeCursorPosition);
+                    continue;
+                }
+                c.UpdateFakeCursor(true, new Point((int)(relX * size.Width), (int)(relY * size.Height)));
+            }
         }
 
         private void windowGroupsBtn_Click(object sender, EventArgs e)

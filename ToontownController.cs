@@ -85,6 +85,18 @@ namespace TTMulti
 
         public Size WindowSize { get; private set; }
 
+        /// <summary>
+        /// The top-left of the game window's client area in screen coordinates.
+        /// Kept in sync by WindowWatcher — no Win32 call needed at read time.
+        /// </summary>
+        public Point WindowClientAreaLocation => _borderWnd.Location;
+
+        /// <summary>
+        /// True when the game window is visible (not minimized).
+        /// The border window is hidden whenever the game window is minimized.
+        /// </summary>
+        public bool IsBorderVisible => _borderWnd.Visible;
+
         public bool ShowFakeCursor
         {
             get => _borderWnd.ShowFakeCursor;
@@ -102,6 +114,12 @@ namespace TTMulti
             get => _borderWnd.FakeCursorPosition;
             set => _borderWnd.FakeCursorPosition = value;
         }
+
+        /// <summary>
+        /// Atomically update fake cursor visibility and position in a single repaint.
+        /// </summary>
+        public void UpdateFakeCursor(bool show, Point position)
+            => _borderWnd.UpdateFakeCursor(show, position);
 
         /// <summary>
         /// Whether the controlled window's size is mismatched 
