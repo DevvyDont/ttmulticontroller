@@ -154,10 +154,31 @@ namespace TTMulti
 
 
         /// <summary>
+        /// Activates the multicontroller and switches to MirrorAll mode if not already active.
+        /// Called on key/button press for global trigger-on-release binds so the MC is ready by
+        /// the time the release fires the click.  Activation uses the same ShouldActivate path as
+        /// TriggerInstantMultiClick, but without sending any clicks.
+        /// </summary>
+        public void EnsureActiveForMultiClick()
+        {
+            if (!IsActive)
+            {
+                ShouldActivate?.Invoke(this, EventArgs.Empty);
+                CurrentMode = MulticontrollerMode.MirrorAll;
+            }
+        }
+
+        /// <summary>
         /// Performs instant multi-click: sends a left click at the current cursor position to all active, non-minimized windows.
         /// Used by both keyboard hotkey and mouse-button trigger.
+        /// <para>
+        /// When <paramref name="activateIfInactive"/> is <c>false</c> (trigger-on-release path), the MC
+        /// is expected to have been activated on the preceding key/button press via
+        /// <see cref="EnsureActiveForMultiClick"/>.  Skipping the ShouldActivate call on release prevents
+        /// a second TryActivate attempt that would fight with game-window focus.
+        /// </para>
         /// </summary>
-        public void TriggerInstantMultiClick()
+        public void TriggerInstantMultiClick(bool activateIfInactive = true)
         {
             Point cursorPos = System.Windows.Forms.Control.MousePosition;
             int relativeX = 0;
@@ -180,7 +201,7 @@ namespace TTMulti
 
             if (!foundCursorWindow)
             {
-                if (!IsActive)
+                if (!IsActive && activateIfInactive)
                 {
                     ShouldActivate?.Invoke(this, EventArgs.Empty);
                     CurrentMode = MulticontrollerMode.MirrorAll;
@@ -188,7 +209,7 @@ namespace TTMulti
                 return;
             }
 
-            if (!IsActive)
+            if (!IsActive && activateIfInactive)
             {
                 ShouldActivate?.Invoke(this, EventArgs.Empty);
                 CurrentMode = MulticontrollerMode.MirrorAll;

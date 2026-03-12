@@ -671,6 +671,18 @@ namespace TTMulti.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool multiclickTriggerOnRelease {
+            get {
+                return ((bool)(this["multiclickTriggerOnRelease"]));
+            }
+            set {
+                this["multiclickTriggerOnRelease"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int multiclickOrder {
             get {
