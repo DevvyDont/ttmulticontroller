@@ -1045,6 +1045,11 @@ namespace TTMulti
                 // Instant Multi-Click: Send a click to all windows at current cursor position
                 if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY)
                 {
+                    // When trigger-on-release is enabled the keyboard hook owns the click (fires on
+                    // key-up).  If a raw KEYDOWN reaches here it means MC is the active window and
+                    // the hook suppressed the key before posting it — but just in case, guard here too.
+                    if (Properties.Settings.Default.multiclickTriggerOnRelease && msg == Win32.WM.KEYDOWN)
+                        return true; // consume without firing; hook fires on release
                     TriggerInstantMultiClick();
                     return true;
                 }

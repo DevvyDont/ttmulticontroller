@@ -49,8 +49,6 @@ namespace TTMulti.Forms
         private static Win32.HookProc _multiclickMouseHookProc = null;
         // True when mouse button was pressed and we are waiting for release to fire (trigger-on-release mode)
         private static bool _multiclickButtonHeld = false;
-        // Cursor position captured at mouse-button press time (used on release)
-        private static Point _multiclickButtonCapturedCursor;
 
         // Low-level keyboard hook for multi-click "trigger on release" mode
         private static IntPtr _multiclickKeyboardHookHandle = IntPtr.Zero;
@@ -59,9 +57,6 @@ namespace TTMulti.Forms
         private static Win32.HookProc _multiclickKeyboardHookProc = null;
         // True when the key was pressed and we are waiting for release to fire
         private static bool _multiclickKeyHeld = false;
-        // Cursor position captured at key-press time (used on release so cursor movement between
-        // press and release — or MC activation — cannot cause foundCursorWindow = false)
-        private static Point _multiclickKeyCapturedCursor;
 
         // Timer that updates fake-cursor positions on all game windows while the multiclick bind is held
         private System.Windows.Forms.Timer _multiclickFakeCursorTimer;
@@ -459,6 +454,8 @@ namespace TTMulti.Forms
                 if (btn >= 0 && btn <= 2)
                 {
                     bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
+                    // Non-global: only install when MC itself is the active window (mirrors the
+                    // non-global keyboard path which only registers WM_HOTKEY when MC is active).
                     if (multiGlobal || controller.IsActive)
                         InstallMulticlickMouseHook(btn);
                 }
@@ -681,6 +678,7 @@ namespace TTMulti.Forms
             }
             _multiclickMouseHookForm = null;
             _multiclickMouseHookButton = -1;
+            _multiclickButtonHeld = false; // clear any stuck held state
         }
 
         /// <summary>
@@ -702,6 +700,9 @@ namespace TTMulti.Forms
         /// </summary>
         private void StartFakeCursors()
         {
+            // Guard against queued BeginInvoke calls that arrive after the key/button was already
+            // released (auto-repeat KEYDOWN BeginInvokes can outlive the matching KEYUP BeginInvoke).
+            if (!_multiclickKeyHeld && !_multiclickButtonHeld) return;
             if (controller == null) return;
             foreach (var c in controller.AllControllersWithWindows)
                 c.IsTriggerReleaseCursorActive = true;
@@ -848,9 +849,6 @@ namespace TTMulti.Forms
                     }));
                 }
 
-                // Capture cursor at press time so release always fires at the aimed position,
-                // even if the cursor moves or the MC activation shifts focus between press/release.
-                _multiclickKeyCapturedCursor = Control.MousePosition;
                 _multiclickKeyHeld = true;
 
                 // Start showing fake cursors on all game windows while key is held.
@@ -862,8 +860,9 @@ namespace TTMulti.Forms
 
             if (isUp && _multiclickKeyHeld)
             {
-                // Capture everything we need now — static fields may change before BeginInvoke runs.
-                Point cursor = _multiclickKeyCapturedCursor;
+                // Read cursor at release time so the click lands where the user is pointing
+                // when they let go, not where they were when they pressed.
+                Point cursor = Control.MousePosition;
                 _multiclickKeyHeld = false;
                 var form = _multiclickKeyboardHookForm; // captured reference; safe even if static is later nulled
                 if (form != null)
@@ -912,17 +911,19 @@ namespace TTMulti.Forms
                 if ((mods & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None)
                     return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
 
+                bool isActive   = _multiclickMouseHookForm?.controller?.IsActive ?? false;
+                bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
+
+                // Non-global: only fire when MC is the active window (mirrors non-global keyboard
+                // which only registers WM_HOTKEY while MC is focused).
+                if (!isActive && !multiGlobal)
+                    return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
+
                 bool triggerOnRelease = Properties.Settings.Default.multiclickTriggerOnRelease;
                 if (triggerOnRelease)
                 {
-                    bool isActive = _multiclickMouseHookForm?.controller?.IsActive ?? false;
-                    bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
-
-                    // Non-global hotkeys only apply when the MC is the active window.
-                    if (!isActive && !multiGlobal)
-                        return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
-
-                    // Global bind + MC not active: activate on press (bring MC to front).
+                    // Global bind + MC not yet active: activate on press so borders/fake-cursors
+                    // are visible while the user aims, then click fires on release.
                     if (!isActive)
                     {
                         _multiclickMouseHookForm.BeginInvoke(new Action(() =>
@@ -933,11 +934,8 @@ namespace TTMulti.Forms
                         }));
                     }
 
-                    // Capture cursor at press time and arm the release.
-                    _multiclickButtonCapturedCursor = Control.MousePosition;
                     _multiclickButtonHeld = true;
 
-                    // Start showing fake cursors on all game windows while button is held.
                     var formRef = _multiclickMouseHookForm;
                     formRef?.BeginInvoke(new Action(() => formRef.StartFakeCursors()));
                 }
@@ -957,8 +955,9 @@ namespace TTMulti.Forms
 
             if (isUp && _multiclickButtonHeld)
             {
-                // Capture everything now; static fields may change before BeginInvoke executes.
-                Point cursor = _multiclickButtonCapturedCursor;
+                // Read the exact hardware position from the hook struct at release time.
+                var upStruct = (Win32.MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.MSLLHOOKSTRUCT));
+                Point cursor = new Point(upStruct.pt.X, upStruct.pt.Y);
                 _multiclickButtonHeld = false;
                 var form = _multiclickMouseHookForm;
                 if (form != null)
@@ -1092,48 +1091,55 @@ namespace TTMulti.Forms
             UnregisterLayoutPresetHotkeys();
             UnregisterMinimizeUnconnectedHotkey();
             
-            // Re-register only global hotkeys (non-global ones will be re-registered when multicontroller window becomes active)
-            // Mode/Activate (ID 0)
-            if (Properties.Settings.Default.modeHotkeyGlobal)
-            {
-                Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
-            }
-            
-            // Instant Multi-Click (ID 1) - keyboard hotkey or mouse hook
-            if (Properties.Settings.Default.replicateMouseHotkeyGlobal)
-            {
-                if (Properties.Settings.Default.replicateMouseUseMouseButton)
-                {
-                    int btn = Properties.Settings.Default.replicateMouseMouseButton;
-                    if (btn >= 0 && btn <= 2)
-                        InstallMulticlickMouseHook(btn);
-                }
-                else if (Properties.Settings.Default.replicateMouseKeyCode != 0)
-                {
-                    if (Properties.Settings.Default.multiclickTriggerOnRelease)
-                    {
-                        InstallMulticlickKeyboardHook(Properties.Settings.Default.replicateMouseKeyCode);
-                    }
-                    else
-                    {
-                        bool success = Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
-                        if (!success)
-                            Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
-                    }
-                }
-            }
-            
-            // Zero Power Throw (ID 2)
-            if (Properties.Settings.Default.zeroPowerThrowKeyCode != 0 && Properties.Settings.Default.zeroPowerThrowHotkeyGlobal)
-            {
-                Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
-            }
-            
-            // Auto-find hotkey is only registered when multicontroller window is active
             if (controller.IsActive)
             {
+                // MC is already the active window (user manually focused it while game windows were
+                // also active, then the game windows deactivated).  RegisterHotkey handles both
+                // global and non-global conditions correctly for when MC is active.
+                RegisterHotkey();
                 RegisterAutoFindHotkey();
                 RegisterLayoutPresetHotkeys();
+            }
+            else
+            {
+                // MC is not active: re-register only global hotkeys.
+                // Non-global ones will be re-registered when MC or a game window next becomes active.
+
+                // Mode/Activate (ID 0)
+                if (Properties.Settings.Default.modeHotkeyGlobal)
+                {
+                    Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
+                }
+
+                // Instant Multi-Click (ID 1) - keyboard hotkey or mouse hook
+                if (Properties.Settings.Default.replicateMouseHotkeyGlobal)
+                {
+                    if (Properties.Settings.Default.replicateMouseUseMouseButton)
+                    {
+                        int btn = Properties.Settings.Default.replicateMouseMouseButton;
+                        if (btn >= 0 && btn <= 2)
+                            InstallMulticlickMouseHook(btn);
+                    }
+                    else if (Properties.Settings.Default.replicateMouseKeyCode != 0)
+                    {
+                        if (Properties.Settings.Default.multiclickTriggerOnRelease)
+                        {
+                            InstallMulticlickKeyboardHook(Properties.Settings.Default.replicateMouseKeyCode);
+                        }
+                        else
+                        {
+                            bool success = Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                            if (!success)
+                                Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                        }
+                    }
+                }
+
+                // Zero Power Throw (ID 2)
+                if (Properties.Settings.Default.zeroPowerThrowKeyCode != 0 && Properties.Settings.Default.zeroPowerThrowHotkeyGlobal)
+                {
+                    Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
+                }
             }
             RegisterMinimizeUnconnectedHotkey();
 
@@ -1384,7 +1390,14 @@ namespace TTMulti.Forms
         private void MulticontrollerWnd_Activated(object sender, EventArgs e)
         {
             controller.IsActive = true;
-            // Register auto-find and layout preset hotkeys when multicontroller window is active
+            // Preserve any in-flight trigger-on-release arm (key/button held while MC was activating).
+            // RegisterHotkey calls UninstallMulticlickKeyboardHook which clears _multiclickKeyHeld,
+            // so we save and restore around the call.
+            bool savedKeyHeld    = _multiclickKeyHeld;
+            bool savedButtonHeld = _multiclickButtonHeld;
+            RegisterHotkey(); // installs keyboard hook for trigger-on-release now that IsActive = true
+            _multiclickKeyHeld    = savedKeyHeld;
+            _multiclickButtonHeld = savedButtonHeld;
             RegisterAutoFindHotkey();
             RegisterLayoutPresetHotkeys();
             RegisterMinimizeUnconnectedHotkey();
