@@ -1603,29 +1603,28 @@ namespace TTMulti
 
         /// <summary>
         /// Sends KEYUP for movement keys to the given controllers (e.g. so they stop moving when focus/active group changes).
-        /// Uses the actual bound LeftToonKey/RightToonKey for movement actions so custom key bindings are respected.
+        /// Releases both LeftToonKey and RightToonKey for every controller so all modes are covered — in MirrorAll the
+        /// raw key is sent to all windows regardless of type, so both sets must be released.  Sending KEYUP for a key
+        /// that is not currently pressed is harmless.
         /// </summary>
         private void ReleaseMovementKeysOnControllers(IEnumerable<ToontownController> controllers)
         {
             if (controllers == null) return;
 
-            // Build per-type key sets from the actual bindings for movement actions
             var movementTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 { "forward", "left", "backward", "right", "jump" };
-            var leftMovementKeys = new HashSet<Keys>();
-            var rightMovementKeys = new HashSet<Keys>();
+            var allMovementKeys = new HashSet<Keys>();
             foreach (var binding in Properties.SerializedSettings.Default.Bindings)
             {
                 if (!movementTitles.Contains(binding.Title)) continue;
-                if (binding.LeftToonKey != Keys.None) leftMovementKeys.Add(binding.LeftToonKey);
-                if (binding.RightToonKey != Keys.None) rightMovementKeys.Add(binding.RightToonKey);
+                if (binding.LeftToonKey != Keys.None) allMovementKeys.Add(binding.LeftToonKey);
+                if (binding.RightToonKey != Keys.None) allMovementKeys.Add(binding.RightToonKey);
             }
 
             foreach (ToontownController c in controllers)
             {
                 if (c == null || !c.HasWindow) continue;
-                var keysToRelease = c.Type == ControllerType.Left ? leftMovementKeys : rightMovementKeys;
-                foreach (Keys k in keysToRelease)
+                foreach (Keys k in allMovementKeys)
                 {
                     c.PostMessage(Win32.WM.KEYUP, (IntPtr)k, IntPtr.Zero);
                     c.PostMessage(Win32.WM.SYSKEYUP, (IntPtr)k, IntPtr.Zero);
@@ -1666,6 +1665,11 @@ namespace TTMulti
                 {
                     ExitSwitchingMode();
                 }
+
+                // When the multicontroller goes to the background (no game window is focused),
+                // release movement keys on every window so no toon keeps moving indefinitely.
+                if (Properties.Settings.Default.releaseKeysOnWindowFocus)
+                    ReleaseMovementKeysOnControllers(WhereNotMinimized(AllControllersWithWindows));
             }
         }
 
