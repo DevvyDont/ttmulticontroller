@@ -62,8 +62,6 @@ namespace TTMulti.Forms
             this.multiclickLabel = new System.Windows.Forms.Label();
             this.zeroPowerThrowLabel = new System.Windows.Forms.Label();
             this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.showFakeCursorGroupBox = new System.Windows.Forms.GroupBox();
-            this.showFakeCursorCheckBox = new System.Windows.Forms.CheckBox();
             this.releaseKeysOnWindowFocusGroupBox = new System.Windows.Forms.GroupBox();
             this.releaseKeysOnWindowFocusCheckBox = new System.Windows.Forms.CheckBox();
             this.label7 = new System.Windows.Forms.Label();
@@ -507,7 +505,7 @@ namespace TTMulti.Forms
             this.multiclickOrderCombo.Size = new System.Drawing.Size(250, 24);
             this.multiclickOrderCombo.TabIndex = 19;
             this.multiclickOrderCombo.SelectedIndexChanged += new System.EventHandler(this.multiclickOrderCombo_SelectedIndexChanged);
-            // 
+            //
             // zeroPowerThrowLabel
             // 
             this.zeroPowerThrowLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
@@ -538,7 +536,6 @@ namespace TTMulti.Forms
             // 
             // tabPage2
             // 
-            this.tabPage2.Controls.Add(this.showFakeCursorGroupBox);
             this.tabPage2.Controls.Add(this.releaseKeysOnWindowFocusGroupBox);
             this.tabPage2.Controls.Add(this.groupBox7);
             this.tabPage2.Controls.Add(this.groupBox6);
@@ -575,31 +572,7 @@ namespace TTMulti.Forms
             this.releaseKeysOnWindowFocusCheckBox.UseVisualStyleBackColor = true;
             this.releaseKeysOnWindowFocusGroupBox.ResumeLayout(false);
             this.releaseKeysOnWindowFocusGroupBox.PerformLayout();
-            // 
-            // showFakeCursorGroupBox
-            // 
-            this.showFakeCursorGroupBox.SuspendLayout();
-            this.showFakeCursorGroupBox.Controls.Add(this.showFakeCursorCheckBox);
-            this.showFakeCursorGroupBox.Dock = System.Windows.Forms.DockStyle.Top;
-            this.showFakeCursorGroupBox.Location = new System.Drawing.Point(4, 160);
-            this.showFakeCursorGroupBox.Name = "showFakeCursorGroupBox";
-            this.showFakeCursorGroupBox.Size = new System.Drawing.Size(734, 60);
-            this.showFakeCursorGroupBox.TabIndex = 4;
-            this.showFakeCursorGroupBox.TabStop = false;
-            this.showFakeCursorGroupBox.Text = "Cursor Duplication";
-            this.showFakeCursorCheckBox.AutoSize = true;
-            this.showFakeCursorCheckBox.Checked = global::TTMulti.Properties.Settings.Default.showFakeCursor;
-            this.showFakeCursorCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "showFakeCursor", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.showFakeCursorCheckBox.Location = new System.Drawing.Point(7, 22);
-            this.showFakeCursorCheckBox.Name = "showFakeCursorCheckBox";
-            this.showFakeCursorCheckBox.Size = new System.Drawing.Size(500, 21);
-            this.showFakeCursorCheckBox.TabIndex = 0;
-            this.showFakeCursorCheckBox.Text = "Show cursor position on all active windows (duplicated cursor overlay)";
-            this.toolTip1.SetToolTip(this.showFakeCursorCheckBox, "When active, shows a ghost cursor on every controlled window at the equivalent relative position of your real cursor. Useful for seeing where your toons are aiming.");
-            this.showFakeCursorCheckBox.UseVisualStyleBackColor = true;
-            this.showFakeCursorGroupBox.ResumeLayout(false);
-            this.showFakeCursorGroupBox.PerformLayout();
-            // 
+            //
             // label7
             // 
             this.label7.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -999,8 +972,6 @@ namespace TTMulti.Forms
         private System.Windows.Forms.GroupBox groupBox6;
         private System.Windows.Forms.GroupBox releaseKeysOnWindowFocusGroupBox;
         private System.Windows.Forms.CheckBox releaseKeysOnWindowFocusCheckBox;
-        private System.Windows.Forms.GroupBox showFakeCursorGroupBox;
-        private System.Windows.Forms.CheckBox showFakeCursorCheckBox;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.GroupBox groupModeGroupBox;
         private KeyPicker groupModeHotkeyPicker;

@@ -152,6 +152,7 @@ namespace TTMulti
             return controllers.Where(c => c.HasWindow && Win32.GetWindowShowState(c.WindowHandle) != Win32.ShowWindowCommands.ShowMinimized);
         }
 
+
         /// <summary>
         /// Performs instant multi-click: sends a left click at the current cursor position to all active, non-minimized windows.
         /// Used by both keyboard hotkey and mouse-button trigger.

@@ -48,9 +48,6 @@ namespace TTMulti.Forms
         private static int _multiclickMouseHookButton = -1; // 0=Middle, 1=XButton1, 2=XButton2
         private static Win32.HookProc _multiclickMouseHookProc = null;
 
-        // Timer for updating duplicated cursor positions across all controlled windows
-        private System.Windows.Forms.Timer _fakeCursorTimer;
-
         internal MulticontrollerWnd()
         {
             InitializeComponent();
@@ -389,6 +386,7 @@ namespace TTMulti.Forms
                 RegisterLayoutPresetHotkeys();
             }
             RegisterMinimizeUnconnectedHotkey();
+
         }
         
         /// <summary>
@@ -666,28 +664,33 @@ namespace TTMulti.Forms
                 return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
             if (_multiclickMouseHookForm == null || _multiclickMouseHookButton < 0)
                 return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
+
             int msg = wParam.ToInt32();
-            bool match = false;
-            if (_multiclickMouseHookButton == 0 && msg == (int)Win32.WM.MBUTTONDOWN)
-                match = true;
-            if (_multiclickMouseHookButton >= 1 && msg == (int)Win32.WM.XBUTTONDOWN)
+            bool matched = false;
+            if (_multiclickMouseHookButton == 0)
+                matched = msg == (int)Win32.WM.MBUTTONDOWN;
+            else if (_multiclickMouseHookButton >= 1 && msg == (int)Win32.WM.XBUTTONDOWN)
             {
                 var hookStruct = (Win32.MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.MSLLHOOKSTRUCT));
                 int xButton = (int)(hookStruct.mouseData >> 16);
-                if ((_multiclickMouseHookButton == 1 && xButton == 1) || (_multiclickMouseHookButton == 2 && xButton == 2))
-                    match = true;
+                matched = (_multiclickMouseHookButton == 1 && xButton == 1) || (_multiclickMouseHookButton == 2 && xButton == 2);
             }
-            if (!match)
-                return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
-            Keys mods = Control.ModifierKeys;
-            if ((mods & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None)
-                return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
-            _multiclickMouseHookForm.BeginInvoke(new Action(() =>
+
+            if (matched)
             {
-                if (_multiclickMouseHookForm != null && _multiclickMouseHookForm.controller != null)
-                    _multiclickMouseHookForm.controller.TriggerInstantMultiClick();
-            }));
-            return (IntPtr)1;
+                Keys mods = Control.ModifierKeys;
+                if ((mods & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None)
+                    return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
+
+                _multiclickMouseHookForm.BeginInvoke(new Action(() =>
+                {
+                    if (_multiclickMouseHookForm != null && _multiclickMouseHookForm.controller != null)
+                        _multiclickMouseHookForm.controller.TriggerInstantMultiClick();
+                }));
+                return (IntPtr)1; // consume
+            }
+
+            return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
         }
 
         private void MulticontrollerWnd_Load(object sender, EventArgs e)
@@ -760,10 +763,6 @@ namespace TTMulti.Forms
             // Set initial caption color
             UpdateCaptionColor();
 
-            // Timer to mirror cursor position across all active windows (~30 fps)
-            _fakeCursorTimer = new System.Windows.Forms.Timer { Interval = 33 };
-            _fakeCursorTimer.Tick += FakeCursorTimer_Tick;
-            _fakeCursorTimer.Start();
         }
         
         private void MulticontrollerWnd_Shown(object sender, EventArgs e)
@@ -1037,65 +1036,6 @@ namespace TTMulti.Forms
             foreach (var c in controller.AllControllersWithWindows)
                 c.Refresh();
             UpdateWindowStatus();
-        }
-
-        private void FakeCursorTimer_Tick(object sender, EventArgs e)
-        {
-            if (!Properties.Settings.Default.showFakeCursor || !controller.IsActive)
-            {
-                foreach (var c in controller.AllControllersWithWindows)
-                    c.UpdateFakeCursor(false, c.FakeCursorPosition);
-                return;
-            }
-
-            Point cursorPos = Control.MousePosition;
-
-            // Find which active visible window the cursor is currently inside.
-            // WindowClientAreaLocation and IsBorderVisible use cached values maintained
-            // by WindowWatcher — no Win32 API call needed here.
-            ToontownController sourceController = null;
-            Point relativePos = Point.Empty;
-            foreach (var c in controller.ActiveControllers)
-            {
-                if (!c.HasWindow || !c.IsBorderVisible) continue;
-                Point clientLoc = c.WindowClientAreaLocation;
-                Size clientSize = c.WindowSize;
-                if (clientSize.Width <= 0 || clientSize.Height <= 0) continue;
-                if (cursorPos.X >= clientLoc.X && cursorPos.X < clientLoc.X + clientSize.Width &&
-                    cursorPos.Y >= clientLoc.Y && cursorPos.Y < clientLoc.Y + clientSize.Height)
-                {
-                    sourceController = c;
-                    relativePos = new Point(cursorPos.X - clientLoc.X, cursorPos.Y - clientLoc.Y);
-                    break;
-                }
-            }
-
-            if (sourceController == null)
-            {
-                foreach (var c in controller.AllControllersWithWindows)
-                    c.UpdateFakeCursor(false, c.FakeCursorPosition);
-                return;
-            }
-
-            Size sourceSize = sourceController.WindowSize;
-            float relX = (float)relativePos.X / sourceSize.Width;
-            float relY = (float)relativePos.Y / sourceSize.Height;
-
-            foreach (var c in controller.ActiveControllers)
-            {
-                if (!c.HasWindow || !c.IsBorderVisible || c == sourceController)
-                {
-                    c.UpdateFakeCursor(false, c.FakeCursorPosition);
-                    continue;
-                }
-                Size size = c.WindowSize;
-                if (size.Width <= 0 || size.Height <= 0)
-                {
-                    c.UpdateFakeCursor(false, c.FakeCursorPosition);
-                    continue;
-                }
-                c.UpdateFakeCursor(true, new Point((int)(relX * size.Width), (int)(relY * size.Height)));
-            }
         }
 
         private void windowGroupsBtn_Click(object sender, EventArgs e)

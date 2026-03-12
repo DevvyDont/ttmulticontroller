@@ -668,6 +668,7 @@ namespace TTMulti.Properties {
             }
         }
         
+
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
@@ -704,18 +705,7 @@ namespace TTMulti.Properties {
             }
         }
         
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool showFakeCursor {
-            get {
-                return ((bool)(this["showFakeCursor"]));
-            }
-            set {
-                this["showFakeCursor"] = value;
-            }
-        }
-        
+
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
