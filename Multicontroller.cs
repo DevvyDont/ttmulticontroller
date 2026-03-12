@@ -178,9 +178,12 @@ namespace TTMulti
         /// a second TryActivate attempt that would fight with game-window focus.
         /// </para>
         /// </summary>
-        public void TriggerInstantMultiClick(bool activateIfInactive = true)
+        public void TriggerInstantMultiClick(bool activateIfInactive = true, Point? cursorOverride = null)
         {
-            Point cursorPos = System.Windows.Forms.Control.MousePosition;
+            // Use the cursor position captured at press time when provided — this prevents a
+            // click miss when the cursor drifts between press and release (or MC activation moves
+            // the cursor off the game window).
+            Point cursorPos = cursorOverride ?? System.Windows.Forms.Control.MousePosition;
             int relativeX = 0;
             int relativeY = 0;
             bool foundCursorWindow = false;
@@ -213,7 +216,8 @@ namespace TTMulti
             {
                 ShouldActivate?.Invoke(this, EventArgs.Empty);
                 CurrentMode = MulticontrollerMode.MirrorAll;
-                System.Threading.Thread.Sleep(50);
+                // No sleep needed — TryActivate now uses AttachThreadInput for an instant focus
+                // steal, so clicks via PostMessage reach game windows without any delay.
             }
 
             IEnumerable<ToontownController> toClick = WhereNotMinimized(ActiveControllers);

@@ -49,6 +49,8 @@ namespace TTMulti.Forms
         private static Win32.HookProc _multiclickMouseHookProc = null;
         // True when mouse button was pressed and we are waiting for release to fire (trigger-on-release mode)
         private static bool _multiclickButtonHeld = false;
+        // Cursor position captured at mouse-button press time (used on release)
+        private static Point _multiclickButtonCapturedCursor;
 
         // Low-level keyboard hook for multi-click "trigger on release" mode
         private static IntPtr _multiclickKeyboardHookHandle = IntPtr.Zero;
@@ -57,6 +59,9 @@ namespace TTMulti.Forms
         private static Win32.HookProc _multiclickKeyboardHookProc = null;
         // True when the key was pressed and we are waiting for release to fire
         private static bool _multiclickKeyHeld = false;
+        // Cursor position captured at key-press time (used on release so cursor movement between
+        // press and release — or MC activation — cannot cause foundCursorWindow = false)
+        private static Point _multiclickKeyCapturedCursor;
 
         internal MulticontrollerWnd()
         {
@@ -675,6 +680,19 @@ namespace TTMulti.Forms
             _multiclickMouseHookButton = -1;
         }
 
+        /// <summary>
+        /// Fires TriggerInstantMultiClick on the UI thread using the cursor position that was
+        /// captured at press time.  Using the press-time position means the click always lands
+        /// where the user aimed, regardless of cursor movement between press and release.
+        /// activateIfInactive: true lets TriggerInstantMultiClick handle activation itself so the
+        /// click fires correctly even if released before EnsureActiveForMultiClick has completed.
+        /// Thread.Sleep has been removed from TriggerInstantMultiClick so this is non-blocking.
+        /// </summary>
+        private void FireMulticlickOnRelease(System.Drawing.Point capturedCursor)
+        {
+            controller?.TriggerInstantMultiClick(activateIfInactive: true, cursorOverride: capturedCursor);
+        }
+
         private void InstallMulticlickKeyboardHook(int keyCode)
         {
             if (_multiclickKeyboardHookHandle != IntPtr.Zero)
@@ -749,24 +767,22 @@ namespace TTMulti.Forms
                     }));
                 }
 
-                // Suppress the press (including auto-repeat) and arm the release.
+                // Capture cursor at press time so release always fires at the aimed position,
+                // even if the cursor moves or the MC activation shifts focus between press/release.
+                _multiclickKeyCapturedCursor = Control.MousePosition;
                 _multiclickKeyHeld = true;
                 return (IntPtr)1;
             }
 
             if (isUp && _multiclickKeyHeld)
             {
+                // Capture everything we need now — static fields may change before BeginInvoke runs.
+                Point cursor = _multiclickKeyCapturedCursor;
                 _multiclickKeyHeld = false;
-                var form = _multiclickKeyboardHookForm;
+                var form = _multiclickKeyboardHookForm; // captured reference; safe even if static is later nulled
                 if (form != null)
                 {
-                    form.BeginInvoke(new Action(() =>
-                    {
-                        // activateIfInactive: false — activation already happened on press via
-                        // EnsureActiveForMultiClick.  Skipping ShouldActivate here prevents a second
-                        // TryActivate call from fighting with whatever window the user is now in.
-                        _multiclickKeyboardHookForm?.controller?.TriggerInstantMultiClick(activateIfInactive: false);
-                    }));
+                    form.BeginInvoke(new Action(() => form.FireMulticlickOnRelease(cursor)));
                 }
                 return (IntPtr)1; // suppress the release too
             }
@@ -831,29 +847,34 @@ namespace TTMulti.Forms
                         }));
                     }
 
-                    // Suppress the press and wait for release to fire the multi-click.
+                    // Capture cursor at press time and arm the release.
+                    _multiclickButtonCapturedCursor = Control.MousePosition;
                     _multiclickButtonHeld = true;
                 }
                 else
                 {
-                    _multiclickMouseHookForm.BeginInvoke(new Action(() =>
+                    var hookForm = _multiclickMouseHookForm;
+                    if (hookForm != null)
                     {
-                        if (_multiclickMouseHookForm != null && _multiclickMouseHookForm.controller != null)
-                            _multiclickMouseHookForm.controller.TriggerInstantMultiClick();
-                    }));
+                        hookForm.BeginInvoke(new Action(() =>
+                        {
+                            hookForm.controller?.TriggerInstantMultiClick();
+                        }));
+                    }
                 }
                 return (IntPtr)1; // consume the press in both cases
             }
 
             if (isUp && _multiclickButtonHeld)
             {
+                // Capture everything now; static fields may change before BeginInvoke executes.
+                Point cursor = _multiclickButtonCapturedCursor;
                 _multiclickButtonHeld = false;
-                _multiclickMouseHookForm.BeginInvoke(new Action(() =>
+                var form = _multiclickMouseHookForm;
+                if (form != null)
                 {
-                    if (_multiclickMouseHookForm != null && _multiclickMouseHookForm.controller != null)
-                        // activateIfInactive: false — activation already happened on press.
-                        _multiclickMouseHookForm.controller.TriggerInstantMultiClick(activateIfInactive: false);
-                }));
+                    form.BeginInvoke(new Action(() => form.FireMulticlickOnRelease(cursor)));
+                }
                 return (IntPtr)1; // suppress the release too
             }
 
@@ -964,10 +985,13 @@ namespace TTMulti.Forms
 
         private void Controller_AllWindowsInactive(object sender, EventArgs e)
         {
-            // Clear any pending trigger-on-release state so a held key/button before alt-tab
-            // doesn't fire a phantom click when released.
-            _multiclickButtonHeld = false;
-            _multiclickKeyHeld = false;
+            // Preserve in-flight trigger-on-release state across the hotkey re-registration below.
+            // When this event fires because MC itself just activated (bringing itself to front takes
+            // focus from game windows), the user is still holding the key/button and expects the
+            // click to fire on release.  UnregisterHotkey / UninstallMulticlickKeyboardHook would
+            // clear the flags, so save and restore them.
+            bool savedKeyHeld    = _multiclickKeyHeld;
+            bool savedButtonHeld = _multiclickButtonHeld;
 
             // Unregister all hotkeys first
             UnregisterHotkey();
@@ -1019,6 +1043,11 @@ namespace TTMulti.Forms
                 RegisterLayoutPresetHotkeys();
             }
             RegisterMinimizeUnconnectedHotkey();
+
+            // Restore the in-flight trigger-on-release arm so a pending KEYUP/MOUSEUP
+            // (e.g. user holding the key while MC activation brought focus here) still fires.
+            _multiclickKeyHeld    = savedKeyHeld;
+            _multiclickButtonHeld = savedButtonHeld;
         }
 
         private void Controller_WindowActivated(object sender, EventArgs e)
