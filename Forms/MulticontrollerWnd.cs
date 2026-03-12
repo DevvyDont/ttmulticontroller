@@ -1413,9 +1413,21 @@ namespace TTMulti.Forms
             }
             
             // Instant Multi-Click (ID 1)
-            if (Properties.Settings.Default.replicateMouseKeyCode != 0 && Properties.Settings.Default.replicateMouseHotkeyGlobal)
+            if (Properties.Settings.Default.replicateMouseHotkeyGlobal)
             {
-                Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                if (Properties.Settings.Default.replicateMouseUseMouseButton)
+                {
+                    int btn = Properties.Settings.Default.replicateMouseMouseButton;
+                    if (btn >= 0 && btn <= 2)
+                        InstallMulticlickMouseHook(btn);
+                }
+                else if (Properties.Settings.Default.replicateMouseKeyCode != 0)
+                {
+                    if (Properties.Settings.Default.multiclickTriggerOnRelease)
+                        InstallMulticlickKeyboardHook(Properties.Settings.Default.replicateMouseKeyCode);
+                    else
+                        Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                }
             }
             
             // Zero Power Throw (ID 2)
