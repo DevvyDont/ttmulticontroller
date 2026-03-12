@@ -63,6 +63,9 @@ namespace TTMulti.Forms
         // press and release — or MC activation — cannot cause foundCursorWindow = false)
         private static Point _multiclickKeyCapturedCursor;
 
+        // Timer that updates fake-cursor positions on all game windows while the multiclick bind is held
+        private System.Windows.Forms.Timer _multiclickFakeCursorTimer;
+
         internal MulticontrollerWnd()
         {
             InitializeComponent();
@@ -690,7 +693,85 @@ namespace TTMulti.Forms
         /// </summary>
         private void FireMulticlickOnRelease(System.Drawing.Point capturedCursor)
         {
+            StopFakeCursors();
             controller?.TriggerInstantMultiClick(activateIfInactive: true, cursorOverride: capturedCursor);
+        }
+
+        /// <summary>
+        /// Marks all controllers as having an active trigger-release cursor and starts the update timer.
+        /// </summary>
+        private void StartFakeCursors()
+        {
+            if (controller == null) return;
+            foreach (var c in controller.AllControllersWithWindows)
+                c.IsTriggerReleaseCursorActive = true;
+            if (!_multiclickFakeCursorTimer.Enabled)
+                _multiclickFakeCursorTimer.Start();
+        }
+
+        /// <summary>
+        /// Stops the update timer, clears the active flag, and hides fake cursors on all controllers.
+        /// </summary>
+        private void StopFakeCursors()
+        {
+            _multiclickFakeCursorTimer?.Stop();
+            if (controller == null) return;
+            foreach (var c in controller.AllControllersWithWindows)
+            {
+                c.IsTriggerReleaseCursorActive = false;
+                c.ShowFakeCursor = false;
+            }
+        }
+
+        /// <summary>
+        /// Shows the fake cursor on every game window except the one the real cursor is over.
+        /// All windows receive the cursor at the SAME local (client-area-relative) position as the
+        /// hovered window — matching DevvyDont's approach where one position is broadcast to all.
+        /// </summary>
+        private void MulticlickFakeCursorTimer_Tick(object sender, EventArgs e)
+        {
+            if (!_multiclickKeyHeld && !_multiclickButtonHeld)
+            {
+                StopFakeCursors();
+                return;
+            }
+            if (controller == null) return;
+
+            Point screenCursor = Control.MousePosition;
+
+            // Phase 1: find which window the real cursor is over and its local position.
+            ToontownController hoveredController = null;
+            Point hoveredLocalPos = Point.Empty;
+            foreach (var c in controller.AllControllersWithWindows)
+            {
+                if (Win32.GetWindowShowState(c.WindowHandle) == Win32.ShowWindowCommands.ShowMinimized)
+                    continue;
+                Point loc = Win32.GetWindowClientAreaLocation(c.WindowHandle);
+                Size size = c.WindowSize;
+                if (screenCursor.X >= loc.X && screenCursor.X < loc.X + size.Width
+                    && screenCursor.Y >= loc.Y && screenCursor.Y < loc.Y + size.Height)
+                {
+                    hoveredController = c;
+                    hoveredLocalPos = new Point(screenCursor.X - loc.X, screenCursor.Y - loc.Y);
+                    break;
+                }
+            }
+
+            // Phase 2: broadcast that local position to every other window.
+            foreach (var c in controller.AllControllersWithWindows)
+            {
+                if (c == hoveredController
+                    || Win32.GetWindowShowState(c.WindowHandle) == Win32.ShowWindowCommands.ShowMinimized)
+                {
+                    c.ShowFakeCursor = false;
+                    continue;
+                }
+
+                if (hoveredController != null)
+                    c.UpdateFakeCursor(true, hoveredLocalPos);
+                else
+                    c.ShowFakeCursor = false; // cursor isn't over any game window
+            }
         }
 
         private void InstallMulticlickKeyboardHook(int keyCode)
@@ -771,6 +852,11 @@ namespace TTMulti.Forms
                 // even if the cursor moves or the MC activation shifts focus between press/release.
                 _multiclickKeyCapturedCursor = Control.MousePosition;
                 _multiclickKeyHeld = true;
+
+                // Start showing fake cursors on all game windows while key is held.
+                if (form != null)
+                    form.BeginInvoke(new Action(() => form.StartFakeCursors()));
+
                 return (IntPtr)1;
             }
 
@@ -850,6 +936,10 @@ namespace TTMulti.Forms
                     // Capture cursor at press time and arm the release.
                     _multiclickButtonCapturedCursor = Control.MousePosition;
                     _multiclickButtonHeld = true;
+
+                    // Start showing fake cursors on all game windows while button is held.
+                    var formRef = _multiclickMouseHookForm;
+                    formRef?.BeginInvoke(new Action(() => formRef.StartFakeCursors()));
                 }
                 else
                 {
@@ -884,6 +974,9 @@ namespace TTMulti.Forms
         private void MulticontrollerWnd_Load(object sender, EventArgs e)
         {
             controller = Multicontroller.Instance;
+
+            _multiclickFakeCursorTimer = new System.Windows.Forms.Timer { Interval = 16 };
+            _multiclickFakeCursorTimer.Tick += MulticlickFakeCursorTimer_Tick;
 
             controller.ModeChanged += Controller_ModeChanged;
             controller.GroupsChanged += Controller_GroupsChanged;
@@ -1070,6 +1163,9 @@ namespace TTMulti.Forms
                 activationThread.Abort();
             }
             catch { }
+
+            _multiclickFakeCursorTimer?.Stop();
+            _multiclickFakeCursorTimer?.Dispose();
             
             SaveWindowPosition();
         }

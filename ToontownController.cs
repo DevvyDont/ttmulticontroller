@@ -97,6 +97,12 @@ namespace TTMulti
         /// </summary>
         public bool IsBorderVisible => _borderWnd.Visible;
 
+        /// <summary>
+        /// Set true while the trigger-release multiclick key/button is held so that
+        /// Refresh() does not clear the fake cursor during activation events.
+        /// </summary>
+        internal bool IsTriggerReleaseCursorActive = false;
+
         public bool ShowFakeCursor
         {
             get => _borderWnd.ShowFakeCursor;
@@ -465,7 +471,8 @@ namespace TTMulti
                     Color captionColor = DarkenColor(borderColor, 0.75f);
                     Win32.SetWindowCaptionColor(WindowHandle, captionColor);
 
-                    _borderWnd.ShowFakeCursor = false;
+                    if (!IsTriggerReleaseCursorActive)
+                        _borderWnd.ShowFakeCursor = false;
                 }
                 else
                 {
@@ -548,7 +555,8 @@ namespace TTMulti
                 // Set border color
                 _borderWnd.BorderColor = borderColor;
 
-                _borderWnd.ShowFakeCursor = false;
+                if (!IsTriggerReleaseCursorActive)
+                    _borderWnd.ShowFakeCursor = false;
             }
 
             if (showMouseOverlayWindow)
