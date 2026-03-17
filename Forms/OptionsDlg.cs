@@ -291,7 +291,7 @@ namespace TTMulti.Forms
             {
                 Text = "Auto-Find Windows",
                 Location = new Point(10, 10),
-                Size = new Size(720, 255),
+                Size = new Size(720, 225),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
@@ -375,18 +375,6 @@ namespace TTMulti.Forms
                 Size = new Size(60, 20)
             };
             autoFindGroupBox.Controls.Add(autoFindShiftCheckBox);
-
-            // Auto-placement on Alt release (when exiting switching mode)
-            autoFindPlacementOnAltReleaseCheckBox = new CheckBox
-            {
-                Text = "Apply last used layout preset when releasing Alt (after switching/removing windows)",
-                Location = new Point(10, 225),
-                Size = new Size(690, 20),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                Checked = Properties.Settings.Default.autoFindPlacementOnAltRelease
-            };
-            autoFindPlacementOnAltReleaseCheckBox.DataBindings.Add(new Binding("Checked", Properties.Settings.Default, "autoFindPlacementOnAltRelease", true, DataSourceUpdateMode.OnPropertyChanged));
-            autoFindGroupBox.Controls.Add(autoFindPlacementOnAltReleaseCheckBox);
 
             // Add group box to tab
             autoFindTab.Controls.Add(autoFindGroupBox);
@@ -530,7 +518,7 @@ namespace TTMulti.Forms
                 Text = "Switching Mode Configuration",
                 Dock = DockStyle.Bottom,
                 Padding = new Padding(10),
-                Height = 300
+                Height = 330
             };
 
             // Enabled checkbox
@@ -639,6 +627,18 @@ namespace TTMulti.Forms
                 Size = new Size(120, 23)
             };
             switchingModeGroupBox.Controls.Add(switchingModeRemoveKeyPicker);
+
+            // Auto-placement on Alt release
+            autoFindPlacementOnAltReleaseCheckBox = new CheckBox
+            {
+                Text = "Apply last used layout preset when releasing Alt (after switching/removing windows)",
+                Location = new Point(10, 283),
+                Size = new Size(690, 20),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Checked = Properties.Settings.Default.autoFindPlacementOnAltRelease
+            };
+            autoFindPlacementOnAltReleaseCheckBox.DataBindings.Add(new Binding("Checked", Properties.Settings.Default, "autoFindPlacementOnAltRelease", true, DataSourceUpdateMode.OnPropertyChanged));
+            switchingModeGroupBox.Controls.Add(autoFindPlacementOnAltReleaseCheckBox);
 
             // Add group box to Controller Modes tab
             controllerModesTab.Controls.Add(switchingModeGroupBox);
