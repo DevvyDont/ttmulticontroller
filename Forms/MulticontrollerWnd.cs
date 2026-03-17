@@ -1333,19 +1333,21 @@ namespace TTMulti.Forms
 
         private void RightController_WindowHandleChanged(object sender, EventArgs e)
         {
-            if (controller.ControllerGroups.Count > 0 && 
-                controller.ControllerGroups[0].ControllerPairs.Count > 0)
+            int gi = controller.CurrentGroupIndex;
+            if (gi < controller.ControllerGroups.Count &&
+                controller.ControllerGroups[gi].ControllerPairs.Count > 0)
             {
-                leftToonCrosshair.SelectedWindowHandle = controller.ControllerGroups[0].ControllerPairs[0].LeftController.WindowHandle;
+                leftToonCrosshair.SelectedWindowHandle = controller.ControllerGroups[gi].ControllerPairs[0].LeftController.WindowHandle;
             }
         }
 
         private void LeftController_WindowHandleChanged(object sender, EventArgs e)
         {
-            if (controller.ControllerGroups.Count > 0 && 
-                controller.ControllerGroups[0].ControllerPairs.Count > 0)
+            int gi = controller.CurrentGroupIndex;
+            if (gi < controller.ControllerGroups.Count &&
+                controller.ControllerGroups[gi].ControllerPairs.Count > 0)
             {
-                rightToonCrosshair.SelectedWindowHandle = controller.ControllerGroups[0].ControllerPairs[0].RightController.WindowHandle;
+                rightToonCrosshair.SelectedWindowHandle = controller.ControllerGroups[gi].ControllerPairs[0].RightController.WindowHandle;
             }
         }
 
@@ -1607,19 +1609,21 @@ namespace TTMulti.Forms
 
         private void leftToonCrosshair_WindowSelected(object sender, IntPtr handle)
         {
-            if (controller.ControllerGroups.Count > 0 && 
-                controller.ControllerGroups[0].ControllerPairs.Count > 0)
+            int gi = controller.CurrentGroupIndex;
+            if (gi < controller.ControllerGroups.Count &&
+                controller.ControllerGroups[gi].ControllerPairs.Count > 0)
             {
-                controller.ControllerGroups[0].ControllerPairs[0].LeftController.WindowHandle = handle;
+                controller.ControllerGroups[gi].ControllerPairs[0].LeftController.WindowHandle = handle;
             }
         }
 
         private void rightToonCrosshair_WindowSelected(object sender, IntPtr handle)
         {
-            if (controller.ControllerGroups.Count > 0 && 
-                controller.ControllerGroups[0].ControllerPairs.Count > 0)
+            int gi = controller.CurrentGroupIndex;
+            if (gi < controller.ControllerGroups.Count &&
+                controller.ControllerGroups[gi].ControllerPairs.Count > 0)
             {
-                controller.ControllerGroups[0].ControllerPairs[0].RightController.WindowHandle = handle;
+                controller.ControllerGroups[gi].ControllerPairs[0].RightController.WindowHandle = handle;
             }
         }
 
