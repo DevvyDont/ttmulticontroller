@@ -378,6 +378,9 @@ namespace TTMulti
                 // never flashes at a stale location from the previous poll tick.
                 UpdateBorderPosition();
                 _borderWnd.Show();
+                // Re-apply position after Show() creates the HWND, because WinForms
+                // only forwards Location sets to SetWindowPos once the handle exists.
+                UpdateBorderPosition();
             }
             else if (!showBorderWindow && _borderWnd.Visible)
             {

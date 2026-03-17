@@ -38,6 +38,7 @@ namespace TTMulti.Forms
             this.ClientSize = new System.Drawing.Size(400, 400);
             this.DoubleBuffered = true;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Margin = new System.Windows.Forms.Padding(4);
             this.Name = "BorderWnd";
             this.ShowIcon = false;
