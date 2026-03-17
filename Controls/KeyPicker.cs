@@ -11,8 +11,8 @@ namespace TTMulti.Controls
 {
     public partial class KeyPicker : UserControl
     {
-        private const string DISABLED_FOCUSED_TEXT = "Press a key...";
-        private const string DISABLED_UNFOCUSED_TEXT = "None - Click to Set";
+        private const string DISABLED_FOCUSED_TEXT = "Disabled - press a key";
+        private const string DISABLED_UNFOCUSED_TEXT = "Disabled - click to set";
 
         public delegate void KeyChosenHandler(KeyPicker chooser, Keys keyChosen);
 
@@ -22,12 +22,13 @@ namespace TTMulti.Controls
 
         bool isActive = false;
 
-        /// <summary>
-        /// When true (default), appends " - Right-Click to Clear" to the displayed key name.
-        /// Set to false for pickers where that hint is not appropriate (e.g. key-mapping tables).
-        /// </summary>
-        [Browsable(true)]
-        public bool ShowClearHint { get; set; } = true;
+        private readonly ToolTip _toolTip = new ToolTip
+        {
+            ShowAlways = true,
+            InitialDelay = 300,
+            AutoPopDelay = 5000,
+            ReshowDelay = 300
+        };
 
         static Dictionary<Keys, string> alternateKeyTexts = new Dictionary<Keys, string>()
         {
@@ -123,13 +124,7 @@ namespace TTMulti.Controls
             textBox1.Text = _key.ToString();
             textBox1.Enter += TextBox1_Enter;
             textBox1.Leave += TextBox1_Leave;
-            // Suppress the built-in Cut/Copy/Paste context menu so right-click can clear the bind.
-            textBox1.ContextMenuStrip = new ContextMenuStrip();
-
-            var toolTip = new ToolTip { AutoPopDelay = 8000, InitialDelay = 400, ReshowDelay = 200 };
-            const string tipText = "Click to set a key bind. Right-click to clear.";
-            textBox1.MouseEnter += (s, e) => toolTip.Show(tipText, textBox1, 0, textBox1.Height + 2);
-            textBox1.MouseLeave += (s, e) => toolTip.Hide(textBox1);
+            _toolTip.SetToolTip(textBox1, "Double-click to clear");
         }
 
         private void TextBox1_Leave(object sender, EventArgs e)
@@ -183,13 +178,5 @@ namespace TTMulti.Controls
             keyDown(Keys.None);
         }
 
-        private void textBox1_MouseClick(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Right)
-            {
-                keyDown(Keys.None);
-                textBox1.Focus();
-            }
-        }
     }
 }

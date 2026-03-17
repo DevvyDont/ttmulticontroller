@@ -119,7 +119,7 @@
   </resheader>
   <data name="label6.Text" xml:space="preserve">
     <value>Notes: 
-Double Click or Right Click a control to disable it. 
+Double Click a control to disable it. 
 You can set controls for the left and right toons to the same keys. 
 The number keys (0-9) and number pad are reserved for switching groups when there is more than one group.</value>
   </data>

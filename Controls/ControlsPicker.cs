@@ -82,9 +82,9 @@ namespace TTMulti.Controls
                 label = textbox;
             }
 
-            KeyPicker bindingKeyPicker = new KeyPicker() { Dock = DockStyle.Top, ChosenKey = keyMapping.Key, ShowClearHint = false },
-                leftToonKeyPicker = new KeyPicker() { Dock = DockStyle.Top, ChosenKey = keyMapping.LeftToonKey, ShowClearHint = false },
-                rightToonKeyPicker = new KeyPicker() { Dock = DockStyle.Top, ChosenKey = keyMapping.RightToonKey, ShowClearHint = false };
+            KeyPicker bindingKeyPicker = new KeyPicker() { Dock = DockStyle.Top, ChosenKey = keyMapping.Key },
+                leftToonKeyPicker = new KeyPicker() { Dock = DockStyle.Top, ChosenKey = keyMapping.LeftToonKey },
+                rightToonKeyPicker = new KeyPicker() { Dock = DockStyle.Top, ChosenKey = keyMapping.RightToonKey };
             Button removeBtn = new Button() { Text = "Remove", AutoSize = true,  Enabled = !keyMapping.ReadOnly };
 
             bindingKeyPicker.KeyChosen += KeyChooser_KeyChosen;

@@ -41,7 +41,6 @@ namespace TTMulti.Controls
             this.textBox1.TabIndex = 2;
             this.textBox1.DoubleClick += new System.EventHandler(this.textBox1_DoubleClick);
             this.textBox1.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBox1_KeyDown);
-            this.textBox1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.textBox1_MouseClick);
             // 
             // KeyPicker
             // 
