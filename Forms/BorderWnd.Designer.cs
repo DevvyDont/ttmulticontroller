@@ -1,4 +1,4 @@
-﻿namespace TTMulti.Forms
+namespace TTMulti.Forms
 {
     partial class BorderWnd
     {
@@ -32,8 +32,8 @@
             // 
             // BorderWnd
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.BackColor = Colors.ChromaKey;
             this.ClientSize = new System.Drawing.Size(400, 400);
             this.DoubleBuffered = true;

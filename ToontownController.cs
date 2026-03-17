@@ -374,6 +374,9 @@ namespace TTMulti
 
             if (showBorderWindow && !_borderWnd.Visible)
             {
+                // Sync position from Win32 before making the border visible so it
+                // never flashes at a stale location from the previous poll tick.
+                UpdateBorderPosition();
                 _borderWnd.Show();
             }
             else if (!showBorderWindow && _borderWnd.Visible)
