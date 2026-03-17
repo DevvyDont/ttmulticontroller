@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -12,7 +12,7 @@ namespace TTMulti.Controls
     public partial class KeyPicker : UserControl
     {
         private const string DISABLED_FOCUSED_TEXT = "Disabled - press a key";
-        private const string DISABLED_UNFOCUSED_TEXT = "Disabled - click here";
+        private const string DISABLED_UNFOCUSED_TEXT = "Disabled - click to set, right-click to clear";
 
         public delegate void KeyChosenHandler(KeyPicker chooser, Keys keyChosen);
 
@@ -116,6 +116,8 @@ namespace TTMulti.Controls
             textBox1.Text = _key.ToString();
             textBox1.Enter += TextBox1_Enter;
             textBox1.Leave += TextBox1_Leave;
+            // Suppress the built-in Cut/Copy/Paste context menu so right-click can clear the bind.
+            textBox1.ContextMenuStrip = new ContextMenuStrip();
         }
 
         private void TextBox1_Leave(object sender, EventArgs e)
@@ -167,6 +169,15 @@ namespace TTMulti.Controls
         private void textBox1_DoubleClick(object sender, EventArgs e)
         {
             keyDown(Keys.None);
+        }
+
+        private void textBox1_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                keyDown(Keys.None);
+                textBox1.Focus();
+            }
         }
     }
 }

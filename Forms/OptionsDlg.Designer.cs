@@ -57,7 +57,6 @@ namespace TTMulti.Forms
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.multiclickGroupBox = new System.Windows.Forms.GroupBox();
-            this.multiclickTriggerOnReleaseCheckBox = new System.Windows.Forms.CheckBox();
             this.zeroPowerThrowGroupBox = new System.Windows.Forms.GroupBox();
             this.label4 = new System.Windows.Forms.Label();
             this.multiclickLabel = new System.Windows.Forms.Label();
@@ -447,7 +446,6 @@ namespace TTMulti.Forms
             // 
             // multiclickGroupBox
             // 
-            this.multiclickGroupBox.Controls.Add(this.multiclickTriggerOnReleaseCheckBox);
             this.multiclickGroupBox.Controls.Add(this.multiclickOrderCombo);
             this.multiclickGroupBox.Controls.Add(this.multiclickOrderLabel);
             this.multiclickGroupBox.Controls.Add(this.multiclickUseMouseCheckBox);
@@ -460,7 +458,7 @@ namespace TTMulti.Forms
             this.multiclickGroupBox.Margin = new System.Windows.Forms.Padding(4);
             this.multiclickGroupBox.Name = "multiclickGroupBox";
             this.multiclickGroupBox.Padding = new System.Windows.Forms.Padding(4);
-            this.multiclickGroupBox.Size = new System.Drawing.Size(726, 148);
+            this.multiclickGroupBox.Size = new System.Drawing.Size(726, 120);
             this.multiclickGroupBox.TabIndex = 14;
             this.multiclickGroupBox.TabStop = false;
             this.multiclickGroupBox.Text = "Instant Multi-Click Hotkey:";
@@ -507,19 +505,6 @@ namespace TTMulti.Forms
             this.multiclickOrderCombo.Size = new System.Drawing.Size(250, 24);
             this.multiclickOrderCombo.TabIndex = 19;
             this.multiclickOrderCombo.SelectedIndexChanged += new System.EventHandler(this.multiclickOrderCombo_SelectedIndexChanged);
-            //
-            // multiclickTriggerOnReleaseCheckBox
-            //
-            this.multiclickTriggerOnReleaseCheckBox.AutoSize = true;
-            this.multiclickTriggerOnReleaseCheckBox.Checked = global::TTMulti.Properties.Settings.Default.multiclickTriggerOnRelease;
-            this.multiclickTriggerOnReleaseCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "multiclickTriggerOnRelease", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.multiclickTriggerOnReleaseCheckBox.Location = new System.Drawing.Point(9, 120);
-            this.multiclickTriggerOnReleaseCheckBox.Name = "multiclickTriggerOnReleaseCheckBox";
-            this.multiclickTriggerOnReleaseCheckBox.Size = new System.Drawing.Size(400, 21);
-            this.multiclickTriggerOnReleaseCheckBox.TabIndex = 20;
-            this.multiclickTriggerOnReleaseCheckBox.Text = "Trigger on release (fire when key/button is released, not pressed)";
-            this.toolTip1.SetToolTip(this.multiclickTriggerOnReleaseCheckBox, "When checked, the multi-click fires when you release the hotkey instead of when you press it.");
-            this.multiclickTriggerOnReleaseCheckBox.UseVisualStyleBackColor = true;
             //
             // zeroPowerThrowLabel
             // 
@@ -978,7 +963,6 @@ namespace TTMulti.Forms
         private System.Windows.Forms.ComboBox multiclickMouseButtonCombo;
         private System.Windows.Forms.Label multiclickOrderLabel;
         private System.Windows.Forms.ComboBox multiclickOrderCombo;
-        private System.Windows.Forms.CheckBox multiclickTriggerOnReleaseCheckBox;
         private System.Windows.Forms.CheckBox zeroPowerHotkeyGlobalCheckBox;
         private System.Windows.Forms.CheckBox zeroPowerThrowEnableFocusModeCheckBox;
         private TTMulti.Controls.KeyPicker zeroPowerThrowKeyPicker;

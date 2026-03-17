@@ -106,6 +106,11 @@ namespace TTMulti
         public event EventHandler SettingChanged;
 
         /// <summary>
+        /// Controlled Multi-Click Mode was entered or exited
+        /// </summary>
+        public event EventHandler ControlledMulticlickModeChanged;
+
+        /// <summary>
         /// The multicontroller should be actived (due to a hotkey)
         /// </summary>
         public event EventHandler ShouldActivate;
@@ -154,21 +159,6 @@ namespace TTMulti
 
 
         /// <summary>
-        /// Activates the multicontroller and switches to MirrorAll mode if not already active.
-        /// Called on key/button press for global trigger-on-release binds so the MC is ready by
-        /// the time the release fires the click.  Activation uses the same ShouldActivate path as
-        /// TriggerInstantMultiClick, but without sending any clicks.
-        /// </summary>
-        public void EnsureActiveForMultiClick()
-        {
-            if (!IsActive)
-            {
-                ShouldActivate?.Invoke(this, EventArgs.Empty);
-                CurrentMode = MulticontrollerMode.MirrorAll;
-            }
-        }
-
-        /// <summary>
         /// Performs instant multi-click: sends a left click at the current cursor position to all active, non-minimized windows.
         /// Used by both keyboard hotkey and mouse-button trigger.
         /// <para>
@@ -178,7 +168,7 @@ namespace TTMulti
         /// a second TryActivate attempt that would fight with game-window focus.
         /// </para>
         /// </summary>
-        public void TriggerInstantMultiClick(bool activateIfInactive = true, Point? cursorOverride = null)
+        public void TriggerInstantMultiClick(bool activateIfInactive = true, Point? cursorOverride = null, bool separateLR = false)
         {
             // Use the cursor position captured at press time when provided — this prevents a
             // click miss when the cursor drifts between press and release (or MC activation moves
@@ -188,6 +178,7 @@ namespace TTMulti
             int relativeY = 0;
             bool foundCursorWindow = false;
 
+            ControllerType? cursorSide = null;
             foreach (ToontownController c in WhereNotMinimized(AllControllersWithWindows))
             {
                 Point clientAreaLocation = Win32.GetWindowClientAreaLocation(c.WindowHandle);
@@ -197,6 +188,7 @@ namespace TTMulti
                 {
                     relativeX = cursorPos.X - clientAreaLocation.X;
                     relativeY = cursorPos.Y - clientAreaLocation.Y;
+                    cursorSide = c.Type;
                     foundCursorWindow = true;
                     break;
                 }
@@ -207,7 +199,8 @@ namespace TTMulti
                 if (!IsActive && activateIfInactive)
                 {
                     ShouldActivate?.Invoke(this, EventArgs.Empty);
-                    CurrentMode = MulticontrollerMode.MirrorAll;
+                    if (!_isControlledMulticlickMode)
+                        CurrentMode = MulticontrollerMode.MirrorAll;
                 }
                 return;
             }
@@ -215,12 +208,20 @@ namespace TTMulti
             if (!IsActive && activateIfInactive)
             {
                 ShouldActivate?.Invoke(this, EventArgs.Empty);
-                CurrentMode = MulticontrollerMode.MirrorAll;
-                // No sleep needed — TryActivate now uses AttachThreadInput for an instant focus
-                // steal, so clicks via PostMessage reach game windows without any delay.
+                // Only force mirror mode for standalone instant multi-click.
+                // When called from CMC mode the user's existing mode must be preserved.
+                if (!_isControlledMulticlickMode)
+                    CurrentMode = MulticontrollerMode.MirrorAll;
             }
 
             IEnumerable<ToontownController> toClick = WhereNotMinimized(ActiveControllers);
+            // separateLR only makes sense in modes with distinct Left/Right controllers.
+            // In mirror mode every controller mirrors the same input, so send to all.
+            bool isMultiMode = CurrentMode == MulticontrollerMode.Group
+                            || CurrentMode == MulticontrollerMode.AllGroup
+                            || CurrentMode == MulticontrollerMode.Pair;
+            if (separateLR && cursorSide.HasValue && isMultiMode)
+                toClick = toClick.Where(c => c.Type == cursorSide.Value);
             if (Properties.Settings.Default.multiclickOrder == 1)
             {
                 // Window order: sort by position (top to bottom, left to right) for consistent "Toon 1, 2, 3, 4" style order
@@ -236,6 +237,31 @@ namespace TTMulti
                     IntPtr clickLParam = (IntPtr)((relativeY << 16) | (relativeX & 0xFFFF));
                     c.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
                     c.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends a left-click at the current cursor position to only the game window under the cursor.
+        /// Used by Controlled Multi-Click Mode's "regular click" bind.
+        /// </summary>
+        public void TriggerRegularClick()
+        {
+            Point cursorPos = System.Windows.Forms.Control.MousePosition;
+
+            foreach (ToontownController c in WhereNotMinimized(AllControllersWithWindows))
+            {
+                Point clientAreaLocation = Win32.GetWindowClientAreaLocation(c.WindowHandle);
+                Size clientAreaSize = c.WindowSize;
+                if (cursorPos.X >= clientAreaLocation.X && cursorPos.X < clientAreaLocation.X + clientAreaSize.Width &&
+                    cursorPos.Y >= clientAreaLocation.Y && cursorPos.Y < clientAreaLocation.Y + clientAreaSize.Height)
+                {
+                    int relativeX = cursorPos.X - clientAreaLocation.X;
+                    int relativeY = cursorPos.Y - clientAreaLocation.Y;
+                    IntPtr clickLParam = (IntPtr)((relativeY << 16) | (relativeX & 0xFFFF));
+                    c.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
+                    c.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
+                    break;
                 }
             }
         }
@@ -477,6 +503,7 @@ namespace TTMulti
         }
 
         MulticontrollerMode _currentMode = MulticontrollerMode.Group;
+        MulticontrollerMode _modeBeforeAllGroup = MulticontrollerMode.Group;
 
         internal MulticontrollerMode CurrentMode
         {
@@ -516,6 +543,42 @@ namespace TTMulti
         internal bool IsFocusedController(ToontownController controller)
         {
             return CurrentMode == MulticontrollerMode.Focused && _focusedController == controller;
+        }
+
+        // Controlled Multi-Click Mode state
+        private bool _isControlledMulticlickMode = false;
+
+        /// <summary>
+        /// Whether Controlled Multi-Click Mode is currently active.
+        /// In this mode, fake cursors are shown on all game windows and the configured click
+        /// key sends a left-click to every non-minimized window.
+        /// </summary>
+        internal bool IsControlledMulticlickMode => _isControlledMulticlickMode;
+
+        /// <summary>
+        /// Enters Controlled Multi-Click Mode.
+        /// </summary>
+        public void EnterControlledMulticlickMode()
+        {
+            if (_isControlledMulticlickMode) return;
+            _isControlledMulticlickMode = true;
+            // Bring the multicontroller window to the foreground so hotkeys work and
+            // the mode state is correct before any click fires.
+            if (!IsActive)
+                ShouldActivate?.Invoke(this, EventArgs.Empty);
+            ControlledMulticlickModeChanged?.Invoke(this, EventArgs.Empty);
+            SettingChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Exits Controlled Multi-Click Mode.
+        /// </summary>
+        public void ExitControlledMulticlickMode()
+        {
+            if (!_isControlledMulticlickMode) return;
+            _isControlledMulticlickMode = false;
+            ControlledMulticlickModeChanged?.Invoke(this, EventArgs.Empty);
+            SettingChanged?.Invoke(this, EventArgs.Empty);
         }
 
         // Window switching mode state
@@ -1029,7 +1092,16 @@ namespace TTMulti
             }
             else if (keysPressed == (Keys)Properties.Settings.Default.controlAllGroupsKeyCode)
             {
-                CurrentMode = MulticontrollerMode.AllGroup;
+                if (msg == Win32.WM.HOTKEY || msg == Win32.WM.KEYDOWN)
+                {
+                    if (CurrentMode == MulticontrollerMode.AllGroup)
+                        CurrentMode = _modeBeforeAllGroup;
+                    else
+                    {
+                        _modeBeforeAllGroup = CurrentMode;
+                        CurrentMode = MulticontrollerMode.AllGroup;
+                    }
+                }
             }
             else if (keysPressed == (Keys)Properties.Settings.Default.replicateMouseKeyCode
                 && Properties.Settings.Default.replicateMouseKeyCode != 0)
@@ -1052,13 +1124,6 @@ namespace TTMulti
                         return true; // consume without firing; hook fires on release
                     TriggerInstantMultiClick();
                     return true;
-                }
-            }
-            else if (keysPressed == (Keys)Properties.Settings.Default.controlAllGroupsKeyCode)
-            {
-                if (msg == Win32.WM.KEYDOWN && CurrentMode != MulticontrollerMode.AllGroup)
-                {
-                    CurrentMode = MulticontrollerMode.AllGroup;
                 }
             }
             else if (keysPressed == Keys.Menu) // Alt key

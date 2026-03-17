@@ -366,8 +366,9 @@ namespace TTMulti
         {
             bool isActiveController = multicontroller.ActiveControllers.Contains(this);
 
-            bool showBorderWindow = multicontroller.IsActive && HasWindow
-                && (isActiveController || multicontroller.ShowAllBorders || multicontroller.IsSwitchingMode);
+            bool showBorderWindow = HasWindow && (
+                (multicontroller.IsActive && (isActiveController || multicontroller.ShowAllBorders || multicontroller.IsSwitchingMode))
+                || (multicontroller.IsControlledMulticlickMode && isActiveController));
 
             bool showMouseOverlayWindow = false; // Feature removed
 
@@ -398,9 +399,8 @@ namespace TTMulti
                     _borderWnd.WindowState = FormWindowState.Normal;
 
                     Color borderColor;
-                    
-                    // Check if switching mode is active (handled by Multicontroller)
-                    // If in switching mode, use switching mode colors
+
+                    // Switching mode colors (handled by Multicontroller)
                     if (_borderWnd.SwitchingMode)
                     {
                         // Priority: Selected > Marked for Removal > Switched > Normal
@@ -471,7 +471,8 @@ namespace TTMulti
                     Color captionColor = DarkenColor(borderColor, 0.75f);
                     Win32.SetWindowCaptionColor(WindowHandle, captionColor);
 
-                    if (!IsTriggerReleaseCursorActive)
+                    // Don't clear fake cursors while trigger-release is active or in controlled MC mode
+                    if (!IsTriggerReleaseCursorActive && !multicontroller.IsControlledMulticlickMode)
                         _borderWnd.ShowFakeCursor = false;
                 }
                 else
@@ -487,8 +488,7 @@ namespace TTMulti
 
                 Color borderColor;
                 
-                // Check if switching mode is active (handled by Multicontroller)
-                // If in switching mode, use switching mode colors
+                // Switching mode colors (handled by Multicontroller)
                 if (_borderWnd.SwitchingMode)
                 {
                     // Priority: Selected > Marked for Removal > Switched > Normal
@@ -555,7 +555,8 @@ namespace TTMulti
                 // Set border color
                 _borderWnd.BorderColor = borderColor;
 
-                if (!IsTriggerReleaseCursorActive)
+                // Don't clear fake cursors while trigger-release is active or in controlled MC mode
+                if (!IsTriggerReleaseCursorActive && !multicontroller.IsControlledMulticlickMode)
                     _borderWnd.ShowFakeCursor = false;
             }
 

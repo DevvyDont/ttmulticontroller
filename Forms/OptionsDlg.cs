@@ -187,6 +187,22 @@ namespace TTMulti.Forms
         // Caption color control
         private CheckBox enableCaptionColorCheckBox;
 
+        // Controlled Multi-Click controls
+        private CheckBox controlledMcEnabledCheckBox;
+        private Controls.KeyPicker controlledMcActivateKeyPicker;
+        private RadioButton controlledMcToggleRadio;
+        private RadioButton controlledMcHoldRadio;
+        private CheckBox controlledMcActivateGlobalCheckBox;
+        private Controls.KeyPicker controlledMcClickKeyPicker;
+        private CheckBox controlledMcClickUseMouseCheckBox;
+        private ComboBox controlledMcClickMouseCombo;
+        private Controls.KeyPicker controlledMcRegularClickKeyPicker;
+        private CheckBox controlledMcRegularClickUseMouseCheckBox;
+        private ComboBox controlledMcRegularClickMouseCombo;
+        private CheckBox controlledMcRegularClickTriggerOnReleaseCheckBox;
+        private CheckBox controlledMcClickTriggerOnReleaseCheckBox;
+        private CheckBox controlledMcClickSeparateLRCheckBox;
+
         // Minimize unconnected Toontown windows controls
         private GroupBox minimizeUnconnectedGroupBox;
         private KeyPicker minimizeUnconnectedKeyPicker;
@@ -222,6 +238,9 @@ namespace TTMulti.Forms
             CreateMinimizeUnconnectedUI();
             LoadMinimizeUnconnectedSettings();
 
+            CreateControlledMulticlickTab();
+            LoadControlledMulticlickSettings();
+
             LoadMulticlickMouseSettings();
             
             // Load Keep-Alive checkbox state
@@ -237,6 +256,7 @@ namespace TTMulti.Forms
             // Reorder tabs to match desired order
             var tabPage6 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Multi-Mode Key Bindings");
             var tabPage3 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Hotkeys");
+            var multiClickTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Multi-Click");
             var tabPage1 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Controller Modes");
             var autoFindTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Auto-Find");
             var layoutPresetsTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Layout Presets");
@@ -246,6 +266,7 @@ namespace TTMulti.Forms
             tabControl1.TabPages.Clear();
             if (tabPage6 != null) tabControl1.TabPages.Add(tabPage6);
             if (tabPage3 != null) tabControl1.TabPages.Add(tabPage3);
+            if (multiClickTab != null) tabControl1.TabPages.Add(multiClickTab);
             if (tabPage1 != null) tabControl1.TabPages.Add(tabPage1);
             if (autoFindTab != null) tabControl1.TabPages.Add(autoFindTab);
             if (layoutPresetsTab != null) tabControl1.TabPages.Add(layoutPresetsTab);
@@ -1108,6 +1129,7 @@ namespace TTMulti.Forms
             };
             focusedUnfocusedResetBtn.Click += (s, e) => { focusedModeUnfocusedColorButton.BackColor = Color.FromArgb(95, 134, 207); };
             colorsGroupBox.Controls.Add(focusedUnfocusedResetBtn);
+
         }
 
         private void ShowColorDialog(Button colorButton, Color defaultColor)
@@ -1336,6 +1358,286 @@ namespace TTMulti.Forms
             Properties.Settings.Default.minimizeUnconnectedHotkeyGlobal = minimizeUnconnectedHotkeyGlobalCheckBox.Checked;
         }
 
+        private void CreateControlledMulticlickTab()
+        {
+            var tab = new TabPage("Multi-Click");
+            tab.AutoScroll = true;
+            tab.Padding = new Padding(10);
+            tabControl1.TabPages.Add(tab);
+
+            var gb = new GroupBox
+            {
+                Text = "Controlled Multi-Click Mode",
+                Location = new Point(10, 10),
+                Size = new Size(720, 390),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            tab.Controls.Add(gb);
+
+            var descLabel = new Label
+            {
+                Text = "Toggle into a mode where all windows display fake cursors showing your cursor position. " +
+                       "Use the binds below to click one window or all windows at once.",
+                Location = new Point(10, 22),
+                Size = new Size(700, 36),
+                AutoSize = false
+            };
+            gb.Controls.Add(descLabel);
+
+            controlledMcEnabledCheckBox = new CheckBox
+            {
+                Text = "Enable Controlled Multi-Click Mode",
+                Location = new Point(10, 65),
+                Size = new Size(300, 21)
+            };
+            gb.Controls.Add(controlledMcEnabledCheckBox);
+
+            // ── Activation Key ──────────────────────────────────────────────────────
+            var activateTitleLabel = new Label
+            {
+                Text = "Activation Key:",
+                Location = new Point(10, 98),
+                Size = new Size(300, 17),
+                Font = new Font(gb.Font, FontStyle.Bold)
+            };
+            gb.Controls.Add(activateTitleLabel);
+
+            var activateDescLabel = new Label
+            {
+                Text = "Press this key to enter or exit Controlled Multi-Click Mode.",
+                Location = new Point(10, 117),
+                Size = new Size(500, 17)
+            };
+            gb.Controls.Add(activateDescLabel);
+
+            var activateKeyLabel = new Label { Text = "Key:", Location = new Point(10, 142), Size = new Size(30, 20) };
+            gb.Controls.Add(activateKeyLabel);
+
+            controlledMcActivateKeyPicker = new Controls.KeyPicker
+            {
+                Location = new Point(45, 140),
+                Size = new Size(120, 23)
+            };
+            gb.Controls.Add(controlledMcActivateKeyPicker);
+
+            controlledMcToggleRadio = new RadioButton
+            {
+                Text = "Toggle",
+                Location = new Point(180, 141),
+                Size = new Size(70, 21),
+                Checked = true
+            };
+            gb.Controls.Add(controlledMcToggleRadio);
+
+            controlledMcHoldRadio = new RadioButton
+            {
+                Text = "Hold",
+                Location = new Point(260, 141),
+                Size = new Size(60, 21)
+            };
+            gb.Controls.Add(controlledMcHoldRadio);
+
+            controlledMcActivateGlobalCheckBox = new CheckBox
+            {
+                Text = "Global (works when game window is focused)",
+                Location = new Point(340, 141),
+                Size = new Size(300, 21)
+            };
+            gb.Controls.Add(controlledMcActivateGlobalCheckBox);
+
+            // ── Regular Click ───────────────────────────────────────────────────────
+            var regularClickTitleLabel = new Label
+            {
+                Text = "Regular Click:",
+                Location = new Point(10, 178),
+                Size = new Size(300, 17),
+                Font = new Font(gb.Font, FontStyle.Bold)
+            };
+            gb.Controls.Add(regularClickTitleLabel);
+
+            var regularClickDescLabel = new Label
+            {
+                Text = "Sends a left-click to the game window currently under your cursor.",
+                Location = new Point(10, 197),
+                Size = new Size(600, 17)
+            };
+            gb.Controls.Add(regularClickDescLabel);
+
+            controlledMcRegularClickUseMouseCheckBox = new CheckBox
+            {
+                Text = "Use mouse button",
+                Location = new Point(10, 220),
+                Size = new Size(140, 21)
+            };
+            controlledMcRegularClickUseMouseCheckBox.CheckedChanged += (s, e) => UpdateControlledMcRegularClickVisibility();
+            gb.Controls.Add(controlledMcRegularClickUseMouseCheckBox);
+
+            controlledMcRegularClickMouseCombo = new ComboBox
+            {
+                Location = new Point(155, 218),
+                Size = new Size(155, 24),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Visible = false
+            };
+            controlledMcRegularClickMouseCombo.Items.AddRange(new object[] { "Left click", "Right click", "Middle (wheel click)", "Mouse 4", "Mouse 5" });
+            gb.Controls.Add(controlledMcRegularClickMouseCombo);
+
+            var regularKeyLabel = new Label { Text = "Key:", Location = new Point(155, 220), Size = new Size(30, 20) };
+            gb.Controls.Add(regularKeyLabel);
+
+            controlledMcRegularClickKeyPicker = new Controls.KeyPicker
+            {
+                Location = new Point(190, 218),
+                Size = new Size(120, 23)
+            };
+            gb.Controls.Add(controlledMcRegularClickKeyPicker);
+
+            controlledMcRegularClickTriggerOnReleaseCheckBox = new CheckBox
+            {
+                Text = "Trigger on release",
+                Location = new Point(325, 220),
+                Size = new Size(140, 21)
+            };
+            gb.Controls.Add(controlledMcRegularClickTriggerOnReleaseCheckBox);
+
+            // ── Multi-Click ─────────────────────────────────────────────────────────
+            var clickTitleLabel = new Label
+            {
+                Text = "Multi-Click:",
+                Location = new Point(10, 258),
+                Size = new Size(300, 17),
+                Font = new Font(gb.Font, FontStyle.Bold)
+            };
+            gb.Controls.Add(clickTitleLabel);
+
+            var clickDescLabel = new Label
+            {
+                Text = "Sends a left-click to all game windows at once.",
+                Location = new Point(10, 277),
+                Size = new Size(600, 17)
+            };
+            gb.Controls.Add(clickDescLabel);
+
+            controlledMcClickUseMouseCheckBox = new CheckBox
+            {
+                Text = "Use mouse button",
+                Location = new Point(10, 300),
+                Size = new Size(140, 21)
+            };
+            controlledMcClickUseMouseCheckBox.CheckedChanged += (s, e) => UpdateControlledMcClickVisibility();
+            gb.Controls.Add(controlledMcClickUseMouseCheckBox);
+
+            controlledMcClickMouseCombo = new ComboBox
+            {
+                Location = new Point(155, 298),
+                Size = new Size(155, 24),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Visible = false
+            };
+            controlledMcClickMouseCombo.Items.AddRange(new object[] { "Left click", "Right click", "Middle (wheel click)", "Mouse 4", "Mouse 5" });
+            gb.Controls.Add(controlledMcClickMouseCombo);
+
+            var clickKeyLabel = new Label { Text = "Key:", Location = new Point(155, 300), Size = new Size(30, 20) };
+            gb.Controls.Add(clickKeyLabel);
+
+            controlledMcClickKeyPicker = new Controls.KeyPicker
+            {
+                Location = new Point(190, 298),
+                Size = new Size(120, 23)
+            };
+            gb.Controls.Add(controlledMcClickKeyPicker);
+
+            controlledMcClickTriggerOnReleaseCheckBox = new CheckBox
+            {
+                Text = "Trigger on release",
+                Location = new Point(325, 300),
+                Size = new Size(140, 21)
+            };
+            gb.Controls.Add(controlledMcClickTriggerOnReleaseCheckBox);
+
+            controlledMcClickSeparateLRCheckBox = new CheckBox
+            {
+                Text = "Same side only (L or R)",
+                Location = new Point(475, 300),
+                Size = new Size(180, 21)
+            };
+            toolTip1.SetToolTip(controlledMcClickSeparateLRCheckBox,
+                "When enabled: if the cursor is on a Left controller, only Left controllers receive the click (and vice versa for Right).");
+            gb.Controls.Add(controlledMcClickSeparateLRCheckBox);
+        }
+
+        private void UpdateControlledMcClickVisibility()
+        {
+            if (controlledMcClickUseMouseCheckBox == null) return;
+            bool useMouse = controlledMcClickUseMouseCheckBox.Checked;
+            controlledMcClickMouseCombo.Visible = useMouse;
+            controlledMcClickKeyPicker.Visible = !useMouse;
+        }
+
+        private void UpdateControlledMcRegularClickVisibility()
+        {
+            if (controlledMcRegularClickUseMouseCheckBox == null) return;
+            bool useMouse = controlledMcRegularClickUseMouseCheckBox.Checked;
+            controlledMcRegularClickMouseCombo.Visible = useMouse;
+            controlledMcRegularClickKeyPicker.Visible = !useMouse;
+        }
+
+        private void LoadControlledMulticlickSettings()
+        {
+            if (controlledMcEnabledCheckBox == null)
+                return;
+
+            controlledMcEnabledCheckBox.Checked = Properties.Settings.Default.controlledMulticlickEnabled;
+            controlledMcActivateKeyPicker.ChosenKey = (Keys)Properties.Settings.Default.controlledMulticlickActivateKeyCode;
+
+            bool hold = Properties.Settings.Default.controlledMulticlickActivateHold;
+            controlledMcHoldRadio.Checked = hold;
+            controlledMcToggleRadio.Checked = !hold;
+
+            controlledMcActivateGlobalCheckBox.Checked = Properties.Settings.Default.controlledMulticlickActivateGlobal;
+
+            // Regular click
+            bool regularUseMouse = Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton;
+            controlledMcRegularClickUseMouseCheckBox.Checked = regularUseMouse;
+            controlledMcRegularClickMouseCombo.SelectedIndex = Math.Max(0, Math.Min(4, Properties.Settings.Default.controlledMulticlickRegularClickMouseButton));
+            controlledMcRegularClickKeyPicker.ChosenKey = (Keys)Properties.Settings.Default.controlledMulticlickRegularClickKeyCode;
+            controlledMcRegularClickTriggerOnReleaseCheckBox.Checked = Properties.Settings.Default.controlledMulticlickRegularClickTriggerOnRelease;
+            UpdateControlledMcRegularClickVisibility();
+
+            // Multi-click
+            bool clickUseMouse = Properties.Settings.Default.controlledMulticlickClickUseMouseButton;
+            controlledMcClickUseMouseCheckBox.Checked = clickUseMouse;
+            controlledMcClickMouseCombo.SelectedIndex = Math.Max(0, Math.Min(4, Properties.Settings.Default.controlledMulticlickClickMouseButton));
+            controlledMcClickKeyPicker.ChosenKey = (Keys)Properties.Settings.Default.controlledMulticlickClickKeyCode;
+            controlledMcClickTriggerOnReleaseCheckBox.Checked = Properties.Settings.Default.controlledMulticlickClickTriggerOnRelease;
+            controlledMcClickSeparateLRCheckBox.Checked = Properties.Settings.Default.controlledMulticlickClickSeparateLR;
+            UpdateControlledMcClickVisibility();
+        }
+
+        private void SaveControlledMulticlickSettings()
+        {
+            if (controlledMcEnabledCheckBox == null)
+                return;
+
+            Properties.Settings.Default.controlledMulticlickEnabled = controlledMcEnabledCheckBox.Checked;
+            Properties.Settings.Default.controlledMulticlickActivateKeyCode = (int)controlledMcActivateKeyPicker.ChosenKey;
+            Properties.Settings.Default.controlledMulticlickActivateHold = controlledMcHoldRadio.Checked;
+            Properties.Settings.Default.controlledMulticlickActivateGlobal = controlledMcActivateGlobalCheckBox.Checked;
+
+            // Regular click
+            Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton = controlledMcRegularClickUseMouseCheckBox.Checked;
+            Properties.Settings.Default.controlledMulticlickRegularClickMouseButton = controlledMcRegularClickMouseCombo.SelectedIndex >= 0 ? controlledMcRegularClickMouseCombo.SelectedIndex : 0;
+            Properties.Settings.Default.controlledMulticlickRegularClickKeyCode = (int)controlledMcRegularClickKeyPicker.ChosenKey;
+            Properties.Settings.Default.controlledMulticlickRegularClickTriggerOnRelease = controlledMcRegularClickTriggerOnReleaseCheckBox.Checked;
+
+            // Multi-click
+            Properties.Settings.Default.controlledMulticlickClickUseMouseButton = controlledMcClickUseMouseCheckBox.Checked;
+            Properties.Settings.Default.controlledMulticlickClickMouseButton = controlledMcClickMouseCombo.SelectedIndex >= 0 ? controlledMcClickMouseCombo.SelectedIndex : 0;
+            Properties.Settings.Default.controlledMulticlickClickKeyCode = (int)controlledMcClickKeyPicker.ChosenKey;
+            Properties.Settings.Default.controlledMulticlickClickTriggerOnRelease = controlledMcClickTriggerOnReleaseCheckBox.Checked;
+            Properties.Settings.Default.controlledMulticlickClickSeparateLR = controlledMcClickSeparateLRCheckBox.Checked;
+        }
+
         private void LoadMulticlickMouseSettings()
         {
             if (multiclickUseMouseCheckBox == null)
@@ -1424,7 +1726,10 @@ namespace TTMulti.Forms
 
             // Save minimize unconnected settings
             SaveMinimizeUnconnectedSettings();
-            
+
+            // Save controlled multi-click settings
+            SaveControlledMulticlickSettings();
+
             Properties.Settings.Default.Save();
             DialogResult = DialogResult.OK;
             this.Close();

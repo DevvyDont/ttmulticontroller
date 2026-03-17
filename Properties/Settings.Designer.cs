@@ -921,5 +921,161 @@ namespace TTMulti.Properties {
                 this["minimizeUnconnectedHotkeyGlobal"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool controlledMulticlickEnabled {
+            get {
+                return ((bool)(this["controlledMulticlickEnabled"]));
+            }
+            set {
+                this["controlledMulticlickEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int controlledMulticlickActivateKeyCode {
+            get {
+                return ((int)(this["controlledMulticlickActivateKeyCode"]));
+            }
+            set {
+                this["controlledMulticlickActivateKeyCode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool controlledMulticlickActivateHold {
+            get {
+                return ((bool)(this["controlledMulticlickActivateHold"]));
+            }
+            set {
+                this["controlledMulticlickActivateHold"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool controlledMulticlickActivateGlobal {
+            get {
+                return ((bool)(this["controlledMulticlickActivateGlobal"]));
+            }
+            set {
+                this["controlledMulticlickActivateGlobal"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int controlledMulticlickClickKeyCode {
+            get {
+                return ((int)(this["controlledMulticlickClickKeyCode"]));
+            }
+            set {
+                this["controlledMulticlickClickKeyCode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool controlledMulticlickClickSeparateLR {
+            get {
+                return ((bool)(this["controlledMulticlickClickSeparateLR"]));
+            }
+            set {
+                this["controlledMulticlickClickSeparateLR"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool controlledMulticlickClickTriggerOnRelease {
+            get {
+                return ((bool)(this["controlledMulticlickClickTriggerOnRelease"]));
+            }
+            set {
+                this["controlledMulticlickClickTriggerOnRelease"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool controlledMulticlickRegularClickTriggerOnRelease {
+            get {
+                return ((bool)(this["controlledMulticlickRegularClickTriggerOnRelease"]));
+            }
+            set {
+                this["controlledMulticlickRegularClickTriggerOnRelease"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool controlledMulticlickClickUseMouseButton {
+            get {
+                return ((bool)(this["controlledMulticlickClickUseMouseButton"]));
+            }
+            set {
+                this["controlledMulticlickClickUseMouseButton"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int controlledMulticlickClickMouseButton {
+            get {
+                return ((int)(this["controlledMulticlickClickMouseButton"]));
+            }
+            set {
+                this["controlledMulticlickClickMouseButton"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int controlledMulticlickRegularClickKeyCode {
+            get {
+                return ((int)(this["controlledMulticlickRegularClickKeyCode"]));
+            }
+            set {
+                this["controlledMulticlickRegularClickKeyCode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool controlledMulticlickRegularClickUseMouseButton {
+            get {
+                return ((bool)(this["controlledMulticlickRegularClickUseMouseButton"]));
+            }
+            set {
+                this["controlledMulticlickRegularClickUseMouseButton"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int controlledMulticlickRegularClickMouseButton {
+            get {
+                return ((int)(this["controlledMulticlickRegularClickMouseButton"]));
+            }
+            set {
+                this["controlledMulticlickRegularClickMouseButton"] = value;
+            }
+        }
     }
 }
