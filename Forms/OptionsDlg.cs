@@ -282,6 +282,7 @@ namespace TTMulti.Forms
             var autoFindTab = new TabPage("Auto-Find");
             autoFindTab.AutoScroll = true;
             autoFindTab.Padding = new Padding(10);
+            autoFindTab.UseVisualStyleBackColor = true;
             
             // Add the tab to the tab control
             tabControl1.TabPages.Add(autoFindTab);
@@ -385,6 +386,7 @@ namespace TTMulti.Forms
             var tab = new TabPage("Layout Presets");
             tab.AutoScroll = true;
             tab.Padding = new Padding(10);
+            tab.UseVisualStyleBackColor = true;
             tabControl1.TabPages.Add(tab);
 
             var groupBox = new GroupBox
@@ -730,6 +732,7 @@ namespace TTMulti.Forms
             colorsTabPage = new TabPage("Colors");
             colorsTabPage.AutoScroll = true;
             colorsTabPage.Padding = new Padding(10);
+            colorsTabPage.UseVisualStyleBackColor = true;
             
             // Add the tab to the tab control
             tabControl1.TabPages.Add(colorsTabPage);
@@ -1362,15 +1365,15 @@ namespace TTMulti.Forms
         {
             var tab = new TabPage("Multi-Click");
             tab.AutoScroll = true;
-            tab.Padding = new Padding(10);
+            tab.Padding = new Padding(3);
+            tab.UseVisualStyleBackColor = true;
             tabControl1.TabPages.Add(tab);
 
             var gb = new GroupBox
             {
                 Text = "Controlled Multi-Click Mode",
-                Location = new Point(10, 10),
-                Size = new Size(720, 390),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                Dock = DockStyle.Top,
+                Height = 385
             };
             tab.Controls.Add(gb);
 
@@ -1379,7 +1382,7 @@ namespace TTMulti.Forms
                 Text = "Toggle into a mode where all windows display fake cursors showing your cursor position. " +
                        "Use the binds below to click one window or all windows at once.",
                 Location = new Point(10, 22),
-                Size = new Size(700, 36),
+                Size = new Size(450, 36),
                 AutoSize = false
             };
             gb.Controls.Add(descLabel);
@@ -1410,6 +1413,7 @@ namespace TTMulti.Forms
             };
             gb.Controls.Add(activateDescLabel);
 
+            // Row 1: Key [picker]  ○ Toggle  ● Hold
             var activateKeyLabel = new Label { Text = "Key:", Location = new Point(10, 142), Size = new Size(30, 20) };
             gb.Controls.Add(activateKeyLabel);
 
@@ -1437,11 +1441,12 @@ namespace TTMulti.Forms
             };
             gb.Controls.Add(controlledMcHoldRadio);
 
+            // Row 2: Global checkbox on its own line so it never clips
             controlledMcActivateGlobalCheckBox = new CheckBox
             {
                 Text = "Global (works when game window is focused)",
-                Location = new Point(340, 141),
-                Size = new Size(300, 21)
+                Location = new Point(10, 167),
+                Size = new Size(400, 21)
             };
             gb.Controls.Add(controlledMcActivateGlobalCheckBox);
 
@@ -1449,7 +1454,7 @@ namespace TTMulti.Forms
             var regularClickTitleLabel = new Label
             {
                 Text = "Regular Click:",
-                Location = new Point(10, 178),
+                Location = new Point(10, 203),
                 Size = new Size(300, 17),
                 Font = new Font(gb.Font, FontStyle.Bold)
             };
@@ -1458,7 +1463,7 @@ namespace TTMulti.Forms
             var regularClickDescLabel = new Label
             {
                 Text = "Sends a left-click to the game window currently under your cursor.",
-                Location = new Point(10, 197),
+                Location = new Point(10, 222),
                 Size = new Size(600, 17)
             };
             gb.Controls.Add(regularClickDescLabel);
@@ -1466,7 +1471,7 @@ namespace TTMulti.Forms
             controlledMcRegularClickUseMouseCheckBox = new CheckBox
             {
                 Text = "Use mouse button",
-                Location = new Point(10, 220),
+                Location = new Point(10, 245),
                 Size = new Size(140, 21)
             };
             controlledMcRegularClickUseMouseCheckBox.CheckedChanged += (s, e) => UpdateControlledMcRegularClickVisibility();
@@ -1474,7 +1479,7 @@ namespace TTMulti.Forms
 
             controlledMcRegularClickMouseCombo = new ComboBox
             {
-                Location = new Point(155, 218),
+                Location = new Point(155, 243),
                 Size = new Size(155, 24),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Visible = false
@@ -1482,12 +1487,12 @@ namespace TTMulti.Forms
             controlledMcRegularClickMouseCombo.Items.AddRange(new object[] { "Left click", "Right click", "Middle (wheel click)", "Mouse 4", "Mouse 5" });
             gb.Controls.Add(controlledMcRegularClickMouseCombo);
 
-            var regularKeyLabel = new Label { Text = "Key:", Location = new Point(155, 220), Size = new Size(30, 20) };
+            var regularKeyLabel = new Label { Text = "Key:", Location = new Point(155, 245), Size = new Size(30, 20) };
             gb.Controls.Add(regularKeyLabel);
 
             controlledMcRegularClickKeyPicker = new Controls.KeyPicker
             {
-                Location = new Point(190, 218),
+                Location = new Point(190, 243),
                 Size = new Size(120, 23)
             };
             gb.Controls.Add(controlledMcRegularClickKeyPicker);
@@ -1495,7 +1500,7 @@ namespace TTMulti.Forms
             controlledMcRegularClickTriggerOnReleaseCheckBox = new CheckBox
             {
                 Text = "Trigger on release",
-                Location = new Point(325, 220),
+                Location = new Point(325, 245),
                 Size = new Size(140, 21)
             };
             gb.Controls.Add(controlledMcRegularClickTriggerOnReleaseCheckBox);
@@ -1504,7 +1509,7 @@ namespace TTMulti.Forms
             var clickTitleLabel = new Label
             {
                 Text = "Multi-Click:",
-                Location = new Point(10, 258),
+                Location = new Point(10, 283),
                 Size = new Size(300, 17),
                 Font = new Font(gb.Font, FontStyle.Bold)
             };
@@ -1513,7 +1518,7 @@ namespace TTMulti.Forms
             var clickDescLabel = new Label
             {
                 Text = "Sends a left-click to all game windows at once.",
-                Location = new Point(10, 277),
+                Location = new Point(10, 302),
                 Size = new Size(600, 17)
             };
             gb.Controls.Add(clickDescLabel);
@@ -1521,7 +1526,7 @@ namespace TTMulti.Forms
             controlledMcClickUseMouseCheckBox = new CheckBox
             {
                 Text = "Use mouse button",
-                Location = new Point(10, 300),
+                Location = new Point(10, 325),
                 Size = new Size(140, 21)
             };
             controlledMcClickUseMouseCheckBox.CheckedChanged += (s, e) => UpdateControlledMcClickVisibility();
@@ -1529,7 +1534,7 @@ namespace TTMulti.Forms
 
             controlledMcClickMouseCombo = new ComboBox
             {
-                Location = new Point(155, 298),
+                Location = new Point(155, 323),
                 Size = new Size(155, 24),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Visible = false
@@ -1537,12 +1542,12 @@ namespace TTMulti.Forms
             controlledMcClickMouseCombo.Items.AddRange(new object[] { "Left click", "Right click", "Middle (wheel click)", "Mouse 4", "Mouse 5" });
             gb.Controls.Add(controlledMcClickMouseCombo);
 
-            var clickKeyLabel = new Label { Text = "Key:", Location = new Point(155, 300), Size = new Size(30, 20) };
+            var clickKeyLabel = new Label { Text = "Key:", Location = new Point(155, 325), Size = new Size(30, 20) };
             gb.Controls.Add(clickKeyLabel);
 
             controlledMcClickKeyPicker = new Controls.KeyPicker
             {
-                Location = new Point(190, 298),
+                Location = new Point(190, 323),
                 Size = new Size(120, 23)
             };
             gb.Controls.Add(controlledMcClickKeyPicker);
@@ -1550,7 +1555,7 @@ namespace TTMulti.Forms
             controlledMcClickTriggerOnReleaseCheckBox = new CheckBox
             {
                 Text = "Trigger on release",
-                Location = new Point(325, 300),
+                Location = new Point(325, 325),
                 Size = new Size(140, 21)
             };
             gb.Controls.Add(controlledMcClickTriggerOnReleaseCheckBox);
@@ -1558,8 +1563,8 @@ namespace TTMulti.Forms
             controlledMcClickSeparateLRCheckBox = new CheckBox
             {
                 Text = "Same side only (L or R)",
-                Location = new Point(475, 300),
-                Size = new Size(180, 21)
+                Location = new Point(10, 351),
+                Size = new Size(185, 21)
             };
             toolTip1.SetToolTip(controlledMcClickSeparateLRCheckBox,
                 "When enabled: if the cursor is on a Left controller, only Left controllers receive the click (and vice versa for Right).");
