@@ -1716,13 +1716,16 @@ namespace TTMulti
                 if (binding.RightToonKey != Keys.None) allMovementKeys.Add(binding.RightToonKey);
             }
 
+            // lParam for WM_KEYUP: bit 31 = transition state (1 = releasing), bit 30 = previous state (1 = was down), repeat count = 1.
+            // Sending lParam=0 incorrectly signals a key-down transition (bit 31=0), which causes chat boxes to interpret it as a keypress.
+            IntPtr keyUpLParam = (IntPtr)unchecked((int)0xC0000001u);
+
             foreach (ToontownController c in controllers)
             {
                 if (c == null || !c.HasWindow) continue;
                 foreach (Keys k in allMovementKeys)
                 {
-                    c.PostMessage(Win32.WM.KEYUP, (IntPtr)k, IntPtr.Zero);
-                    c.PostMessage(Win32.WM.SYSKEYUP, (IntPtr)k, IntPtr.Zero);
+                    c.PostMessage(Win32.WM.KEYUP, (IntPtr)k, keyUpLParam);
                 }
             }
         }
