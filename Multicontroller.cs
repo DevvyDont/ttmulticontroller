@@ -199,7 +199,7 @@ namespace TTMulti
                 if (!IsActive && activateIfInactive)
                 {
                     ShouldActivate?.Invoke(this, EventArgs.Empty);
-                    if (!_isControlledMulticlickMode)
+                    if (!_isControlledMulticlickMode && !_modeLockEngaged)
                         CurrentMode = MulticontrollerMode.MirrorAll;
                 }
                 return;
@@ -210,7 +210,7 @@ namespace TTMulti
                 ShouldActivate?.Invoke(this, EventArgs.Empty);
                 // Only force mirror mode for standalone instant multi-click.
                 // When called from CMC mode the user's existing mode must be preserved.
-                if (!_isControlledMulticlickMode)
+                if (!_isControlledMulticlickMode && !_modeLockEngaged)
                     CurrentMode = MulticontrollerMode.MirrorAll;
             }
 
@@ -543,6 +543,66 @@ namespace TTMulti
         internal bool IsFocusedController(ToontownController controller)
         {
             return CurrentMode == MulticontrollerMode.Focused && _focusedController == controller;
+        }
+
+        private bool _modeLockEngaged;
+
+        /// <summary>
+        /// When true, mode-changing hotkeys (mode cycle, group/mirror/all-group, group number keys, etc.) are ignored.
+        /// Toggled via <see cref="ToggleModeLock"/> or the registered mode-lock hotkey.
+        /// </summary>
+        internal bool IsModeLockEngaged => _modeLockEngaged;
+
+        internal void ToggleModeLock()
+        {
+            _modeLockEngaged = !_modeLockEngaged;
+            SettingChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// When mode lock is on, consume keys that would change <see cref="CurrentMode"/> or <see cref="CurrentGroupIndex"/>.
+        /// Does not handle the mode-lock toggle key (handled earlier). Returns true if the message was consumed.
+        /// </summary>
+        private bool TryConsumeModeLockBlockedInput(Win32.WM msg, Keys keysPressed)
+        {
+            if (!_modeLockEngaged)
+                return false;
+
+            bool isMetaDown = msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY || msg == Win32.WM.SYSKEYDOWN;
+
+            // Mode/activate key: allow activation when inactive; when active, block mode changes (unless modifiers pass through)
+            if (keysPressed == (Keys)Properties.Settings.Default.modeKeyCode)
+            {
+                if (!IsActive)
+                    return false;
+                Keys currentModifiers = System.Windows.Forms.Control.ModifierKeys;
+                if ((currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None)
+                    return false;
+                return true;
+            }
+
+            if (Properties.Settings.Default.groupModeKeyCode != 0
+                && keysPressed == (Keys)Properties.Settings.Default.groupModeKeyCode
+                && isMetaDown)
+                return true;
+            if (Properties.Settings.Default.mirrorModeKeyCode != 0
+                && keysPressed == (Keys)Properties.Settings.Default.mirrorModeKeyCode
+                && isMetaDown)
+                return true;
+            if (Properties.Settings.Default.controlAllGroupsKeyCode != 0
+                && keysPressed == (Keys)Properties.Settings.Default.controlAllGroupsKeyCode
+                && (msg == Win32.WM.HOTKEY || msg == Win32.WM.KEYDOWN))
+                return true;
+
+            if (CurrentMode == MulticontrollerMode.Group
+                && !_switchingMode
+                && ControllerGroups.Count > 1
+                && (keysPressed >= Keys.D0 && keysPressed <= Keys.D9
+                    || keysPressed >= Keys.NumPad0 && keysPressed <= Keys.NumPad9)
+                && isMetaDown)
+                return true;
+
+            return false;
         }
 
         // Controlled Multi-Click Mode state
@@ -1115,6 +1175,19 @@ namespace TTMulti
         /// <returns>True the input was handled as a meta input</returns>
         private bool ProcessMetaKeyboardInput(Win32.WM msg, Keys keysPressed)
         {
+            int modeLockToggleCode = Properties.Settings.Default.modeLockToggleKeyCode;
+            if (modeLockToggleCode != 0 && keysPressed == (Keys)modeLockToggleCode)
+            {
+                if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY)
+                {
+                    ToggleModeLock();
+                    return true;
+                }
+            }
+
+            if (TryConsumeModeLockBlockedInput(msg, keysPressed))
+                return true;
+
             if (keysPressed == (Keys)Properties.Settings.Default.modeKeyCode)
             {
                 if (msg == Win32.WM.HOTKEY || msg == Win32.WM.KEYDOWN)
@@ -1468,6 +1541,18 @@ namespace TTMulti
                 if (hasModifiers)
                 {
                     return false;
+                }
+
+                // Mode lock: inactive zero-power paths change MulticontrollerMode — block them entirely
+                if (_modeLockEngaged && !IsActive)
+                {
+                    if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY)
+                        return true;
+                    if (msg == Win32.WM.KEYUP)
+                    {
+                        zeroPowerThrowKeyPressed = false;
+                        return true;
+                    }
                 }
 
                 // Handle Zero Power Throw Hotkey
@@ -2015,8 +2100,9 @@ namespace TTMulti
                 controller.UpdateBorderPosition();
             }
 
-            // Automatically set to mirror mode
-            CurrentMode = MulticontrollerMode.MirrorAll;
+            // Automatically set to mirror mode (unless mode lock prevents mode changes)
+            if (!_modeLockEngaged)
+                CurrentMode = MulticontrollerMode.MirrorAll;
         }
 
         /// <summary>

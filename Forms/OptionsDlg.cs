@@ -211,6 +211,11 @@ namespace TTMulti.Forms
         private CheckBox minimizeUnconnectedShiftCheckBox;
         private CheckBox minimizeUnconnectedHotkeyGlobalCheckBox;
 
+        // Mode lock (Other tab)
+        private GroupBox modeLockGroupBox;
+        private KeyPicker modeLockToggleKeyPicker;
+        private CheckBox modeLockToggleHotkeyGlobalCheckBox;
+
         // Layout presets
         private LayoutPresetFile _layoutPresetFile;
         private ListBox _layoutPresetsListBox;
@@ -237,6 +242,9 @@ namespace TTMulti.Forms
 
             CreateMinimizeUnconnectedUI();
             LoadMinimizeUnconnectedSettings();
+
+            CreateModeLockUI();
+            LoadModeLockSettings();
 
             CreateControlledMulticlickTab();
             LoadControlledMulticlickSettings();
@@ -273,7 +281,40 @@ namespace TTMulti.Forms
             if (colorsTab != null) tabControl1.TabPages.Add(colorsTab);
             if (tabPage2 != null) tabControl1.TabPages.Add(tabPage2);
 
+            ConfigureOtherTabScrolling();
+
             loaded = true;
+        }
+
+        private void OptionsDlg_Shown(object sender, EventArgs e)
+        {
+            // Docked children do not extend scroll metrics until layout is complete; refresh after first display.
+            ConfigureOtherTabScrolling();
+        }
+
+        /// <summary>
+        /// Other tab stacks many docked group boxes; enable vertical scroll when content exceeds the tab height.
+        /// </summary>
+        private void ConfigureOtherTabScrolling()
+        {
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            if (otherTab == null)
+                return;
+
+            otherTab.AutoScroll = true;
+            otherTab.PerformLayout();
+
+            int maxBottom = otherTab.Padding.Top;
+            foreach (Control c in otherTab.Controls)
+            {
+                if (!c.Visible)
+                    continue;
+                maxBottom = Math.Max(maxBottom, c.Bottom);
+            }
+
+            int contentHeight = maxBottom + otherTab.Padding.Bottom + otherTab.AutoScrollMargin.Height;
+            contentHeight = Math.Max(contentHeight, otherTab.ClientSize.Height);
+            otherTab.AutoScrollMinSize = new Size(0, contentHeight);
         }
 
         private void CreateAutoFindTab()
@@ -1361,6 +1402,72 @@ namespace TTMulti.Forms
             Properties.Settings.Default.minimizeUnconnectedHotkeyGlobal = minimizeUnconnectedHotkeyGlobalCheckBox.Checked;
         }
 
+        private void CreateModeLockUI()
+        {
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            if (otherTab == null)
+                return;
+
+            modeLockGroupBox = new GroupBox
+            {
+                Text = "Mode lock",
+                Dock = DockStyle.Top,
+                Height = 88
+            };
+
+            var desc = new Label
+            {
+                Text = "While mode lock is on, hotkeys cannot change Multi vs Mirror vs All-group mode or the active group number. " +
+                       "Press the toggle key again to unlock. You can still change mode using the buttons on the main window.",
+                Location = new Point(10, 20),
+                Size = new Size(710, 36),
+                AutoSize = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            modeLockGroupBox.Controls.Add(desc);
+
+            var keyLabel = new Label { Text = "Toggle key:", Location = new Point(10, 58), Size = new Size(75, 20) };
+            modeLockGroupBox.Controls.Add(keyLabel);
+
+            modeLockToggleKeyPicker = new KeyPicker
+            {
+                Location = new Point(90, 56),
+                Size = new Size(120, 23)
+            };
+            modeLockGroupBox.Controls.Add(modeLockToggleKeyPicker);
+
+            modeLockToggleHotkeyGlobalCheckBox = new CheckBox
+            {
+                Text = "Global (works when a game window is focused)",
+                Location = new Point(220, 58),
+                Size = new Size(320, 20)
+            };
+            modeLockGroupBox.Controls.Add(modeLockToggleHotkeyGlobalCheckBox);
+
+            otherTab.Controls.Add(modeLockGroupBox);
+            if (minimizeUnconnectedGroupBox != null)
+            {
+                int idx = otherTab.Controls.GetChildIndex(minimizeUnconnectedGroupBox);
+                otherTab.Controls.SetChildIndex(modeLockGroupBox, idx);
+            }
+        }
+
+        private void LoadModeLockSettings()
+        {
+            if (modeLockToggleKeyPicker == null)
+                return;
+            modeLockToggleKeyPicker.ChosenKey = (Keys)Properties.Settings.Default.modeLockToggleKeyCode;
+            modeLockToggleHotkeyGlobalCheckBox.Checked = Properties.Settings.Default.modeLockToggleHotkeyGlobal;
+        }
+
+        private void SaveModeLockSettings()
+        {
+            if (modeLockToggleKeyPicker == null)
+                return;
+            Properties.Settings.Default.modeLockToggleKeyCode = (int)modeLockToggleKeyPicker.ChosenKey;
+            Properties.Settings.Default.modeLockToggleHotkeyGlobal = modeLockToggleHotkeyGlobalCheckBox.Checked;
+        }
+
         private void CreateControlledMulticlickTab()
         {
             var tab = new TabPage("Multi-Click");
@@ -1731,6 +1838,8 @@ namespace TTMulti.Forms
 
             // Save minimize unconnected settings
             SaveMinimizeUnconnectedSettings();
+
+            SaveModeLockSettings();
 
             // Save controlled multi-click settings
             SaveControlledMulticlickSettings();

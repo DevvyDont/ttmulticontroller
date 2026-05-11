@@ -89,6 +89,7 @@ namespace TTMulti.Forms
             this.zeroPowerThrowKeyPicker = new TTMulti.Controls.KeyPicker();
             this.keyPicker2 = new TTMulti.Controls.KeyPicker();
             this.modeHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
+            this.lockModeHotkeyCycleCheckBox = new System.Windows.Forms.CheckBox();
             this.defaultModeOnLaunchCheckBox = new System.Windows.Forms.CheckBox();
             this.multiclickHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
             this.zeroPowerHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
@@ -404,6 +405,7 @@ namespace TTMulti.Forms
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.lockModeHotkeyCycleCheckBox);
             this.groupBox1.Controls.Add(this.defaultModeOnLaunchCheckBox);
             this.groupBox1.Controls.Add(this.modeHotkeyGlobalCheckBox);
             this.groupBox1.Controls.Add(this.label4);
@@ -413,11 +415,11 @@ namespace TTMulti.Forms
             this.groupBox1.Margin = new System.Windows.Forms.Padding(4);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Padding = new System.Windows.Forms.Padding(4);
-            this.groupBox1.Size = new System.Drawing.Size(726, 118);
+            this.groupBox1.Size = new System.Drawing.Size(726, 145);
             this.groupBox1.TabIndex = 14;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Mode/Activate Hotkey:";
-            this.toolTip1.SetToolTip(this.groupBox1, "Activates the controller when a game window is focused, and switches between Multi and Mirror mode. Use the key picker below.");
+            this.toolTip1.SetToolTip(this.groupBox1, "Activates the controller when a game window is focused, and switches between Multi and Mirror mode (unless \"Lock mode hotkey\" is on). Use the key picker below.");
             // 
             // label4
             // 
@@ -548,6 +550,8 @@ namespace TTMulti.Forms
             this.tabPage2.TabIndex = 3;
             this.tabPage2.Text = "Other";
             this.tabPage2.UseVisualStyleBackColor = true;
+            this.tabPage2.AutoScroll = true;
+            this.tabPage2.AutoScrollMargin = new System.Drawing.Size(12, 12);
             // 
             // releaseKeysOnWindowFocusGroupBox
             // 
@@ -800,6 +804,21 @@ namespace TTMulti.Forms
             this.defaultModeOnLaunchCheckBox.Text = "Default to Mirror Mode on launch";
             this.defaultModeOnLaunchCheckBox.UseVisualStyleBackColor = true;
             // 
+            // lockModeHotkeyCycleCheckBox
+            // 
+            this.lockModeHotkeyCycleCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lockModeHotkeyCycleCheckBox.AutoSize = true;
+            this.lockModeHotkeyCycleCheckBox.Checked = global::TTMulti.Properties.Settings.Default.lockModeHotkeyCycle;
+            this.lockModeHotkeyCycleCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "lockModeHotkeyCycle", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.lockModeHotkeyCycleCheckBox.Location = new System.Drawing.Point(9, 111);
+            this.lockModeHotkeyCycleCheckBox.Name = "lockModeHotkeyCycleCheckBox";
+            this.lockModeHotkeyCycleCheckBox.Size = new System.Drawing.Size(600, 21);
+            this.lockModeHotkeyCycleCheckBox.TabIndex = 17;
+            this.lockModeHotkeyCycleCheckBox.Text = "Lock mode hotkey (no Multi/Mirror/All-group cycle while active — use dedicated hotkeys or the window)";
+            this.toolTip1.SetToolTip(this.lockModeHotkeyCycleCheckBox, "When enabled, pressing the Mode/Activate key while the multicontroller is active no longer cycles modes. It still brings the controller to the foreground when you are inactive. Use the Multi and Mirror mode hotkeys on this tab, or the mode radio buttons on the main window, to change mode.");
+            this.lockModeHotkeyCycleCheckBox.UseVisualStyleBackColor = true;
+            // 
             // multiclickKeyPicker
             // 
             this.multiclickKeyPicker.ChosenKey = System.Windows.Forms.Keys.LControlKey;
@@ -898,6 +917,7 @@ namespace TTMulti.Forms
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Options";
             this.Load += new System.EventHandler(this.OptionsDlg_Load);
+            this.Shown += new System.EventHandler(this.OptionsDlg_Shown);
             this.tabControl1.ResumeLayout(false);
             this.tabPage6.ResumeLayout(false);
             this.tableLayoutPanel3.ResumeLayout(false);
@@ -958,6 +978,7 @@ namespace TTMulti.Forms
         private System.Windows.Forms.Label zeroPowerThrowLabel;
         private System.Windows.Forms.CheckBox modeHotkeyGlobalCheckBox;
         private System.Windows.Forms.CheckBox defaultModeOnLaunchCheckBox;
+        private System.Windows.Forms.CheckBox lockModeHotkeyCycleCheckBox;
         private System.Windows.Forms.CheckBox multiclickHotkeyGlobalCheckBox;
         private System.Windows.Forms.CheckBox multiclickUseMouseCheckBox;
         private System.Windows.Forms.ComboBox multiclickMouseButtonCombo;

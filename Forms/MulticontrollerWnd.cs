@@ -146,6 +146,7 @@ namespace TTMulti.Forms
 
             leftStatusLbl.Text = "Group " + (controller.CurrentGroupIndex + 1) + " active.";
             rightStatusLbl.Text = controller.ControllerGroups.Count + " groups.";
+            UpdateModeLockVisuals();
 
             if (!statusStrip1.Visible && controller.ControllerGroups.Count > 1 && controller.CurrentMode != MulticontrollerMode.AllGroup)
             {
@@ -229,9 +230,9 @@ namespace TTMulti.Forms
                     ret = controller.ProcessInput(m.Msg, m.WParam, m.LParam);
                     break;
                 case Win32.WM.HOTKEY:
-                    // Check if this is auto-find (ID 7), minimize unconnected (ID 9), or layout preset (ID 10-25)
+                    // Check if this is auto-find (ID 7), minimize unconnected (ID 9), layout preset (ID 10-25), or mode lock (ID 3)
                     int hotkeyId = m.WParam.ToInt32();
-                    if (hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25))
+                    if (hotkeyId == 3 || hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25))
                     {
                         // Let these hotkeys pass through to WndProc
                         ret = false;
@@ -286,6 +287,11 @@ namespace TTMulti.Forms
                         Properties.Settings.Default.Save();
                         BeginInvoke(new Action(() => TryActivate()));
                     }
+                }
+                else if (hotkeyId == 3)
+                {
+                    controller.ToggleModeLock();
+                    UpdateModeLockVisuals();
                 }
                 else if (hotkeyId == 0)
                 {
@@ -499,15 +505,27 @@ namespace TTMulti.Forms
                     }
                 }
             }
+
+            // Mode lock toggle (ID 3)
+            Win32.UnregisterHotKey(this.Handle, 3);
+            if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
+            {
+                bool lockGlobal = Properties.Settings.Default.modeLockToggleHotkeyGlobal;
+                if (lockGlobal || controller.IsActive)
+                {
+                    Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
+                }
+            }
             // Note: ID 7 (auto-find), ID 10-25 (layout presets) handled separately
         }
 
         private void UnregisterHotkey()
         {
-            // Unregister mode/multiclick/zero power (IDs 0-2)
+            // Unregister mode/multiclick/zero power/mode-lock (IDs 0-3)
             Win32.UnregisterHotKey(this.Handle, 0);
             Win32.UnregisterHotKey(this.Handle, 1);
             Win32.UnregisterHotKey(this.Handle, 2);
+            Win32.UnregisterHotKey(this.Handle, 3);
             UninstallMulticlickMouseHook();
         }
 
@@ -1391,6 +1409,11 @@ namespace TTMulti.Forms
                 {
                     Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
                 }
+
+                if (Properties.Settings.Default.modeLockToggleKeyCode != 0 && Properties.Settings.Default.modeLockToggleHotkeyGlobal)
+                {
+                    Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
+                }
             }
             RegisterMinimizeUnconnectedHotkey();
         }
@@ -1472,6 +1495,13 @@ namespace TTMulti.Forms
             UpdateWindowStatus();
             UpdateCaptionColor();
         }
+
+        private void UpdateModeLockVisuals()
+        {
+            bool locked = controller.IsModeLockEngaged;
+            multiModeRadio.Enabled = !locked;
+            mirrorModeRadio.Enabled = !locked;
+        }
         
         private void Controller_ActiveChanged(object sender, EventArgs e)
         {
@@ -1481,6 +1511,7 @@ namespace TTMulti.Forms
         private void Controller_SettingChanged(object sender, EventArgs e)
         {
             UpdateCaptionColor();
+            UpdateModeLockVisuals();
         }
         
         /// <summary>
@@ -1680,6 +1711,11 @@ namespace TTMulti.Forms
             if (Properties.Settings.Default.zeroPowerThrowKeyCode != 0 && Properties.Settings.Default.zeroPowerThrowHotkeyGlobal)
             {
                 Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
+            }
+
+            if (Properties.Settings.Default.modeLockToggleKeyCode != 0 && Properties.Settings.Default.modeLockToggleHotkeyGlobal)
+            {
+                Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
             }
 
             RegisterMinimizeUnconnectedHotkey();
