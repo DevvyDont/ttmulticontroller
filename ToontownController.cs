@@ -699,11 +699,30 @@ namespace TTMulti
             }
         }
 
+        /// <summary>Keys that must never be posted to game windows (OS captures / Start menu, etc.).</summary>
+        static bool IsOsKeyBlockedFromGameForwarding(Win32.WM msg, IntPtr wParam)
+        {
+            switch (msg)
+            {
+                case Win32.WM.KEYDOWN:
+                case Win32.WM.KEYUP:
+                case Win32.WM.SYSKEYDOWN:
+                case Win32.WM.SYSKEYUP:
+                    int vk = wParam.ToInt32() & 0xFFFF;
+                    return vk == (int)Keys.LWin || vk == (int)Keys.RWin;
+                default:
+                    return false;
+            }
+        }
+
         /// <summary>
         /// Post a message asynchronously to the Toontown window
         /// </summary>
         public void PostMessage(Win32.WM msg, IntPtr wParam, IntPtr lParam)
         {
+            if (IsOsKeyBlockedFromGameForwarding(msg, wParam))
+                return;
+
             if (WindowHandle != IntPtr.Zero)
             {
                 // Validate window is still valid before posting
