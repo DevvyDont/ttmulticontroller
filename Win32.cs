@@ -277,6 +277,54 @@ namespace TTMulti
         [DllImport("user32.dll")]
         internal static extern short GetAsyncKeyState(System.Windows.Forms.Keys vKey);
 
+        [DllImport("user32.dll")]
+        internal static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+        internal const uint MAPVK_VK_TO_VSC = 0;
+
+        /// <summary>Build WM_KEYDOWN / WM_KEYUP lParam (repeat count, scan code, extended flag) for <see cref="PostMessage"/>.</summary>
+        internal static IntPtr MakePostedKeyLParam(Keys vk, bool isKeyUp)
+        {
+            int vkey = (int)(vk & Keys.KeyCode);
+            if (vkey == 0)
+                return IntPtr.Zero;
+
+            uint scan = MapVirtualKey((uint)vkey, MAPVK_VK_TO_VSC);
+            uint lp = 1u;
+            lp |= (scan & 0xFFu) << 16;
+            if (IsPostedKeyExtended((Keys)vkey))
+                lp |= 1u << 24;
+            if (isKeyUp)
+            {
+                lp |= 1u << 30;
+                lp |= 1u << 31;
+            }
+
+            return new IntPtr(unchecked((int)lp));
+        }
+
+        static bool IsPostedKeyExtended(Keys vk)
+        {
+            switch (vk & Keys.KeyCode)
+            {
+                case Keys.Prior:
+                case Keys.Next:
+                case Keys.End:
+                case Keys.Home:
+                case Keys.Left:
+                case Keys.Up:
+                case Keys.Right:
+                case Keys.Down:
+                case Keys.Insert:
+                case Keys.Delete:
+                case Keys.NumLock:
+                case Keys.Divide:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         [DllImport("user32.dll", SetLastError=true)]
         internal static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, SetWindowPosFlags uFlags);
 

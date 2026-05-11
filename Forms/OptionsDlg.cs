@@ -237,6 +237,9 @@ namespace TTMulti.Forms
             CreateLayoutPresetsTab();
             LoadLayoutPresets();
 
+            CreateCustomModesTab();
+            LoadCustomModes();
+
             CreateColorsTab();
             LoadColorsSettings();
             
@@ -267,21 +270,24 @@ namespace TTMulti.Forms
                 checkBox4.Checked = !Properties.Settings.Default.disableKeepAlive;
             }
             
-            // Reorder tabs to match desired order
-            var tabPage6 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Multi-Mode Key Bindings");
-            var tabPage3 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Hotkeys");
-            var multiClickTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Multi-Click");
-            var tabPage1 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Controller Modes");
-            var autoFindTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Auto-Find");
-            var layoutPresetsTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Layout Presets");
-            var colorsTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Colors");
-            var tabPage2 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            // Reorder tabs to match desired order (use TabPage.Name, not Text, so captions can change in the designer)
+            var tabPage6 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage6");
+            var tabPage3 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage3");
+            var multiClickTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "multiClickTab");
+            var tabPage1 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage1");
+            var autoFindTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "autoFindTab");
+            var layoutPresetsTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "layoutPresetsTab");
+            var customModesTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "customModesTab");
+            var colorsTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "colorsTabPage");
+            var tabPage2 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage2");
             
             tabControl1.TabPages.Clear();
+            // Order: Multi-Mode Keys, Hotkeys, Multi-Click, Controller Modes, Custom Modes, Auto-Find, Layout Presets, Colors, Other
             if (tabPage6 != null) tabControl1.TabPages.Add(tabPage6);
             if (tabPage3 != null) tabControl1.TabPages.Add(tabPage3);
             if (multiClickTab != null) tabControl1.TabPages.Add(multiClickTab);
             if (tabPage1 != null) tabControl1.TabPages.Add(tabPage1);
+            if (customModesTab != null) tabControl1.TabPages.Add(customModesTab);
             if (autoFindTab != null) tabControl1.TabPages.Add(autoFindTab);
             if (layoutPresetsTab != null) tabControl1.TabPages.Add(layoutPresetsTab);
             if (colorsTab != null) tabControl1.TabPages.Add(colorsTab);
@@ -303,7 +309,7 @@ namespace TTMulti.Forms
         /// </summary>
         private void ConfigureOtherTabScrolling()
         {
-            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage2");
             if (otherTab == null)
                 return;
 
@@ -327,6 +333,7 @@ namespace TTMulti.Forms
         {
             // Create a new tab page for Auto-Find
             var autoFindTab = new TabPage("Auto-Find");
+            autoFindTab.Name = "autoFindTab";
             autoFindTab.AutoScroll = true;
             autoFindTab.Padding = new Padding(10);
             autoFindTab.UseVisualStyleBackColor = true;
@@ -431,6 +438,7 @@ namespace TTMulti.Forms
         private void CreateLayoutPresetsTab()
         {
             var tab = new TabPage("Layout Presets");
+            tab.Name = "layoutPresetsTab";
             tab.AutoScroll = true;
             tab.Padding = new Padding(10);
             tab.UseVisualStyleBackColor = true;
@@ -557,7 +565,7 @@ namespace TTMulti.Forms
         private void CreateSwitchingModeUI()
         {
             // Get the Controller Modes tab (tabPage1)
-            var controllerModesTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Controller Modes");
+            var controllerModesTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage1");
             if (controllerModesTab == null)
                 return;
 
@@ -777,6 +785,7 @@ namespace TTMulti.Forms
         {
             // Create a new tab page for Colors
             colorsTabPage = new TabPage("Colors");
+            colorsTabPage.Name = "colorsTabPage";
             colorsTabPage.AutoScroll = true;
             colorsTabPage.Padding = new Padding(10);
             colorsTabPage.UseVisualStyleBackColor = true;
@@ -1264,7 +1273,7 @@ namespace TTMulti.Forms
         private void CreateCaptionColorUI()
         {
             // Get the Other tab (tabPage2)
-            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage2");
             if (otherTab == null)
                 return;
 
@@ -1313,7 +1322,7 @@ namespace TTMulti.Forms
 
         private void CreateMinimizeUnconnectedUI()
         {
-            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage2");
             if (otherTab == null)
                 return;
 
@@ -1410,7 +1419,7 @@ namespace TTMulti.Forms
 
         private void CreateModeLockUI()
         {
-            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage2");
             if (otherTab == null)
                 return;
 
@@ -1470,7 +1479,7 @@ namespace TTMulti.Forms
 
         private void CreateSuspendGlobalHotkeysUI()
         {
-            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage2");
             if (otherTab == null)
                 return;
 
@@ -1531,6 +1540,7 @@ namespace TTMulti.Forms
         private void CreateControlledMulticlickTab()
         {
             var tab = new TabPage("Multi-Click");
+            tab.Name = "multiClickTab";
             tab.AutoScroll = true;
             tab.Padding = new Padding(3);
             tab.UseVisualStyleBackColor = true;
@@ -1902,6 +1912,8 @@ namespace TTMulti.Forms
             SaveModeLockSettings();
 
             SaveSuspendGlobalHotkeysSettings();
+
+            SaveCustomModesSettings();
 
             // Save controlled multi-click settings
             SaveControlledMulticlickSettings();

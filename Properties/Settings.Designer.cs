@@ -490,6 +490,30 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool customModeCycleWithModeHotkey {
+            get {
+                return ((bool)(this["customModeCycleWithModeHotkey"]));
+            }
+            set {
+                this["customModeCycleWithModeHotkey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string lastActiveCustomModeId {
+            get {
+                return ((string)(this["lastActiveCustomModeId"]));
+            }
+            set {
+                this["lastActiveCustomModeId"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int modeLockToggleKeyCode {
             get {

@@ -446,6 +446,7 @@ namespace TTMulti
                                     borderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
                                     break;
                                 case MulticontrollerMode.MirrorAll:
+                                case MulticontrollerMode.Custom:
                                     borderColor = Colors.AllGroups;
                                     break;
                                 case MulticontrollerMode.Focused:
@@ -534,6 +535,7 @@ namespace TTMulti
                                 borderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
                                 break;
                             case MulticontrollerMode.MirrorAll:
+                            case MulticontrollerMode.Custom:
                                 borderColor = Colors.AllGroups;
                                 break;
                             case MulticontrollerMode.Focused:

@@ -46,7 +46,12 @@ namespace TTMulti
     /// <summary>
     /// Focused mode - all input goes to all windows except directional movement keys
     /// </summary>
-    Focused
+    Focused,
+
+    /// <summary>
+    /// User-defined mode: per-key routing from <see cref="CustomModeStorage"/>.
+    /// </summary>
+    Custom
 }
 
     class Multicontroller
@@ -142,6 +147,7 @@ namespace TTMulti
                     case MulticontrollerMode.AllGroup:
                     case MulticontrollerMode.MirrorAll:
                     case MulticontrollerMode.Focused:
+                    case MulticontrollerMode.Custom:
                         return AllControllers;
                 }
 
@@ -513,6 +519,9 @@ namespace TTMulti
                 if (_currentMode != value)
                 {
                     _currentMode = value;
+
+                    if (value == MulticontrollerMode.Custom)
+                        EnsureValidActiveCustomModeId();
                     
                     // Clear focused controller when mode changes away from Focused
                     if (value != MulticontrollerMode.Focused)
@@ -557,6 +566,83 @@ namespace TTMulti
         {
             _modeLockEngaged = !_modeLockEngaged;
             SettingChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        string _activeCustomModeId = "";
+
+        /// <summary>Id of the <see cref="CustomModeDefinition"/> used when <see cref="CurrentMode"/> is <see cref="MulticontrollerMode.Custom"/>.</summary>
+        internal string ActiveCustomModeId
+        {
+            get => _activeCustomModeId ?? "";
+            set => _activeCustomModeId = value ?? "";
+        }
+
+        internal void PersistActiveCustomModeIdToUserSettings()
+        {
+            _activeCustomModeId = _activeCustomModeId ?? "";
+            Properties.Settings.Default.lastActiveCustomModeId = _activeCustomModeId;
+            Properties.Settings.Default.Save();
+        }
+
+        internal void EnsureValidActiveCustomModeId()
+        {
+            CustomModeFile file = CustomModeStorage.Load();
+            if (file.Modes == null || file.Modes.Count == 0)
+            {
+                _activeCustomModeId = "";
+                return;
+            }
+            if (string.IsNullOrEmpty(_activeCustomModeId) || !file.Modes.Any(m => string.Equals(m.Id, _activeCustomModeId, StringComparison.Ordinal)))
+                _activeCustomModeId = file.Modes[0].Id;
+        }
+
+        internal CustomModeDefinition GetActiveCustomModeDefinition()
+        {
+            CustomModeFile file = CustomModeStorage.Load();
+            if (file.Modes == null || string.IsNullOrEmpty(_activeCustomModeId))
+                return null;
+            return file.Modes.FirstOrDefault(m => string.Equals(m.Id, _activeCustomModeId, StringComparison.Ordinal));
+        }
+
+        /// <summary>
+        /// Controllers with windows, non-minimized, in the same order as instant multiclick (<c>multiclickOrder</c>).
+        /// </summary>
+        internal List<ToontownController> GetControllersInCustomModeOrder()
+        {
+            IEnumerable<ToontownController> src = WhereNotMinimized(AllControllersWithWindows);
+            if (Properties.Settings.Default.multiclickOrder == 1)
+            {
+                src = src.OrderBy(c => Win32.GetWindowClientAreaLocation(c.WindowHandle).Y)
+                    .ThenBy(c => Win32.GetWindowClientAreaLocation(c.WindowHandle).X);
+            }
+            return src.ToList();
+        }
+
+        /// <summary>
+        /// Left-click at the cursor (or center of the client area) on a single window.
+        /// </summary>
+        internal void TriggerInstantMultiClickSingleTarget(ToontownController target)
+        {
+            if (target == null || !target.HasWindow)
+                return;
+            Point cursorPos = Control.MousePosition;
+            Point clientLoc = Win32.GetWindowClientAreaLocation(target.WindowHandle);
+            Size sz = target.WindowSize;
+            int relX, relY;
+            if (cursorPos.X >= clientLoc.X && cursorPos.X < clientLoc.X + sz.Width &&
+                cursorPos.Y >= clientLoc.Y && cursorPos.Y < clientLoc.Y + sz.Height)
+            {
+                relX = cursorPos.X - clientLoc.X;
+                relY = cursorPos.Y - clientLoc.Y;
+            }
+            else
+            {
+                relX = Math.Max(0, sz.Width / 2);
+                relY = Math.Max(0, sz.Height / 2);
+            }
+            IntPtr clickLParam = (IntPtr)((relY << 16) | (relX & 0xFFFF));
+            target.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
+            target.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
         }
 
         /// <summary>
@@ -1228,6 +1314,13 @@ namespace TTMulti
                                 availableModesToCycle.Add(MulticontrollerMode.AllGroup);
                             }
 
+                            if (Properties.Settings.Default.customModeCycleWithModeHotkey)
+                            {
+                                CustomModeFile cf = CustomModeStorage.Load();
+                                if (cf.Modes != null && cf.Modes.Count > 0)
+                                    availableModesToCycle.Add(MulticontrollerMode.Custom);
+                            }
+
                             int currentModeIndex = availableModesToCycle.IndexOf(CurrentMode);
 
                             if (currentModeIndex >= 0)
@@ -1794,10 +1887,24 @@ namespace TTMulti
                 return true; // Consume all input in switching mode
             }
 
+            Keys keysPressed = (Keys)wParam;
+            if (msg == Win32.WM.HOTKEY)
+                keysPressed = (Keys)(lParam.ToInt32() >> 16);
+
+            if (CurrentMode == MulticontrollerMode.Custom && IsActive)
+            {
+                CustomModeDefinition def = GetActiveCustomModeDefinition();
+                if (def == null)
+                {
+                    CurrentMode = MulticontrollerMode.Group;
+                    return false;
+                }
+                CustomModeInputRouter.TryProcess(this, def, msg, wParam, lParam);
+                return true;
+            }
+
             if (IsActive)
             {
-                Keys keysPressed = (Keys)wParam;
-
                 IEnumerable<ToontownController> affectedControllers = ActiveControllers;
                 List<Keys> keysToPress = new List<Keys>();
                 

@@ -11,6 +11,7 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Diagnostics;
+using TTMulti;
 
 namespace TTMulti.Forms
 {
@@ -141,6 +142,36 @@ namespace TTMulti.Forms
         }
 
         /// <summary>
+        /// Short label for the status strip: mode name and current group when relevant (e.g. "Multi G2", "Mirror").
+        /// </summary>
+        private string GetStatusModeSummaryText()
+        {
+            int g = controller.CurrentGroupIndex + 1;
+            switch (controller.CurrentMode)
+            {
+                case MulticontrollerMode.Group:
+                    return "Multi G" + g;
+                case MulticontrollerMode.MirrorAll:
+                    return "Mirror";
+                case MulticontrollerMode.AllGroup:
+                    return "All-group";
+                case MulticontrollerMode.Focused:
+                    return "Focused";
+                case MulticontrollerMode.Custom:
+                    var def = controller.GetActiveCustomModeDefinition();
+                    return def != null && !string.IsNullOrWhiteSpace(def.Name) ? def.Name : "Custom";
+                case MulticontrollerMode.Pair:
+                    return "Pair G" + g;
+                case MulticontrollerMode.MirrorGroup:
+                    return "Mirror group G" + g;
+                case MulticontrollerMode.MirrorIndividual:
+                    return "Mirror one";
+                default:
+                    return controller.CurrentMode.ToString();
+            }
+        }
+
+        /// <summary>
         /// Updates the window selectors and group status.
         /// This should be called when the current group or window selection changes.
         /// </summary>
@@ -149,7 +180,7 @@ namespace TTMulti.Forms
             leftToonCrosshair.SelectedWindowHandle = controller.LeftControllers.First().WindowHandle;
             rightToonCrosshair.SelectedWindowHandle = controller.RightControllers.First().WindowHandle;
 
-            leftStatusLbl.Text = "Group " + (controller.CurrentGroupIndex + 1) + " active.";
+            leftStatusLbl.Text = GetStatusModeSummaryText();
             rightStatusLbl.Text = controller.ControllerGroups.Count + " groups.";
             UpdateModeLockVisuals();
 
@@ -1358,6 +1389,9 @@ namespace TTMulti.Forms
 
             ReloadOptions();
 
+            controller.ActiveCustomModeId = Properties.Settings.Default.lastActiveCustomModeId ?? "";
+            controller.EnsureValidActiveCustomModeId();
+
             // Multicontroller could have loaded groups
             UpdateWindowStatus();
             
@@ -1483,9 +1517,11 @@ namespace TTMulti.Forms
             {
                 case MulticontrollerMode.Group:
                     multiModeRadio.Checked = true;
+                    mirrorModeRadio.Checked = false;
                     break;
                 case MulticontrollerMode.MirrorAll:
                     mirrorModeRadio.Checked = true;
+                    multiModeRadio.Checked = false;
                     break;
                 default:
                     multiModeRadio.Checked = false;
@@ -1568,6 +1604,7 @@ namespace TTMulti.Forms
                         borderColor = BlendColors(Colors.LeftGroup, Colors.RightGroup);
                         break;
                     case MulticontrollerMode.MirrorAll:
+                    case MulticontrollerMode.Custom:
                         borderColor = Colors.AllGroups;
                         break;
                     case MulticontrollerMode.Focused:
@@ -1603,28 +1640,11 @@ namespace TTMulti.Forms
             if (optionsDlg.ShowDialog(this) == DialogResult.OK)
             {
                 ReloadOptions();
+                controller.EnsureValidActiveCustomModeId();
             }
 
             ignoreMessages = false;
 
-            UpdateWindowStatus();
-        }
-
-        private void refreshBtn_Click(object sender, EventArgs e)
-        {
-            UnregisterHotkey();
-            UnregisterAutoFindHotkey();
-            UnregisterLayoutPresetHotkeys();
-            UnregisterMinimizeUnconnectedHotkey();
-            RegisterHotkey();
-            if (controller.IsActive)
-            {
-                RegisterAutoFindHotkey();
-                RegisterLayoutPresetHotkeys();
-            }
-            RegisterMinimizeUnconnectedHotkey();
-            foreach (var c in controller.AllControllersWithWindows)
-                c.Refresh();
             UpdateWindowStatus();
         }
 

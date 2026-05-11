@@ -186,7 +186,7 @@ namespace TTMulti.Forms
             this.tabPage6.Padding = new System.Windows.Forms.Padding(2);
             this.tabPage6.Size = new System.Drawing.Size(742, 443);
             this.tabPage6.TabIndex = 6;
-            this.tabPage6.Text = "Multi-Mode Key Bindings";
+            this.tabPage6.Text = "Multi-Mode Keys";
             this.tabPage6.UseVisualStyleBackColor = true;
             // 
             // tableLayoutPanel3

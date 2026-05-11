@@ -37,7 +37,6 @@ namespace TTMulti.Forms
             this.windowGroupsBtn = new System.Windows.Forms.Button();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.leftStatusLbl = new System.Windows.Forms.ToolStripStatusLabel();
-            this.refreshToolStripBtn = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.rightStatusLbl = new System.Windows.Forms.ToolStripStatusLabel();
             this.panel1 = new System.Windows.Forms.Panel();
@@ -134,7 +133,6 @@ namespace TTMulti.Forms
             this.statusStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.leftStatusLbl,
-            this.refreshToolStripBtn,
             this.toolStripStatusLabel2,
             this.rightStatusLbl});
             this.statusStrip1.Location = new System.Drawing.Point(0, 112);
@@ -151,19 +149,10 @@ namespace TTMulti.Forms
             this.leftStatusLbl.Name = "leftStatusLbl";
             this.leftStatusLbl.Size = new System.Drawing.Size(0, 22);
             // 
-            // refreshToolStripBtn
-            // 
-            this.refreshToolStripBtn.IsLink = true;
-            this.refreshToolStripBtn.Name = "refreshToolStripBtn";
-            this.refreshToolStripBtn.Size = new System.Drawing.Size(50, 22);
-            this.refreshToolStripBtn.Text = "Refresh";
-            this.refreshToolStripBtn.ToolTipText = "Re-register hotkeys and refresh controller state. Use if mirror/multi suddenly stops sending input to all windows.";
-            this.refreshToolStripBtn.Click += new System.EventHandler(this.refreshBtn_Click);
-            // 
             // toolStripStatusLabel2
             // 
             this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
-            this.toolStripStatusLabel2.Size = new System.Drawing.Size(268, 22);
+            this.toolStripStatusLabel2.Size = new System.Drawing.Size(318, 22);
             this.toolStripStatusLabel2.Spring = true;
             this.toolStripStatusLabel2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
@@ -249,7 +238,6 @@ namespace TTMulti.Forms
         public TTMulti.Controls.SelectWindowCrosshair rightToonCrosshair;
         private System.Windows.Forms.StatusStrip statusStrip1;
         private System.Windows.Forms.ToolStripStatusLabel leftStatusLbl;
-        private System.Windows.Forms.ToolStripStatusLabel refreshToolStripBtn;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel2;
         private System.Windows.Forms.ToolStripStatusLabel rightStatusLbl;
         private System.Windows.Forms.RadioButton mirrorModeRadio;

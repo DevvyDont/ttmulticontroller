@@ -106,6 +106,8 @@
     <Compile Include="ControllerGroup.cs" />
     <Compile Include="ControllerPair.cs" />
     <Compile Include="LayoutPreset.cs" />
+    <Compile Include="CustomMode.cs" />
+    <Compile Include="CustomModeInputRouter.cs" />
     <Compile Include="Events\WindowClientAreaLocationChangedEventArgs.cs" />
     <Compile Include="Events\WindowClientAreaSizeChangedEventArgs.cs" />
     <Compile Include="Events\WindowClosedEventArgs.cs" />
@@ -185,6 +187,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\OptionsDlg.Designer.cs">
+      <DependentUpon>OptionsDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\OptionsDlg.CustomModes.cs">
       <DependentUpon>OptionsDlg.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
