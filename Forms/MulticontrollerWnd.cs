@@ -150,13 +150,13 @@ namespace TTMulti.Forms
             switch (controller.CurrentMode)
             {
                 case MulticontrollerMode.Group:
-                    return "Multi G" + g;
+                    return "Multi Mode G" + g;
                 case MulticontrollerMode.MirrorAll:
-                    return "Mirror";
+                    return "Mirror Mode";
                 case MulticontrollerMode.AllGroup:
-                    return "All-group";
+                    return "All Groups Mode";
                 case MulticontrollerMode.Focused:
-                    return "Focused";
+                    return "Focused Mode";
                 case MulticontrollerMode.Custom:
                     var def = controller.GetActiveCustomModeDefinition();
                     return def != null && !string.IsNullOrWhiteSpace(def.Name) ? def.Name : "Custom";
@@ -1375,7 +1375,7 @@ namespace TTMulti.Forms
                 {
                     hookForm.BeginInvoke(new Action(() =>
                     {
-                        hookForm.controller?.TriggerInstantMultiClick();
+                        hookForm.controller?.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.replicateMouseSeparateLR);
                     }));
                 }
                 return (IntPtr)1;

@@ -221,8 +221,7 @@ namespace TTMulti
             }
 
             IEnumerable<ToontownController> toClick = WhereNotMinimized(ActiveControllers);
-            // separateLR only makes sense in modes with distinct Left/Right controllers.
-            // In mirror mode every controller mirrors the same input, so send to all.
+            // separateLR: distinct L/R slots (not Mirror). Never applied in Custom mode.
             bool isMultiMode = CurrentMode == MulticontrollerMode.Group
                             || CurrentMode == MulticontrollerMode.AllGroup
                             || CurrentMode == MulticontrollerMode.Pair;
@@ -1457,7 +1456,7 @@ namespace TTMulti
                     // the hook suppressed the key before posting it — but just in case, guard here too.
                     if (Properties.Settings.Default.multiclickTriggerOnRelease && msg == Win32.WM.KEYDOWN)
                         return true; // consume without firing; hook fires on release
-                    TriggerInstantMultiClick();
+                    TriggerInstantMultiClick(separateLR: Properties.Settings.Default.replicateMouseSeparateLR);
                     return true;
                 }
             }

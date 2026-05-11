@@ -86,6 +86,7 @@ namespace TTMulti.Forms
             this.multiclickMouseButtonCombo = new System.Windows.Forms.ComboBox();
             this.multiclickOrderLabel = new System.Windows.Forms.Label();
             this.multiclickOrderCombo = new System.Windows.Forms.ComboBox();
+            this.multiclickSeparateLRCheckBox = new System.Windows.Forms.CheckBox();
             this.zeroPowerThrowKeyPicker = new TTMulti.Controls.KeyPicker();
             this.keyPicker2 = new TTMulti.Controls.KeyPicker();
             this.modeHotkeyGlobalCheckBox = new System.Windows.Forms.CheckBox();
@@ -448,6 +449,7 @@ namespace TTMulti.Forms
             // 
             this.multiclickGroupBox.Controls.Add(this.multiclickOrderCombo);
             this.multiclickGroupBox.Controls.Add(this.multiclickOrderLabel);
+            this.multiclickGroupBox.Controls.Add(this.multiclickSeparateLRCheckBox);
             this.multiclickGroupBox.Controls.Add(this.multiclickUseMouseCheckBox);
             this.multiclickGroupBox.Controls.Add(this.multiclickMouseButtonCombo);
             this.multiclickGroupBox.Controls.Add(this.multiclickHotkeyGlobalCheckBox);
@@ -458,7 +460,7 @@ namespace TTMulti.Forms
             this.multiclickGroupBox.Margin = new System.Windows.Forms.Padding(4);
             this.multiclickGroupBox.Name = "multiclickGroupBox";
             this.multiclickGroupBox.Padding = new System.Windows.Forms.Padding(4);
-            this.multiclickGroupBox.Size = new System.Drawing.Size(726, 120);
+            this.multiclickGroupBox.Size = new System.Drawing.Size(726, 148);
             this.multiclickGroupBox.TabIndex = 14;
             this.multiclickGroupBox.TabStop = false;
             this.multiclickGroupBox.Text = "Instant Multi-Click Hotkey:";
@@ -489,7 +491,7 @@ namespace TTMulti.Forms
             // multiclickOrderLabel
             // 
             this.multiclickOrderLabel.AutoSize = true;
-            this.multiclickOrderLabel.Location = new System.Drawing.Point(9, 92);
+            this.multiclickOrderLabel.Location = new System.Drawing.Point(9, 118);
             this.multiclickOrderLabel.Name = "multiclickOrderLabel";
             this.multiclickOrderLabel.Size = new System.Drawing.Size(76, 17);
             this.multiclickOrderLabel.TabIndex = 18;
@@ -500,7 +502,7 @@ namespace TTMulti.Forms
             this.multiclickOrderCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.multiclickOrderCombo.FormattingEnabled = true;
             this.multiclickOrderCombo.Items.AddRange(new object[] { "Controller order (group, pair, L/R)", "Window order (by position)" });
-            this.multiclickOrderCombo.Location = new System.Drawing.Point(95, 89);
+            this.multiclickOrderCombo.Location = new System.Drawing.Point(95, 115);
             this.multiclickOrderCombo.Name = "multiclickOrderCombo";
             this.multiclickOrderCombo.Size = new System.Drawing.Size(250, 24);
             this.multiclickOrderCombo.TabIndex = 19;
@@ -828,6 +830,19 @@ namespace TTMulti.Forms
             this.multiclickHotkeyGlobalCheckBox.Text = "Global";
             this.multiclickHotkeyGlobalCheckBox.UseVisualStyleBackColor = true;
             // 
+            // multiclickSeparateLRCheckBox
+            // 
+            this.multiclickSeparateLRCheckBox.AutoSize = true;
+            this.multiclickSeparateLRCheckBox.Checked = global::TTMulti.Properties.Settings.Default.replicateMouseSeparateLR;
+            this.multiclickSeparateLRCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::TTMulti.Properties.Settings.Default, "replicateMouseSeparateLR", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.multiclickSeparateLRCheckBox.Location = new System.Drawing.Point(9, 88);
+            this.multiclickSeparateLRCheckBox.Name = "multiclickSeparateLRCheckBox";
+            this.multiclickSeparateLRCheckBox.Size = new System.Drawing.Size(185, 21);
+            this.multiclickSeparateLRCheckBox.TabIndex = 20;
+            this.multiclickSeparateLRCheckBox.Text = "Same side only (L or R)";
+            this.toolTip1.SetToolTip(this.multiclickSeparateLRCheckBox, "When enabled in Multi-Mode, All-Group, or Pair: if the cursor is on a Left window, only Left slots receive the click (and vice versa for Right). Not used in Mirror or Custom mode.");
+            this.multiclickSeparateLRCheckBox.UseVisualStyleBackColor = true;
+            // 
             // zeroPowerThrowKeyPicker
             // 
             this.zeroPowerThrowKeyPicker.ChosenKey = System.Windows.Forms.Keys.None;
@@ -966,6 +981,7 @@ namespace TTMulti.Forms
         private System.Windows.Forms.ComboBox multiclickMouseButtonCombo;
         private System.Windows.Forms.Label multiclickOrderLabel;
         private System.Windows.Forms.ComboBox multiclickOrderCombo;
+        private System.Windows.Forms.CheckBox multiclickSeparateLRCheckBox;
         private System.Windows.Forms.CheckBox zeroPowerHotkeyGlobalCheckBox;
         private System.Windows.Forms.CheckBox zeroPowerThrowEnableFocusModeCheckBox;
         private TTMulti.Controls.KeyPicker zeroPowerThrowKeyPicker;
