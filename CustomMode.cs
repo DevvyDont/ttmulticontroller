@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -8,6 +9,15 @@ using System.Windows.Forms;
 
 namespace TTMulti
 {
+    /// <summary>
+    /// <see cref="CustomModeBindingAction.SendRole"/> titles that are not Key Mapping row names.
+    /// </summary>
+    public static class CustomModeWellKnownRoles
+    {
+        /// <summary>Instant tap (KEYDOWN+KEYUP) of each target's Throw left/right toon key — same as the Zero Power Throw hotkey.</summary>
+        public const string ZeroPowerThrow = "Zero Power Throw";
+    }
+
     /// <summary>
     /// How a custom-mode binding transforms input.
     /// </summary>
@@ -63,7 +73,7 @@ namespace TTMulti
         [DataMember]
         public CustomModeBindingAction Action { get; set; }
 
-        /// <summary>For <see cref="CustomModeBindingAction.SendRole"/>: must match a <see cref="TTMulti.Controls.KeyMapping.Title"/> (e.g. Forward). The posted key is <see cref="TTMulti.Controls.KeyMapping.Key"/> (Toontown Key in Options).</summary>
+        /// <summary>For <see cref="CustomModeBindingAction.SendRole"/>: a <see cref="TTMulti.Controls.KeyMapping.Title"/> (e.g. Forward; posted key is <see cref="TTMulti.Controls.KeyMapping.Key"/>) or <see cref="CustomModeWellKnownRoles.ZeroPowerThrow"/>.</summary>
         [DataMember]
         public string RoleTitle { get; set; }
 
@@ -131,11 +141,50 @@ namespace TTMulti
         [DataMember]
         public List<CustomModeBinding> Bindings { get; set; }
 
+        /// <summary>Optional ARGB border color for left-slot controllers (same defaults as Multi mode left when unset).</summary>
+        [DataMember(EmitDefaultValue = false)]
+        public int? LeftBorderColorArgb { get; set; }
+
+        /// <summary>Optional ARGB border color for right-slot controllers (same defaults as Multi mode right when unset).</summary>
+        [DataMember(EmitDefaultValue = false)]
+        public int? RightBorderColorArgb { get; set; }
+
+        /// <summary>When <c>false</c>, this definition is skipped by the main mode hotkey cycle. <c>null</c> or <c>true</c> = include.</summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool? IncludeInModeHotkeyCycle { get; set; }
+
+        /// <summary>Virtual key for a global hotkey that switches to this custom mode (0 = disabled).</summary>
+        [DataMember]
+        public int ActivationHotkeyCode { get; set; }
+
+        /// <summary>Modifier flags (same encoding as Hotkeys: <c>Win32.KeyModifiers</c> as int) for <see cref="ActivationHotkeyCode"/>.</summary>
+        [DataMember]
+        public int ActivationHotkeyModifiers { get; set; }
+
+        /// <summary>When true, activation hotkey is registered globally; when false, only while the multicontroller is active.</summary>
+        [DataMember]
+        public bool ActivationHotkeyGlobal { get; set; }
+
+        public bool ShouldIncludeInModeHotkeyCycle() => IncludeInModeHotkeyCycle != false;
+
+        /// <summary>Same default green as Multi Mode (Left) border in Options.</summary>
+        public static readonly Color DefaultLeftBorderColor = Color.FromArgb(50, 205, 50);
+
+        /// <summary>Same default as Multi Mode (Right) border in Options.</summary>
+        public static readonly Color DefaultRightBorderColor = Color.FromArgb(0, 100, 0);
+
+        public Color GetLeftBorderColor() =>
+            LeftBorderColorArgb.HasValue ? Color.FromArgb(LeftBorderColorArgb.Value) : DefaultLeftBorderColor;
+
+        public Color GetRightBorderColor() =>
+            RightBorderColorArgb.HasValue ? Color.FromArgb(RightBorderColorArgb.Value) : DefaultRightBorderColor;
+
         public CustomModeDefinition()
         {
             Id = Guid.NewGuid().ToString("N");
             Name = "New custom mode";
             Bindings = new List<CustomModeBinding>();
+            ActivationHotkeyGlobal = true;
         }
     }
 

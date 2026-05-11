@@ -266,11 +266,12 @@ namespace TTMulti.Forms
                     ret = controller.ProcessInput(m.Msg, m.WParam, m.LParam);
                     break;
                 case Win32.WM.HOTKEY:
-                    // Check if this is auto-find (ID 7), minimize unconnected (ID 9), layout preset (ID 10-25), mode lock (ID 3), or suspend-globals toggle (ID 4)
+                    // Let these hotkeys pass through to WndProc (see WndProc). Others are handled via ProcessInput.
+                    // Custom mode activation uses IDs CustomModeActivationHotkeyIdStart..End — must not go through ProcessInput alone.
                     int hotkeyId = m.WParam.ToInt32();
-                    if (hotkeyId == 3 || hotkeyId == 4 || hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25))
+                    if (hotkeyId == 3 || hotkeyId == 4 || hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25)
+                        || (hotkeyId >= CustomModeActivationHotkeyIdStart && hotkeyId <= CustomModeActivationHotkeyIdEnd))
                     {
-                        // Let these hotkeys pass through to WndProc
                         ret = false;
                     }
                     else
@@ -374,6 +375,27 @@ namespace TTMulti.Forms
                         controller.ProcessInput(m.Msg, m.WParam, m.LParam);
                     }
                 }
+                else if (hotkeyId >= CustomModeActivationHotkeyIdStart && hotkeyId <= CustomModeActivationHotkeyIdEnd)
+                {
+                    if (_customModeActivationHotkeyIds.TryGetValue(hotkeyId, out string customModeId) && !string.IsNullOrEmpty(customModeId))
+                    {
+                        Keys currentModifiers = Control.ModifierKeys;
+                        bool hasModifiers = (currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None;
+                        if (hasModifiers)
+                        {
+                            var file = CustomModeStorage.Load();
+                            var mode = file.Modes?.FirstOrDefault(cm => string.Equals(cm.Id, customModeId, StringComparison.Ordinal));
+                            if (mode != null && mode.ActivationHotkeyCode != 0)
+                                controller.ProcessInput((int)Win32.WM.KEYDOWN, (IntPtr)(Keys)mode.ActivationHotkeyCode, IntPtr.Zero);
+                        }
+                        else
+                        {
+                            if (!controller.IsActive)
+                                BeginInvoke(new Action(TryActivate));
+                            controller.ActivateCustomModeDefinition(customModeId);
+                        }
+                    }
+                }
                 else if (hotkeyId == 2)
                 {
                     // Zero Power Throw hotkey (ID 2)
@@ -443,7 +465,8 @@ namespace TTMulti.Forms
             this.TopMost = Properties.Settings.Default.onTopWhenInactive;
             panel1.Visible = !Properties.Settings.Default.compactUI;
             controller.UpdateOptions();
-            
+            controller.RefreshAllControllerBorders();
+
             // Update UI colors to reflect any changes
             UpdateUIColors();
             
@@ -497,6 +520,7 @@ namespace TTMulti.Forms
             Win32.UnregisterHotKey(this.Handle, 2);
             Win32.UnregisterHotKey(this.Handle, 3);
             Win32.UnregisterHotKey(this.Handle, 4);
+            UnregisterCustomModeActivationHotkeys();
 
             // Suspend-global toggle (ID 4) — always registered when configured, including while suspended, so the user can turn globals back on.
             if (Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode != 0)
@@ -554,6 +578,39 @@ namespace TTMulti.Forms
             if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
                 Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
             // Note: ID 7 (auto-find), ID 10-25 (layout presets) handled separately
+
+            RegisterCustomModeActivationHotkeys();
+        }
+
+        void UnregisterCustomModeActivationHotkeys()
+        {
+            _customModeActivationHotkeyIds.Clear();
+            for (int id = CustomModeActivationHotkeyIdStart; id <= CustomModeActivationHotkeyIdEnd; id++)
+                Win32.UnregisterHotKey(this.Handle, id);
+        }
+
+        void RegisterCustomModeActivationHotkeys()
+        {
+            if (_globalHotkeysSuspended)
+                return;
+            CustomModeFile file = CustomModeStorage.Load();
+            if (file.Modes == null)
+                return;
+            int hotkeyId = CustomModeActivationHotkeyIdStart;
+            foreach (CustomModeDefinition mode in file.Modes)
+            {
+                if (mode.ActivationHotkeyCode == 0)
+                    continue;
+                if (hotkeyId > CustomModeActivationHotkeyIdEnd)
+                    break;
+                bool global = mode.ActivationHotkeyGlobal;
+                if (!global && !controller.IsActive)
+                    continue;
+                bool ok = Win32.RegisterHotKey(this.Handle, hotkeyId, (Win32.KeyModifiers)mode.ActivationHotkeyModifiers, (Keys)mode.ActivationHotkeyCode);
+                if (ok)
+                    _customModeActivationHotkeyIds[hotkeyId] = mode.Id;
+                hotkeyId++;
+            }
         }
 
         /// <summary>
@@ -581,6 +638,7 @@ namespace TTMulti.Forms
             Win32.UnregisterHotKey(this.Handle, 2);
             Win32.UnregisterHotKey(this.Handle, 3);
             Win32.UnregisterHotKey(this.Handle, 4);
+            UnregisterCustomModeActivationHotkeys();
             UninstallMulticlickMouseHook();
         }
 
@@ -608,6 +666,11 @@ namespace TTMulti.Forms
 
         private const int LayoutPresetHotkeyIdStart = 10;
         private const int LayoutPresetHotkeyIdEnd = 25;
+        private const int CustomModeActivationHotkeyIdStart = 26;
+        private const int CustomModeActivationHotkeyIdEnd = 57;
+
+        readonly System.Collections.Generic.Dictionary<int, string> _customModeActivationHotkeyIds =
+            new System.Collections.Generic.Dictionary<int, string>();
 
         private void RegisterLayoutPresetHotkeys()
         {
@@ -1549,6 +1612,7 @@ namespace TTMulti.Forms
         {
             UpdateCaptionColor();
             UpdateModeLockVisuals();
+            UpdateWindowStatus();
         }
         
         /// <summary>
@@ -1604,8 +1668,15 @@ namespace TTMulti.Forms
                         borderColor = BlendColors(Colors.LeftGroup, Colors.RightGroup);
                         break;
                     case MulticontrollerMode.MirrorAll:
-                    case MulticontrollerMode.Custom:
                         borderColor = Colors.AllGroups;
+                        break;
+                    case MulticontrollerMode.Custom:
+                        {
+                            var def = controller.GetActiveCustomModeDefinition();
+                            borderColor = def != null
+                                ? BlendColors(def.GetLeftBorderColor(), def.GetRightBorderColor())
+                                : Colors.AllGroups;
+                        }
                         break;
                     case MulticontrollerMode.Focused:
                         // Blend focused and unfocused colors to represent both types of windows

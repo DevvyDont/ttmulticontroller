@@ -435,7 +435,9 @@ namespace TTMulti
 
                         if (multicontroller.ShowAllBorders && multicontroller.IsActive)
                         {
-                            borderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
+                            borderColor = multicontroller.CurrentMode == MulticontrollerMode.Custom
+                                ? multicontroller.GetActiveCustomModeBorderColorFor(Type)
+                                : (Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup);
                         }
                         else if (multicontroller.IsActive)
                         {
@@ -446,8 +448,10 @@ namespace TTMulti
                                     borderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
                                     break;
                                 case MulticontrollerMode.MirrorAll:
-                                case MulticontrollerMode.Custom:
                                     borderColor = Colors.AllGroups;
+                                    break;
+                                case MulticontrollerMode.Custom:
+                                    borderColor = multicontroller.GetActiveCustomModeBorderColorFor(Type);
                                     break;
                                 case MulticontrollerMode.Focused:
                                     // Use different colors for focused vs unfocused windows
@@ -524,7 +528,9 @@ namespace TTMulti
 
                     if (multicontroller.ShowAllBorders && multicontroller.IsActive)
                     {
-                        borderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
+                        borderColor = multicontroller.CurrentMode == MulticontrollerMode.Custom
+                            ? multicontroller.GetActiveCustomModeBorderColorFor(Type)
+                            : (Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup);
                     }
                     else if (multicontroller.IsActive)
                     {
@@ -535,8 +541,10 @@ namespace TTMulti
                                 borderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
                                 break;
                             case MulticontrollerMode.MirrorAll:
-                            case MulticontrollerMode.Custom:
                                 borderColor = Colors.AllGroups;
+                                break;
+                            case MulticontrollerMode.Custom:
+                                borderColor = multicontroller.GetActiveCustomModeBorderColorFor(Type);
                                 break;
                             case MulticontrollerMode.Focused:
                                 // Use different colors for focused vs unfocused windows

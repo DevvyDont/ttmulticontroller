@@ -604,6 +604,105 @@ namespace TTMulti
             return file.Modes.FirstOrDefault(m => string.Equals(m.Id, _activeCustomModeId, StringComparison.Ordinal));
         }
 
+        internal Color GetActiveCustomModeBorderColorFor(ControllerType slotType)
+        {
+            CustomModeDefinition def = GetActiveCustomModeDefinition();
+            if (def == null)
+                return Colors.AllGroups;
+            return slotType == ControllerType.Left ? def.GetLeftBorderColor() : def.GetRightBorderColor();
+        }
+
+        /// <summary>Re-reads border appearance from settings / custom-modes.json (call after Options OK).</summary>
+        internal void RefreshAllControllerBorders()
+        {
+            foreach (ToontownController c in AllControllers)
+                c.Refresh();
+        }
+
+        /// <summary>
+        /// Switch to a custom definition by id (updates borders when already in <see cref="MulticontrollerMode.Custom"/>).
+        /// </summary>
+        internal void ActivateCustomModeDefinition(string modeId)
+        {
+            if (string.IsNullOrEmpty(modeId))
+                return;
+            CustomModeFile file = CustomModeStorage.Load();
+            if (file.Modes == null || !file.Modes.Any(m => string.Equals(m.Id, modeId, StringComparison.Ordinal)))
+                return;
+
+            bool wasAlreadyCustom = _currentMode == MulticontrollerMode.Custom;
+            _activeCustomModeId = modeId;
+            PersistActiveCustomModeIdToUserSettings();
+
+            if (!wasAlreadyCustom)
+            {
+                CurrentMode = MulticontrollerMode.Custom;
+            }
+            else
+            {
+                SettingChanged?.Invoke(this, EventArgs.Empty);
+                RefreshAllControllerBorders();
+            }
+        }
+
+        readonly struct ModeHotkeyCycleEntry
+        {
+            internal readonly MulticontrollerMode Mode;
+            internal readonly string CustomModeId;
+
+            internal ModeHotkeyCycleEntry(MulticontrollerMode mode, string customModeId)
+            {
+                Mode = mode;
+                CustomModeId = customModeId ?? "";
+            }
+        }
+
+        List<ModeHotkeyCycleEntry> BuildModeHotkeyCycleList()
+        {
+            var list = new List<ModeHotkeyCycleEntry>();
+            if (Properties.Settings.Default.groupModeCycleWithModeHotkey)
+                list.Add(new ModeHotkeyCycleEntry(MulticontrollerMode.Group, null));
+            if (Properties.Settings.Default.mirrorModeCycleWithModeHotkey)
+                list.Add(new ModeHotkeyCycleEntry(MulticontrollerMode.MirrorAll, null));
+            if (Properties.Settings.Default.allGroupModeCycleWithModeHotkey)
+                list.Add(new ModeHotkeyCycleEntry(MulticontrollerMode.AllGroup, null));
+            if (Properties.Settings.Default.customModeCycleWithModeHotkey)
+            {
+                CustomModeFile cf = CustomModeStorage.Load();
+                if (cf.Modes != null)
+                {
+                    foreach (CustomModeDefinition m in cf.Modes.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+                    {
+                        if (m.ShouldIncludeInModeHotkeyCycle())
+                            list.Add(new ModeHotkeyCycleEntry(MulticontrollerMode.Custom, m.Id));
+                    }
+                }
+            }
+            return list;
+        }
+
+        static int IndexOfCurrentModeInCycleList(List<ModeHotkeyCycleEntry> list, MulticontrollerMode currentMode, string activeCustomModeId)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i].Mode != currentMode)
+                    continue;
+                if (currentMode != MulticontrollerMode.Custom)
+                    return i;
+                if (string.Equals(list[i].CustomModeId, activeCustomModeId ?? "", StringComparison.Ordinal))
+                    return i;
+            }
+            return -1;
+        }
+
+        void ApplyModeHotkeyCycleEntry(ModeHotkeyCycleEntry entry)
+        {
+            if (entry.Mode == MulticontrollerMode.Custom)
+                ActivateCustomModeDefinition(entry.CustomModeId);
+            else
+                CurrentMode = entry.Mode;
+        }
+
         /// <summary>
         /// Controllers with windows, non-minimized, in the same order as instant multiclick (<c>multiclickOrder</c>).
         /// </summary>
@@ -1297,41 +1396,18 @@ namespace TTMulti
                         }
                         else
                         {
-                            List<MulticontrollerMode> availableModesToCycle = new List<MulticontrollerMode>();
-
-                            if (Properties.Settings.Default.groupModeCycleWithModeHotkey)
+                            List<ModeHotkeyCycleEntry> cycle = BuildModeHotkeyCycleList();
+                            if (cycle.Count > 0)
                             {
-                                availableModesToCycle.Add(MulticontrollerMode.Group);
-                            }
+                                int currentModeIndex = IndexOfCurrentModeInCycleList(cycle, CurrentMode, ActiveCustomModeId);
 
-                            if (Properties.Settings.Default.mirrorModeCycleWithModeHotkey)
-                            {
-                                availableModesToCycle.Add(MulticontrollerMode.MirrorAll);
-                            }
-
-                            if (Properties.Settings.Default.allGroupModeCycleWithModeHotkey)
-                            {
-                                availableModesToCycle.Add(MulticontrollerMode.AllGroup);
-                            }
-
-                            if (Properties.Settings.Default.customModeCycleWithModeHotkey)
-                            {
-                                CustomModeFile cf = CustomModeStorage.Load();
-                                if (cf.Modes != null && cf.Modes.Count > 0)
-                                    availableModesToCycle.Add(MulticontrollerMode.Custom);
-                            }
-
-                            int currentModeIndex = availableModesToCycle.IndexOf(CurrentMode);
-
-                            if (currentModeIndex >= 0)
-                            {
-                                currentModeIndex = (currentModeIndex + 1) % availableModesToCycle.Count;
-
-                                CurrentMode = availableModesToCycle[currentModeIndex];
-                            }
-                            else if (availableModesToCycle.Count > 0)
-                            {
-                                CurrentMode = availableModesToCycle[0];
+                                if (currentModeIndex >= 0)
+                                {
+                                    int next = (currentModeIndex + 1) % cycle.Count;
+                                    ApplyModeHotkeyCycleEntry(cycle[next]);
+                                }
+                                else
+                                    ApplyModeHotkeyCycleEntry(cycle[0]);
                             }
                         }
                     }

@@ -192,6 +192,9 @@
     <Compile Include="Forms\OptionsDlg.CustomModes.cs">
       <DependentUpon>OptionsDlg.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\OptionsDlg.CustomModeColors.cs">
+      <DependentUpon>OptionsDlg.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Controls\SelectWindowCrosshair.cs">

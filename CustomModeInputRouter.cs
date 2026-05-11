@@ -109,6 +109,32 @@ namespace TTMulti
                     return b.ConsumeInput;
                 }
 
+                if (b.Action == CustomModeBindingAction.SendRole
+                    && string.Equals(b.RoleTitle, CustomModeWellKnownRoles.ZeroPowerThrow, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (isDown)
+                    {
+                        var throwBinding = Properties.SerializedSettings.Default.Bindings
+                            .FirstOrDefault(x => string.Equals(x.Title, "Throw", StringComparison.OrdinalIgnoreCase));
+                        if (throwBinding != null)
+                        {
+                            foreach (ToontownController target in targets)
+                            {
+                                Keys throwKey = Keys.None;
+                                if (target.Type == ControllerType.Left && throwBinding.LeftToonKey != Keys.None)
+                                    throwKey = throwBinding.LeftToonKey;
+                                else if (target.Type == ControllerType.Right && throwBinding.RightToonKey != Keys.None)
+                                    throwKey = throwBinding.RightToonKey;
+                                if (throwKey == Keys.None)
+                                    continue;
+                                target.PostMessage(Win32.WM.KEYDOWN, (IntPtr)throwKey, IntPtr.Zero);
+                                target.PostMessage(Win32.WM.KEYUP, (IntPtr)throwKey, IntPtr.Zero);
+                            }
+                        }
+                    }
+                    return b.ConsumeInput;
+                }
+
                 Win32.WM outMsg = isUp ? Win32.WM.KEYUP : Win32.WM.KEYDOWN;
 
                 KeyMapping roleMap = null;

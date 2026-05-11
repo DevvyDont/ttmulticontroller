@@ -1189,6 +1189,15 @@ namespace TTMulti.Forms
             focusedUnfocusedResetBtn.Click += (s, e) => { focusedModeUnfocusedColorButton.BackColor = Color.FromArgb(95, 134, 207); };
             colorsGroupBox.Controls.Add(focusedUnfocusedResetBtn);
 
+            yPos += spacing;
+            AddCustomModeBorderColorsSection(colorsGroupBox, ref yPos);
+            colorsGroupBox.Size = new Size(720, Math.Max(480, yPos + 20));
+            colorsTabPage.Enter += ColorsTabPage_Enter;
+        }
+
+        void ColorsTabPage_Enter(object sender, EventArgs e)
+        {
+            RebuildCustomModeBorderColorRows();
         }
 
         private void ShowColorDialog(Button colorButton, Color defaultColor)
@@ -1251,6 +1260,8 @@ namespace TTMulti.Forms
             
             if (Properties.Settings.Default.focusedModeUnfocusedColor != defaultUnfocused.ToArgb())
                 focusedModeUnfocusedColorButton.BackColor = Color.FromArgb(Properties.Settings.Default.focusedModeUnfocusedColor);
+
+            RebuildCustomModeBorderColorRows();
         }
 
         private void SaveColorsSettings()
@@ -1267,6 +1278,8 @@ namespace TTMulti.Forms
             Properties.Settings.Default.switchingRemovedColor = switchingRemovedColorButton.BackColor.ToArgb();
             Properties.Settings.Default.focusedModeFocusedColor = focusedModeFocusedColorButton.BackColor.ToArgb();
             Properties.Settings.Default.focusedModeUnfocusedColor = focusedModeUnfocusedColorButton.BackColor.ToArgb();
+
+            PushCustomModeBorderColorsFromUiToModel();
         }
 
 
