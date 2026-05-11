@@ -2492,6 +2492,15 @@ namespace TTMulti
             }
             _hookInstance = null;
         }
+
+        /// <summary>
+        /// Ensures switching-mode <see cref="WH_MOUSE_LL"/> hook is removed on shutdown so Windows does not
+        /// keep routing mouse input through a dying process (fixes cursor lag / jitter after exit).
+        /// </summary>
+        internal void ShutdownUninstallSwitchingMouseHook()
+        {
+            UninstallMouseHook();
+        }
         
         /// <summary>
         /// Low-level mouse hook procedure - blocks clicks during switching mode

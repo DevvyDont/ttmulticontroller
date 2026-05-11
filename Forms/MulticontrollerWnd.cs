@@ -1537,12 +1537,40 @@ namespace TTMulti.Forms
             }
             catch { }
 
-            _multiclickFakeCursorTimer?.Stop();
+            ShutdownAllInputCapture();
+
             _multiclickFakeCursorTimer?.Dispose();
-            UnregisterControlledMulticlickHotkeys(); // also calls UninstallControlledMcRegularClickKeyboardHook
-            UninstallControlledMcFocusBlockHook();
-            
+
             SaveWindowPosition();
+        }
+
+        /// <summary>
+        /// Remove hooks, hotkeys, and message filter before the main HWND is destroyed so mouse/keyboard
+        /// input is not processed by orphaned WH_MOUSE_LL / WH_KEYBOARD_LL hooks (avoids cursor lag or erratic movement after exit).
+        /// </summary>
+        private void ShutdownAllInputCapture()
+        {
+            try
+            {
+                Application.RemoveMessageFilter(this);
+            }
+            catch { }
+
+            StopFakeCursors();
+
+            UnregisterControlledMulticlickHotkeys();
+            UninstallControlledMcFocusBlockHook();
+
+            UninstallMulticlickMouseHook();
+            UninstallMinimizeUnconnectedKeyboardHook();
+
+            UnregisterAutoFindHotkey();
+            UnregisterLayoutPresetHotkeys();
+            UnregisterMinimizeUnconnectedHotkey();
+
+            UnregisterHotkey();
+
+            controller?.ShutdownUninstallSwitchingMouseHook();
         }
 
         private void Controller_GroupsChanged(object sender, EventArgs e)
