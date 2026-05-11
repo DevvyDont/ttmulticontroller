@@ -506,16 +506,10 @@ namespace TTMulti.Forms
                 }
             }
 
-            // Mode lock toggle (ID 3)
+            // Mode lock toggle (ID 3) — always registered when set so it works from game windows
             Win32.UnregisterHotKey(this.Handle, 3);
             if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
-            {
-                bool lockGlobal = Properties.Settings.Default.modeLockToggleHotkeyGlobal;
-                if (lockGlobal || controller.IsActive)
-                {
-                    Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
-                }
-            }
+                Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
             // Note: ID 7 (auto-find), ID 10-25 (layout presets) handled separately
         }
 
@@ -1410,7 +1404,7 @@ namespace TTMulti.Forms
                     Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
                 }
 
-                if (Properties.Settings.Default.modeLockToggleKeyCode != 0 && Properties.Settings.Default.modeLockToggleHotkeyGlobal)
+                if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
                 {
                     Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
                 }
@@ -1713,7 +1707,7 @@ namespace TTMulti.Forms
                 Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
             }
 
-            if (Properties.Settings.Default.modeLockToggleKeyCode != 0 && Properties.Settings.Default.modeLockToggleHotkeyGlobal)
+            if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
             {
                 Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
             }

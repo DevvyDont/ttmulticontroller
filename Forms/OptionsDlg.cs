@@ -214,7 +214,6 @@ namespace TTMulti.Forms
         // Mode lock (Other tab)
         private GroupBox modeLockGroupBox;
         private KeyPicker modeLockToggleKeyPicker;
-        private CheckBox modeLockToggleHotkeyGlobalCheckBox;
 
         // Layout presets
         private LayoutPresetFile _layoutPresetFile;
@@ -1313,14 +1312,14 @@ namespace TTMulti.Forms
 
             minimizeUnconnectedGroupBox = new GroupBox
             {
-                Text = "Minimize unconnected Toontown windows",
+                Text = "Minimize Unconnected Toontown Windows",
                 Dock = DockStyle.Top,
                 Size = new Size(734, 80)
             };
 
             var descLabel = new Label
             {
-                Text = "Toggle keybind: minimize all game windows not connected to the multicontroller, or restore them. Uses the same executable list as Auto-Find.",
+                Text = "Minimize all game windows not connected to the multicontroller, or restore them. Uses the same executable list as Auto-Find.",
                 Location = new Point(10, 20),
                 Size = new Size(710, 32),
                 AutoSize = false,
@@ -1347,7 +1346,7 @@ namespace TTMulti.Forms
 
             minimizeUnconnectedHotkeyGlobalCheckBox = new CheckBox
             {
-                Text = "Global (works when game window is focused)",
+                Text = "Global",
                 Location = new Point(360, 52),
                 Size = new Size(280, 20)
             };
@@ -1410,39 +1409,35 @@ namespace TTMulti.Forms
 
             modeLockGroupBox = new GroupBox
             {
-                Text = "Mode lock",
+                Text = "Mode Lock",
                 Dock = DockStyle.Top,
-                Height = 88
+                Size = new Size(734, 105)
             };
 
+            // Same pattern as minimize-unconnected: constrained width + AutoSize so text wraps inside the group box.
             var desc = new Label
             {
-                Text = "While mode lock is on, hotkeys cannot change Multi vs Mirror vs All-group mode or the active group number. " +
-                       "Press the toggle key again to unlock. You can still change mode using the buttons on the main window.",
+                Text = "While Mode Lock is ON, hotkeys cannot change Multi vs Mirror vs All-group mode or the active group number. " +
+                       "Press the toggle key again to unlock.",
                 Location = new Point(10, 20),
-                Size = new Size(710, 36),
+                Size = new Size(710, 32),
                 AutoSize = false,
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             modeLockGroupBox.Controls.Add(desc);
 
-            var keyLabel = new Label { Text = "Toggle key:", Location = new Point(10, 58), Size = new Size(75, 20) };
+            int keyRowTop = desc.Bottom + 10;
+            var keyLabel = new Label { Text = "Hotkey:", Location = new Point(10, keyRowTop), Size = new Size(45, 20) };
             modeLockGroupBox.Controls.Add(keyLabel);
 
             modeLockToggleKeyPicker = new KeyPicker
             {
-                Location = new Point(90, 56),
+                Location = new Point(60, keyRowTop - 2),
                 Size = new Size(120, 23)
             };
             modeLockGroupBox.Controls.Add(modeLockToggleKeyPicker);
 
-            modeLockToggleHotkeyGlobalCheckBox = new CheckBox
-            {
-                Text = "Global (works when a game window is focused)",
-                Location = new Point(220, 58),
-                Size = new Size(320, 20)
-            };
-            modeLockGroupBox.Controls.Add(modeLockToggleHotkeyGlobalCheckBox);
+            modeLockGroupBox.Height = modeLockToggleKeyPicker.Bottom + 16;
 
             otherTab.Controls.Add(modeLockGroupBox);
             if (minimizeUnconnectedGroupBox != null)
@@ -1457,7 +1452,6 @@ namespace TTMulti.Forms
             if (modeLockToggleKeyPicker == null)
                 return;
             modeLockToggleKeyPicker.ChosenKey = (Keys)Properties.Settings.Default.modeLockToggleKeyCode;
-            modeLockToggleHotkeyGlobalCheckBox.Checked = Properties.Settings.Default.modeLockToggleHotkeyGlobal;
         }
 
         private void SaveModeLockSettings()
@@ -1465,7 +1459,6 @@ namespace TTMulti.Forms
             if (modeLockToggleKeyPicker == null)
                 return;
             Properties.Settings.Default.modeLockToggleKeyCode = (int)modeLockToggleKeyPicker.ChosenKey;
-            Properties.Settings.Default.modeLockToggleHotkeyGlobal = modeLockToggleHotkeyGlobalCheckBox.Checked;
         }
 
         private void CreateControlledMulticlickTab()
@@ -1551,7 +1544,7 @@ namespace TTMulti.Forms
             // Row 2: Global checkbox on its own line so it never clips
             controlledMcActivateGlobalCheckBox = new CheckBox
             {
-                Text = "Global (works when game window is focused)",
+                Text = "Global",
                 Location = new Point(10, 167),
                 Size = new Size(400, 21)
             };

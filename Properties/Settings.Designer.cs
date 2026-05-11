@@ -490,18 +490,6 @@ namespace TTMulti.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool lockModeHotkeyCycle {
-            get {
-                return ((bool)(this["lockModeHotkeyCycle"]));
-            }
-            set {
-                this["lockModeHotkeyCycle"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int modeLockToggleKeyCode {
             get {
@@ -509,18 +497,6 @@ namespace TTMulti.Properties {
             }
             set {
                 this["modeLockToggleKeyCode"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool modeLockToggleHotkeyGlobal {
-            get {
-                return ((bool)(this["modeLockToggleHotkeyGlobal"]));
-            }
-            set {
-                this["modeLockToggleHotkeyGlobal"] = value;
             }
         }
         
