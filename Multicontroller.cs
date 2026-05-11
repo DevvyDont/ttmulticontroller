@@ -590,6 +590,19 @@ namespace TTMulti
         private HashSet<ToontownController> _markedForRemoval = new HashSet<ToontownController>();
         private bool _hadSwapInSwitchingSession = false;
 
+        /// <summary>
+        /// Per-swap screen bounds (GetWindowRect) captured before HWND assignment is exchanged; applied on Alt release when enabled.
+        /// </summary>
+        private struct SwapScreenGeometryOp
+        {
+            internal IntPtr Hwnd1;
+            internal IntPtr Hwnd2;
+            internal Win32.RECT Rect1;
+            internal Win32.RECT Rect2;
+        }
+
+        private readonly List<SwapScreenGeometryOp> _swapScreenGeometryOps = new List<SwapScreenGeometryOp>();
+
         // Global mouse hook for blocking clicks in switching mode
         private static IntPtr _mouseHookHandle = IntPtr.Zero;
         private static Multicontroller _hookInstance = null;
@@ -733,8 +746,6 @@ namespace TTMulti
 
         private void ExitSwitchingMode()
         {
-            // Capture whether user swapped windows (not removal only) for optional auto-placement
-            bool hadSwap = _hadSwapInSwitchingSession;
             _hadSwapInSwitchingSession = false;
 
             _switchingMode = false;
@@ -755,8 +766,6 @@ namespace TTMulti
             }
             _markedForRemoval.Clear();
 
-            // Capture which controllers were switched before clearing (for layout: only move those windows)
-            var switchedSet = new HashSet<ToontownController>(_switchedControllers);
             _switchedControllers.Clear();
 
             // Reset all border windows so switching colors clear when Alt is released
@@ -776,22 +785,89 @@ namespace TTMulti
             // Refresh all controllers so border color returns to normal (mirror/group) on every window
             SettingChanged?.Invoke(this, EventArgs.Empty);
 
-            // Optionally apply last used layout preset on Alt release only if user swapped windows (not when only removing).
-            // Only move the windows that were switched (e.g. 2), not all 16, to avoid lag.
-            if (hadSwap && Properties.Settings.Default.autoFindPlacementOnAltRelease && switchedSet.Count > 0)
+            if (Properties.Settings.Default.autoFindPlacementOnAltRelease && _swapScreenGeometryOps.Count > 0)
             {
-                var file = LayoutPresetStorage.Load();
-                if (file?.Presets != null && file.Presets.Count > 0 && AllControllersWithWindows.Any())
+                try
                 {
-                    int idx = Properties.Settings.Default.lastUsedLayoutPresetIndex;
-                    if (idx < 0 || idx >= file.Presets.Count)
-                        idx = 0;
-                    try
-                    {
-                        ApplyLayoutPreset(file.Presets[idx], switchedSet);
-                    }
-                    catch { /* ignore placement errors */ }
+                    ApplyRecordedSwapScreenGeometry();
                 }
+                catch { /* ignore placement errors */ }
+            }
+
+            _swapScreenGeometryOps.Clear();
+        }
+
+        /// <summary>
+        /// Move each swapped HWND to the other window's pre-swap GetWindowRect bounds (only windows still assigned to a controller).
+        /// </summary>
+        private void ApplyRecordedSwapScreenGeometry()
+        {
+            var assigned = new HashSet<IntPtr>(
+                AllControllersWithWindows.Select(c => c.WindowHandle).Where(h => h != IntPtr.Zero));
+
+            var validOps = new List<SwapScreenGeometryOp>();
+            foreach (var op in _swapScreenGeometryOps)
+            {
+                if (op.Hwnd1 == IntPtr.Zero || op.Hwnd2 == IntPtr.Zero)
+                    continue;
+                if (!Win32.IsWindow(op.Hwnd1) || !Win32.IsWindow(op.Hwnd2))
+                    continue;
+                if (!assigned.Contains(op.Hwnd1) || !assigned.Contains(op.Hwnd2))
+                    continue;
+                validOps.Add(op);
+            }
+
+            if (validOps.Count == 0)
+                return;
+
+            foreach (var op in validOps)
+            {
+                foreach (IntPtr h in new[] { op.Hwnd1, op.Hwnd2 })
+                {
+                    if (Win32.GetWindowShowState(h) == Win32.ShowWindowCommands.ShowMinimized)
+                        Win32.ShowWindow(h, Win32.ShowWindowCommands.Restore);
+                }
+            }
+
+            var flags = Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate;
+            var toInvalidate = new HashSet<IntPtr>();
+
+            IntPtr hdwp = Win32.BeginDeferWindowPos(validOps.Count * 2);
+            if (hdwp != IntPtr.Zero)
+            {
+                foreach (var op in validOps)
+                {
+                    int w1 = op.Rect1.Right - op.Rect1.Left;
+                    int h1 = op.Rect1.Bottom - op.Rect1.Top;
+                    int w2 = op.Rect2.Right - op.Rect2.Left;
+                    int h2 = op.Rect2.Bottom - op.Rect2.Top;
+                    hdwp = Win32.DeferWindowPos(hdwp, op.Hwnd1, IntPtr.Zero, op.Rect2.Left, op.Rect2.Top, w2, h2, flags);
+                    hdwp = Win32.DeferWindowPos(hdwp, op.Hwnd2, IntPtr.Zero, op.Rect1.Left, op.Rect1.Top, w1, h1, flags);
+                    toInvalidate.Add(op.Hwnd1);
+                    toInvalidate.Add(op.Hwnd2);
+                }
+                Win32.EndDeferWindowPos(hdwp);
+            }
+            else
+            {
+                foreach (var op in validOps)
+                {
+                    int w1 = op.Rect1.Right - op.Rect1.Left;
+                    int h1 = op.Rect1.Bottom - op.Rect1.Top;
+                    int w2 = op.Rect2.Right - op.Rect2.Left;
+                    int h2 = op.Rect2.Bottom - op.Rect2.Top;
+                    Win32.SetWindowPos(op.Hwnd1, IntPtr.Zero, op.Rect2.Left, op.Rect2.Top, w2, h2, flags);
+                    Win32.SetWindowPos(op.Hwnd2, IntPtr.Zero, op.Rect1.Left, op.Rect1.Top, w1, h1, flags);
+                    toInvalidate.Add(op.Hwnd1);
+                    toInvalidate.Add(op.Hwnd2);
+                }
+            }
+
+            System.Windows.Forms.Application.DoEvents();
+            foreach (var c in AllControllersWithWindows)
+            {
+                if (toInvalidate.Contains(c.WindowHandle))
+                    c.UpdateBorderPosition();
             }
         }
 
@@ -888,8 +964,25 @@ namespace TTMulti
             if (handle1 == IntPtr.Zero || handle2 == IntPtr.Zero)
                 return;
 
+            if (Properties.Settings.Default.autoFindPlacementOnAltRelease
+                && Win32.IsWindow(handle1) && Win32.IsWindow(handle2)
+                && Win32.GetWindowShowState(handle1) != Win32.ShowWindowCommands.ShowMinimized
+                && Win32.GetWindowShowState(handle2) != Win32.ShowWindowCommands.ShowMinimized)
+            {
+                if (Win32.GetWindowRect(handle1, out Win32.RECT r1) && Win32.GetWindowRect(handle2, out Win32.RECT r2))
+                {
+                    _swapScreenGeometryOps.Add(new SwapScreenGeometryOp
+                    {
+                        Hwnd1 = handle1,
+                        Hwnd2 = handle2,
+                        Rect1 = r1,
+                        Rect2 = r2
+                    });
+                }
+            }
+
             // Only swap window handle assignments (group/pair assignments)
-            // Don't move or resize windows
+            // Don't move or resize windows here; optional screen exchange runs on Alt release
             controller1.WindowHandle = handle2;
             controller2.WindowHandle = handle1;
 
@@ -1150,6 +1243,7 @@ namespace TTMulti
                         _secondSelectedController = null;
                         _hadSwapInSwitchingSession = false;
                         _markedForRemoval.Clear(); // Clear removal marks when entering switching mode
+                        _swapScreenGeometryOps.Clear();
                         _switchingModeTimer.Start();
                         
                         // Install global mouse hook to block clicks during switching mode

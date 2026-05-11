@@ -633,7 +633,7 @@ namespace TTMulti.Forms
             // Auto-placement on Alt release
             autoFindPlacementOnAltReleaseCheckBox = new CheckBox
             {
-                Text = "Apply last used layout preset when releasing Alt (after switching/removing windows)",
+                Text = "Exchange swapped windows' screen position and size when releasing Alt",
                 Location = new Point(10, 283),
                 Size = new Size(690, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
