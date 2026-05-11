@@ -36,6 +36,11 @@ namespace TTMulti.Forms
         bool hotkeyRegistered = false;
         bool userPromptedForAdminRights = false;
 
+        /// <summary>
+        /// When true, global-style captures (RegisterHotKey 0–3, layout presets, minimize-unconnected global path, multiclick mouse hook) are off so keys reach the game; id 4 (suspend toggle) stays registered.
+        /// </summary>
+        bool _globalHotkeysSuspended = false;
+
         // Low-level keyboard hook for minimize-unconnected when no modifier is set (RegisterHotKey doesn't work globally for single keys)
         private static IntPtr _minimizeUnconnectedKeyboardHookHandle = IntPtr.Zero;
         private static MulticontrollerWnd _minimizeUnconnectedHookForm = null;
@@ -230,9 +235,9 @@ namespace TTMulti.Forms
                     ret = controller.ProcessInput(m.Msg, m.WParam, m.LParam);
                     break;
                 case Win32.WM.HOTKEY:
-                    // Check if this is auto-find (ID 7), minimize unconnected (ID 9), layout preset (ID 10-25), or mode lock (ID 3)
+                    // Check if this is auto-find (ID 7), minimize unconnected (ID 9), layout preset (ID 10-25), mode lock (ID 3), or suspend-globals toggle (ID 4)
                     int hotkeyId = m.WParam.ToInt32();
-                    if (hotkeyId == 3 || hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25))
+                    if (hotkeyId == 3 || hotkeyId == 4 || hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25))
                     {
                         // Let these hotkeys pass through to WndProc
                         ret = false;
@@ -274,6 +279,11 @@ namespace TTMulti.Forms
                 else if (hotkeyId == 9)
                 {
                     controller.ToggleMinimizeUnconnectedWindows();
+                }
+                else if (hotkeyId == 4)
+                {
+                    _globalHotkeysSuspended = !_globalHotkeysSuspended;
+                    RefreshGlobalHotkeyRegistration();
                 }
                 // Layout preset hotkeys (ID 10-25)
                 else if (hotkeyId >= 10 && hotkeyId <= 25)
@@ -398,6 +408,7 @@ namespace TTMulti.Forms
         
         private void ReloadOptions()
         {
+            _globalHotkeysSuspended = false;
             this.TopMost = Properties.Settings.Default.onTopWhenInactive;
             panel1.Visible = !Properties.Settings.Default.compactUI;
             controller.UpdateOptions();
@@ -449,25 +460,32 @@ namespace TTMulti.Forms
 
         private void RegisterHotkey()
         {
+            UninstallMulticlickMouseHook();
+            Win32.UnregisterHotKey(this.Handle, 0);
+            Win32.UnregisterHotKey(this.Handle, 1);
+            Win32.UnregisterHotKey(this.Handle, 2);
+            Win32.UnregisterHotKey(this.Handle, 3);
+            Win32.UnregisterHotKey(this.Handle, 4);
+
+            // Suspend-global toggle (ID 4) — always registered when configured, including while suspended, so the user can turn globals back on.
+            if (Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode != 0)
+                Win32.RegisterHotKey(this.Handle, 4, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode);
+
+            if (_globalHotkeysSuspended)
+                return;
+
             // Mode/Activate (ID 0)
             bool modeGlobal = Properties.Settings.Default.modeHotkeyGlobal;
             if (modeGlobal)
             {
-                // Global: Always register (works from anywhere)
                 Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
             }
-            else
+            else if (controller.IsActive)
             {
-                // Non-global: Only register when multicontroller window is active (not merely a game window)
-                if (controller.IsActive)
-                {
-                    Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
-                }
+                Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
             }
 
             // Instant Multi-Click (ID 1) - keyboard hotkey or mouse hook (RegisterHotKey does not support mouse buttons)
-            UninstallMulticlickMouseHook();
-            Win32.UnregisterHotKey(this.Handle, 1);
             if (Properties.Settings.Default.replicateMouseUseMouseButton)
             {
                 int btn = Properties.Settings.Default.replicateMouseMouseButton;
@@ -493,33 +511,45 @@ namespace TTMulti.Forms
                 bool zeroGlobal = Properties.Settings.Default.zeroPowerThrowHotkeyGlobal;
                 if (zeroGlobal)
                 {
-                    // Global: Always register (works from anywhere)
                     Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
                 }
-                else
+                else if (controller.IsActive)
                 {
-                    // Non-global: Only register when multicontroller window is active (not merely a game window)
-                    if (controller.IsActive)
-                    {
-                        Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
-                    }
+                    Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
                 }
             }
 
             // Mode lock toggle (ID 3) — always registered when set so it works from game windows
-            Win32.UnregisterHotKey(this.Handle, 3);
             if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
                 Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
             // Note: ID 7 (auto-find), ID 10-25 (layout presets) handled separately
         }
 
+        /// <summary>
+        /// After toggling <see cref="_globalHotkeysSuspended"/>, re-apply hotkey registration so globals, layout presets, and minimize-unconnected follow the new state.
+        /// </summary>
+        private void RefreshGlobalHotkeyRegistration()
+        {
+            UnregisterLayoutPresetHotkeys();
+            UnregisterMinimizeUnconnectedHotkey();
+            UnregisterHotkey();
+            RegisterHotkey();
+            if (controller.IsActive)
+            {
+                RegisterAutoFindHotkey();
+                if (!_globalHotkeysSuspended)
+                    RegisterLayoutPresetHotkeys();
+            }
+            RegisterMinimizeUnconnectedHotkey();
+        }
+
         private void UnregisterHotkey()
         {
-            // Unregister mode/multiclick/zero power/mode-lock (IDs 0-3)
             Win32.UnregisterHotKey(this.Handle, 0);
             Win32.UnregisterHotKey(this.Handle, 1);
             Win32.UnregisterHotKey(this.Handle, 2);
             Win32.UnregisterHotKey(this.Handle, 3);
+            Win32.UnregisterHotKey(this.Handle, 4);
             UninstallMulticlickMouseHook();
         }
 
@@ -550,7 +580,7 @@ namespace TTMulti.Forms
 
         private void RegisterLayoutPresetHotkeys()
         {
-            if (!controller.IsActive) return;
+            if (_globalHotkeysSuspended || !controller.IsActive) return;
             var file = LayoutPresetStorage.Load();
             if (file?.Presets == null) return;
             for (int i = 0; i < file.Presets.Count && i <= LayoutPresetHotkeyIdEnd - LayoutPresetHotkeyIdStart; i++)
@@ -575,6 +605,11 @@ namespace TTMulti.Forms
             int keyCode = Properties.Settings.Default.minimizeUnconnectedKeyCode;
             int modifiers = Properties.Settings.Default.minimizeUnconnectedKeyModifiers;
             if (keyCode == 0)
+            {
+                UnregisterMinimizeUnconnectedHotkey();
+                return;
+            }
+            if (_globalHotkeysSuspended)
             {
                 UnregisterMinimizeUnconnectedHotkey();
                 return;
@@ -1379,35 +1414,7 @@ namespace TTMulti.Forms
             }
             else
             {
-                // MC is not active: re-register only global hotkeys.
-                if (Properties.Settings.Default.modeHotkeyGlobal)
-                {
-                    Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
-                }
-
-                if (Properties.Settings.Default.replicateMouseHotkeyGlobal)
-                {
-                    if (Properties.Settings.Default.replicateMouseUseMouseButton)
-                    {
-                        int btn = Properties.Settings.Default.replicateMouseMouseButton;
-                        if (btn >= 0 && btn <= 2)
-                            InstallMulticlickMouseHook(btn);
-                    }
-                    else if (Properties.Settings.Default.replicateMouseKeyCode != 0)
-                    {
-                        Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
-                    }
-                }
-
-                if (Properties.Settings.Default.zeroPowerThrowKeyCode != 0 && Properties.Settings.Default.zeroPowerThrowHotkeyGlobal)
-                {
-                    Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
-                }
-
-                if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
-                {
-                    Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
-                }
+                RegisterHotkey();
             }
             RegisterMinimizeUnconnectedHotkey();
         }
@@ -1682,36 +1689,7 @@ namespace TTMulti.Forms
             UnregisterLayoutPresetHotkeys();
             UnregisterMinimizeUnconnectedHotkey();
 
-            // Re-register only global hotkeys; non-global ones re-register when MC or a game window becomes active.
-            if (Properties.Settings.Default.modeHotkeyGlobal)
-            {
-                Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
-            }
-
-            if (Properties.Settings.Default.replicateMouseHotkeyGlobal)
-            {
-                if (Properties.Settings.Default.replicateMouseUseMouseButton)
-                {
-                    int btn = Properties.Settings.Default.replicateMouseMouseButton;
-                    if (btn >= 0 && btn <= 2)
-                        InstallMulticlickMouseHook(btn);
-                }
-                else if (Properties.Settings.Default.replicateMouseKeyCode != 0)
-                {
-                    Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
-                }
-            }
-
-            if (Properties.Settings.Default.zeroPowerThrowKeyCode != 0 && Properties.Settings.Default.zeroPowerThrowHotkeyGlobal)
-            {
-                Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
-            }
-
-            if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
-            {
-                Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
-            }
-
+            RegisterHotkey();
             RegisterMinimizeUnconnectedHotkey();
         }
     }

@@ -503,6 +503,18 @@ namespace TTMulti.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int suspendGlobalHotkeysToggleKeyCode {
+            get {
+                return ((int)(this["suspendGlobalHotkeysToggleKeyCode"]));
+            }
+            set {
+                this["suspendGlobalHotkeysToggleKeyCode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int mirrorGroupModeKeyCode {
             get {
                 return ((int)(this["mirrorGroupModeKeyCode"]));

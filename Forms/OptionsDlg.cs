@@ -215,6 +215,10 @@ namespace TTMulti.Forms
         private GroupBox modeLockGroupBox;
         private KeyPicker modeLockToggleKeyPicker;
 
+        // Suspend global hotkeys (Other tab)
+        private GroupBox suspendGlobalHotkeysGroupBox;
+        private KeyPicker suspendGlobalHotkeysToggleKeyPicker;
+
         // Layout presets
         private LayoutPresetFile _layoutPresetFile;
         private ListBox _layoutPresetsListBox;
@@ -244,6 +248,9 @@ namespace TTMulti.Forms
 
             CreateModeLockUI();
             LoadModeLockSettings();
+
+            CreateSuspendGlobalHotkeysUI();
+            LoadSuspendGlobalHotkeysSettings();
 
             CreateControlledMulticlickTab();
             LoadControlledMulticlickSettings();
@@ -1461,6 +1468,66 @@ namespace TTMulti.Forms
             Properties.Settings.Default.modeLockToggleKeyCode = (int)modeLockToggleKeyPicker.ChosenKey;
         }
 
+        private void CreateSuspendGlobalHotkeysUI()
+        {
+            var otherTab = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Text == "Other");
+            if (otherTab == null)
+                return;
+
+            suspendGlobalHotkeysGroupBox = new GroupBox
+            {
+                Text = "Suspend global hotkeys",
+                Dock = DockStyle.Top,
+                Size = new Size(734, 130)
+            };
+
+            var desc = new Label
+            {
+                Text = "Press this key to temporarily turn off Global hotkeys. Press again to restore. " +
+                       "It is recommended to choose a key you do not need in chat (e.g. Pause or Scroll Lock), or a modifier chord." +
+                       "This key must not conflict with any of your Global hotkeys.",
+                Location = new Point(10, 20),
+                Size = new Size(710, 48),
+                AutoSize = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            suspendGlobalHotkeysGroupBox.Controls.Add(desc);
+
+            int keyRowTop = desc.Bottom + 2;
+            var keyLabel = new Label { Text = "Hotkey:", Location = new Point(10, keyRowTop), Size = new Size(45, 20) };
+            suspendGlobalHotkeysGroupBox.Controls.Add(keyLabel);
+
+            suspendGlobalHotkeysToggleKeyPicker = new KeyPicker
+            {
+                Location = new Point(60, keyRowTop - 2),
+                Size = new Size(120, 23)
+            };
+            suspendGlobalHotkeysGroupBox.Controls.Add(suspendGlobalHotkeysToggleKeyPicker);
+
+            suspendGlobalHotkeysGroupBox.Height = suspendGlobalHotkeysToggleKeyPicker.Bottom + 16;
+
+            otherTab.Controls.Add(suspendGlobalHotkeysGroupBox);
+            if (modeLockGroupBox != null)
+            {
+                int idx = otherTab.Controls.GetChildIndex(modeLockGroupBox);
+                otherTab.Controls.SetChildIndex(suspendGlobalHotkeysGroupBox, idx);
+            }
+        }
+
+        private void LoadSuspendGlobalHotkeysSettings()
+        {
+            if (suspendGlobalHotkeysToggleKeyPicker == null)
+                return;
+            suspendGlobalHotkeysToggleKeyPicker.ChosenKey = (Keys)Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode;
+        }
+
+        private void SaveSuspendGlobalHotkeysSettings()
+        {
+            if (suspendGlobalHotkeysToggleKeyPicker == null)
+                return;
+            Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode = (int)suspendGlobalHotkeysToggleKeyPicker.ChosenKey;
+        }
+
         private void CreateControlledMulticlickTab()
         {
             var tab = new TabPage("Multi-Click");
@@ -1833,6 +1900,8 @@ namespace TTMulti.Forms
             SaveMinimizeUnconnectedSettings();
 
             SaveModeLockSettings();
+
+            SaveSuspendGlobalHotkeysSettings();
 
             // Save controlled multi-click settings
             SaveControlledMulticlickSettings();
