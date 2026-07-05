@@ -965,7 +965,24 @@ namespace TTMulti.Forms
             if (activateKey != 0)
                 InstallControlledMcActivateHook(activateKey);
 
-            // Multi-click key: only install keyboard hook when not using a mouse button
+            // The click / regular-click keyboard hooks only do anything while CMC mode is active (their procs
+            // pass through otherwise), so they are installed only while the mode is active — see
+            // Controller_ControlledMulticlickModeChanged. Re-install here if a settings reload happens mid-mode.
+            if (controller.IsControlledMulticlickMode)
+                InstallControlledMcModeKeyboardHooks();
+        }
+
+        private void UnregisterControlledMulticlickHotkeys()
+        {
+            UninstallControlledMcActivateHook();
+            UninstallControlledMcModeKeyboardHooks();
+        }
+
+        /// <summary>Install the CMC click / regular-click keyboard hooks (only used while CMC mode is active). PERF-02.</summary>
+        private void InstallControlledMcModeKeyboardHooks()
+        {
+            if (!Properties.Settings.Default.controlledMulticlickEnabled) return;
+
             if (!Properties.Settings.Default.controlledMulticlickClickUseMouseButton)
             {
                 int clickKey = Properties.Settings.Default.controlledMulticlickClickKeyCode;
@@ -973,7 +990,6 @@ namespace TTMulti.Forms
                     InstallControlledMcClickHook(clickKey);
             }
 
-            // Regular-click key: only install keyboard hook when not using a mouse button
             if (!Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton)
             {
                 int regularClickKey = Properties.Settings.Default.controlledMulticlickRegularClickKeyCode;
@@ -982,9 +998,8 @@ namespace TTMulti.Forms
             }
         }
 
-        private void UnregisterControlledMulticlickHotkeys()
+        private void UninstallControlledMcModeKeyboardHooks()
         {
-            UninstallControlledMcActivateHook();
             UninstallControlledMcClickHook();
             UninstallControlledMcRegularClickKeyboardHook();
         }
@@ -1277,11 +1292,13 @@ namespace TTMulti.Forms
                 if (!_multiclickFakeCursorTimer.Enabled)
                     _multiclickFakeCursorTimer.Start();
                 InstallControlledMcFocusBlockHook();
+                InstallControlledMcModeKeyboardHooks(); // click/regular hooks live only while the mode is active (PERF-02)
             }
             else
             {
                 StopFakeCursors();
                 UninstallControlledMcFocusBlockHook();
+                UninstallControlledMcModeKeyboardHooks();
             }
             UpdateCaptionColor();
         }
@@ -1444,11 +1461,12 @@ namespace TTMulti.Forms
 
             // Phase 2: broadcast that local position to every other active window;
             //          hide fake cursors on all non-active controllers.
+            // activeControllers were already filtered to non-minimized above, so re-querying the show state here
+            // (a second GetWindowPlacement per active window each 16ms tick) is redundant (PERF-02).
             var activeSet = new HashSet<ToontownController>(activeControllers);
             foreach (var c in controller.AllControllersWithWindows)
             {
-                if (!activeSet.Contains(c) || c == hoveredController
-                    || Win32.GetWindowShowState(c.WindowHandle) == Win32.ShowWindowCommands.ShowMinimized)
+                if (!activeSet.Contains(c) || c == hoveredController)
                 {
                     c.ShowFakeCursor = false;
                     continue;
