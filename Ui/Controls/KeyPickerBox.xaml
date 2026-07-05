@@ -1,0 +1,14 @@
+<UserControl
+    x:Class="TTMulti.Ui.Controls.KeyPickerBox"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <ui:Button
+        x:Name="pickerButton"
+        MinWidth="130"
+        HorizontalAlignment="Stretch"
+        HorizontalContentAlignment="Center"
+        Click="PickerButton_Click"
+        Content="Disabled"
+        ToolTip="Click to set a key. While armed: press a key, Esc cancels, Delete clears." />
+</UserControl>

@@ -306,6 +306,8 @@ namespace TTMulti.Ui
 
         private void OptionsButton_Click(object sender, RoutedEventArgs e)
         {
+            // The new WPF SettingsWindow (Ui/Settings) is being built up over R8a–R8c; until every page
+            // exists it stays unwired and Options keeps opening the complete WinForms OptionsDlg.
             var dlg = new OptionsDlg();
             _ignoreMessages = true;
             var result = dlg.ShowDialog(new Win32WindowOwner(_hwnd));
