@@ -217,12 +217,11 @@ namespace TTMulti
             foreach (ToontownController c in WhereNotMinimized(AllControllersWithWindows))
             {
                 Point clientAreaLocation = Win32.GetWindowClientAreaLocation(c.WindowHandle);
-                Size clientAreaSize = c.WindowSize;
-                if (cursorPos.X >= clientAreaLocation.X && cursorPos.X < clientAreaLocation.X + clientAreaSize.Width &&
-                    cursorPos.Y >= clientAreaLocation.Y && cursorPos.Y < clientAreaLocation.Y + clientAreaSize.Height)
+                if (ClickForwarding.ClientAreaContainsPoint(clientAreaLocation, c.WindowSize, cursorPos))
                 {
-                    relativeX = cursorPos.X - clientAreaLocation.X;
-                    relativeY = cursorPos.Y - clientAreaLocation.Y;
+                    Point rel = ClickForwarding.ToClientRelative(clientAreaLocation, cursorPos);
+                    relativeX = rel.X;
+                    relativeY = rel.Y;
                     cursorSide = c.Type;
                     foundCursorWindow = true;
                     break;
@@ -267,11 +266,7 @@ namespace TTMulti
             foreach (ToontownController c in toClick)
             {
                 if (c.HasWindow)
-                {
-                    IntPtr clickLParam = Win32.MakeMouseLParam(relativeX, relativeY);
-                    c.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
-                    c.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
-                }
+                    ClickForwarding.PostLeftClick(c, relativeX, relativeY);
             }
         }
 
@@ -286,15 +281,10 @@ namespace TTMulti
             foreach (ToontownController c in WhereNotMinimized(AllControllersWithWindows))
             {
                 Point clientAreaLocation = Win32.GetWindowClientAreaLocation(c.WindowHandle);
-                Size clientAreaSize = c.WindowSize;
-                if (cursorPos.X >= clientAreaLocation.X && cursorPos.X < clientAreaLocation.X + clientAreaSize.Width &&
-                    cursorPos.Y >= clientAreaLocation.Y && cursorPos.Y < clientAreaLocation.Y + clientAreaSize.Height)
+                if (ClickForwarding.ClientAreaContainsPoint(clientAreaLocation, c.WindowSize, cursorPos))
                 {
-                    int relativeX = cursorPos.X - clientAreaLocation.X;
-                    int relativeY = cursorPos.Y - clientAreaLocation.Y;
-                    IntPtr clickLParam = Win32.MakeMouseLParam(relativeX, relativeY);
-                    c.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
-                    c.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
+                    Point rel = ClickForwarding.ToClientRelative(clientAreaLocation, cursorPos);
+                    ClickForwarding.PostLeftClick(c, rel.X, rel.Y);
                     break;
                 }
             }
@@ -765,20 +755,18 @@ namespace TTMulti
             Point clientLoc = Win32.GetWindowClientAreaLocation(target.WindowHandle);
             Size sz = target.WindowSize;
             int relX, relY;
-            if (cursorPos.X >= clientLoc.X && cursorPos.X < clientLoc.X + sz.Width &&
-                cursorPos.Y >= clientLoc.Y && cursorPos.Y < clientLoc.Y + sz.Height)
+            if (ClickForwarding.ClientAreaContainsPoint(clientLoc, sz, cursorPos))
             {
-                relX = cursorPos.X - clientLoc.X;
-                relY = cursorPos.Y - clientLoc.Y;
+                Point rel = ClickForwarding.ToClientRelative(clientLoc, cursorPos);
+                relX = rel.X;
+                relY = rel.Y;
             }
             else
             {
                 relX = Math.Max(0, sz.Width / 2);
                 relY = Math.Max(0, sz.Height / 2);
             }
-            IntPtr clickLParam = Win32.MakeMouseLParam(relX, relY);
-            target.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
-            target.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
+            ClickForwarding.PostLeftClick(target, relX, relY);
         }
 
         /// <summary>
