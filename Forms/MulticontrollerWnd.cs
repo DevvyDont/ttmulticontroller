@@ -41,6 +41,14 @@ namespace TTMulti.Forms
         /// </summary>
         bool _globalHotkeysSuspended = false;
 
+        // The state the focus-driven hotkey table was last (re)registered for: MC active, suspended, and whether any
+        // game window is active (minimize-unconnected depends on that). Focus transitions that don't change these
+        // skip the full ~80-call teardown/rebuild + JSON reads (PERF-04). Moving between two game windows keeps all
+        // three unchanged, so it's a no-op; only MC<->game / game<->desktop transitions re-register.
+        private bool? _lastRegisteredActive;
+        private bool _lastRegisteredSuspended;
+        private bool _lastRegisteredAnyWindowActive;
+
         // Low-level keyboard hook for minimize-unconnected when no modifier is set (RegisterHotKey doesn't work globally for single keys)
         private static IntPtr _minimizeUnconnectedKeyboardHookHandle = IntPtr.Zero;
         private static MulticontrollerWnd _minimizeUnconnectedHookForm = null;
@@ -523,22 +531,10 @@ namespace TTMulti.Forms
             // Update UI colors to reflect any changes
             UpdateUIColors();
             
-            // Unregister all hotkeys
-            UnregisterHotkey();
-            UnregisterAutoFindHotkey();
-            UnregisterLayoutPresetHotkeys();
-            UnregisterMinimizeUnconnectedHotkey();
+            // Re-register the focus-driven hotkeys for the current state (force: settings just changed), plus the
+            // separately-managed controlled-multiclick hooks.
             UnregisterControlledMulticlickHotkeys();
-            
-            // Re-register all hotkeys based on current settings and state
-            RegisterHotkey();
-
-            if (controller.IsActive)
-            {
-                RegisterAutoFindHotkey();
-                RegisterLayoutPresetHotkeys();
-            }
-            RegisterMinimizeUnconnectedHotkey();
+            RegisterFocusHotkeys(force: true);
             RegisterControlledMulticlickHotkeys();
 
         }
@@ -620,6 +616,36 @@ namespace TTMulti.Forms
                 if (!IsDisposed)
                     MessageBox.Show(this, message, "Hotkey Not Registered", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }));
+        }
+
+        /// <summary>
+        /// Rebuild the focus-driven hotkey table (unregister all, then register for the current active/suspended
+        /// state). Skips the work when that state is unchanged unless <paramref name="force"/> is set (e.g. after a
+        /// settings change). The individual Register* methods self-gate on IsActive/suspended (PERF-04).
+        /// </summary>
+        private void RegisterFocusHotkeys(bool force = false)
+        {
+            bool active = controller.IsActive;
+            bool anyWindowActive = controller.AllControllersWithWindows.Any(c => c.IsWindowActive);
+            if (!force
+                && _lastRegisteredActive == active
+                && _lastRegisteredSuspended == _globalHotkeysSuspended
+                && _lastRegisteredAnyWindowActive == anyWindowActive)
+                return;
+
+            _lastRegisteredActive = active;
+            _lastRegisteredSuspended = _globalHotkeysSuspended;
+            _lastRegisteredAnyWindowActive = anyWindowActive;
+
+            UnregisterHotkey();
+            UnregisterAutoFindHotkey();
+            UnregisterLayoutPresetHotkeys();
+            UnregisterMinimizeUnconnectedHotkey();
+
+            RegisterHotkey();
+            RegisterAutoFindHotkey();
+            RegisterLayoutPresetHotkeys();
+            RegisterMinimizeUnconnectedHotkey();
         }
 
         private void RegisterHotkey()
@@ -709,7 +735,7 @@ namespace TTMulti.Forms
         {
             if (_globalHotkeysSuspended)
                 return;
-            CustomModeFile file = CustomModeStorage.Load();
+            CustomModeFile file = CustomModeStorage.LoadCached();
             if (file.Modes == null)
                 return;
             int hotkeyId = CustomModeActivationHotkeyIdStart;
@@ -734,17 +760,8 @@ namespace TTMulti.Forms
         /// </summary>
         private void RefreshGlobalHotkeyRegistration()
         {
-            UnregisterLayoutPresetHotkeys();
-            UnregisterMinimizeUnconnectedHotkey();
-            UnregisterHotkey();
-            RegisterHotkey();
-            if (controller.IsActive)
-            {
-                RegisterAutoFindHotkey();
-                if (!_globalHotkeysSuspended)
-                    RegisterLayoutPresetHotkeys();
-            }
-            RegisterMinimizeUnconnectedHotkey();
+            // Suspend state changed — force a rebuild for the current (active, suspended) state.
+            RegisterFocusHotkeys(force: true);
         }
 
         private void UnregisterHotkey()
@@ -791,7 +808,7 @@ namespace TTMulti.Forms
         private void RegisterLayoutPresetHotkeys()
         {
             if (_globalHotkeysSuspended || !controller.IsActive) return;
-            var file = LayoutPresetStorage.Load();
+            var file = LayoutPresetStorage.LoadCached();
             if (file?.Presets == null) return;
             for (int i = 0; i < file.Presets.Count && i <= LayoutPresetHotkeyIdEnd - LayoutPresetHotkeyIdStart; i++)
             {
@@ -1613,36 +1630,13 @@ namespace TTMulti.Forms
 
         private void Controller_AllWindowsInactive(object sender, EventArgs e)
         {
-            // Unregister all hotkeys first
-            UnregisterHotkey();
-            UnregisterAutoFindHotkey();
-            UnregisterLayoutPresetHotkeys();
-            UnregisterMinimizeUnconnectedHotkey();
-            
-            if (controller.IsActive)
-            {
-                RegisterHotkey();
-                RegisterAutoFindHotkey();
-                RegisterLayoutPresetHotkeys();
-            }
-            else
-            {
-                RegisterHotkey();
-            }
-            RegisterMinimizeUnconnectedHotkey();
+            RegisterFocusHotkeys();
         }
 
         private void Controller_WindowActivated(object sender, EventArgs e)
         {
-            // Re-register all hotkeys (both global and non-global) when a Toontown window becomes active
-            RegisterHotkey();
-            // Also register auto-find hotkey when multicontroller window is active
-            if (controller.IsActive)
-            {
-                RegisterAutoFindHotkey();
-                RegisterLayoutPresetHotkeys();
-            }
-            RegisterMinimizeUnconnectedHotkey();
+            // Re-register hotkeys when a Toontown window becomes active (only if the active/suspended state changed).
+            RegisterFocusHotkeys();
         }
 
         private void MainWnd_FormClosing(object sender, FormClosingEventArgs e)
@@ -1921,10 +1915,7 @@ namespace TTMulti.Forms
         private void MulticontrollerWnd_Activated(object sender, EventArgs e)
         {
             controller.IsActive = true;
-            RegisterHotkey();
-            RegisterAutoFindHotkey();
-            RegisterLayoutPresetHotkeys();
-            RegisterMinimizeUnconnectedHotkey();
+            RegisterFocusHotkeys();
         }
 
         private void MulticontrollerWnd_Deactivate(object sender, EventArgs e)
@@ -1933,13 +1924,7 @@ namespace TTMulti.Forms
             _cancelActivation = true;
             controller.IsActive = false;
 
-            UnregisterHotkey();
-            UnregisterAutoFindHotkey();
-            UnregisterLayoutPresetHotkeys();
-            UnregisterMinimizeUnconnectedHotkey();
-
-            RegisterHotkey();
-            RegisterMinimizeUnconnectedHotkey();
+            RegisterFocusHotkeys();
         }
     }
 }

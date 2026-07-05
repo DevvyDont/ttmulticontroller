@@ -1275,6 +1275,35 @@ namespace TTMulti
             controller2.UpdateBorderPosition();
         }
 
+        private bool _numberOfGroupsSavePending;
+
+        /// <summary>
+        /// Updates the persisted group count in memory immediately, but defers/coalesces the (expensive, full
+        /// user.config rewrite) disk Save to the next UI-thread turn, so a burst of group add/removes on the input
+        /// path results in a single write. Falls back to a synchronous Save before the UI is wired up (PERF-05).
+        /// </summary>
+        private void SaveNumberOfGroupsCoalesced()
+        {
+            Properties.Settings.Default.numberOfGroups = ControllerGroups.Count;
+
+            var sync = WindowWatcher.Instance.SynchronizingObject;
+            if (sync == null)
+            {
+                Properties.Settings.Default.Save();
+                return;
+            }
+
+            if (_numberOfGroupsSavePending)
+                return;
+
+            _numberOfGroupsSavePending = true;
+            sync.BeginInvoke(new Action(() =>
+            {
+                _numberOfGroupsSavePending = false;
+                Properties.Settings.Default.Save();
+            }), null);
+        }
+
         internal ControllerGroup AddControllerGroup()
         {
             ControllerGroup group = new ControllerGroup(ControllerGroups.Count + 1);
@@ -1287,10 +1316,10 @@ namespace TTMulti
 
             ControllerGroups.Add(group);
             
-            // Update and save numberOfGroups setting to persist groups between sessions
-            Properties.Settings.Default.numberOfGroups = ControllerGroups.Count;
-            Properties.Settings.Default.Save();
-            
+            // Persist the group count, coalesced so a burst of group changes on the input path (e.g. switching-mode
+            // number keys) doesn't rewrite the entire user.config repeatedly (PERF-05 remainder).
+            SaveNumberOfGroupsCoalesced();
+
             GroupsChanged?.Invoke(this, EventArgs.Empty);
 
             return group;
@@ -1328,10 +1357,9 @@ namespace TTMulti
             // Ensure at least one group remains
             if (ControllerGroups.Count > 0)
             {
-                Properties.Settings.Default.numberOfGroups = ControllerGroups.Count;
-                Properties.Settings.Default.Save();
+                SaveNumberOfGroupsCoalesced();
             }
-            
+
             GroupsChanged?.Invoke(this, EventArgs.Empty);
         }
 

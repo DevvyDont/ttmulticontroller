@@ -223,6 +223,42 @@ namespace TTMulti
             }
         }
 
+        // Cache for LoadCached(), keyed by file path + last-write time. Read-only hot paths (e.g. hotkey
+        // registration on focus changes) share this instance; editors call Load() for their own mutable copy.
+        private static LayoutPresetFile _cachedFile;
+        private static string _cachedPath;
+        private static DateTime _cachedWriteTimeUtc;
+
+        /// <summary>
+        /// Cached variant of <see cref="Load"/> for hot read paths. Re-reads only when the file's last-write time
+        /// changes; returns a SHARED instance, so callers must treat it as read-only.
+        /// </summary>
+        public static LayoutPresetFile LoadCached()
+        {
+            string path = GetFilePath();
+            if (!File.Exists(path))
+            {
+                _cachedFile = null;
+                return new LayoutPresetFile();
+            }
+            try
+            {
+                DateTime writeTime = File.GetLastWriteTimeUtc(path);
+                if (_cachedFile != null && _cachedPath == path && _cachedWriteTimeUtc == writeTime)
+                    return _cachedFile;
+
+                LayoutPresetFile file = Load();
+                _cachedFile = file;
+                _cachedPath = path;
+                _cachedWriteTimeUtc = writeTime;
+                return file;
+            }
+            catch
+            {
+                return new LayoutPresetFile();
+            }
+        }
+
         public static void Save(LayoutPresetFile data)
         {
             if (data == null) return;
@@ -236,6 +272,7 @@ namespace TTMulti
                 {
                     Serializer.WriteObject(fs, data);
                 }
+                _cachedFile = null; // invalidate so LoadCached() re-reads the just-written file
             }
             catch { }
         }
