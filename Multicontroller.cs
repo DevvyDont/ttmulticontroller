@@ -202,7 +202,7 @@ namespace TTMulti
             // Use the cursor position captured at press time when provided — this prevents a
             // click miss when the cursor drifts between press and release (or MC activation moves
             // the cursor off the game window).
-            Point cursorPos = cursorOverride ?? System.Windows.Forms.Control.MousePosition;
+            Point cursorPos = cursorOverride ?? Win32.GetCursorPosition();
             int relativeX = 0;
             int relativeY = 0;
             bool foundCursorWindow = false;
@@ -270,7 +270,7 @@ namespace TTMulti
         /// </summary>
         public void TriggerRegularClick()
         {
-            Point cursorPos = System.Windows.Forms.Control.MousePosition;
+            Point cursorPos = Win32.GetCursorPosition();
 
             foreach (ToontownController c in WhereNotMinimized(AllControllersWithWindows))
             {
@@ -745,7 +745,7 @@ namespace TTMulti
         {
             if (target == null || !target.HasWindow)
                 return;
-            Point cursorPos = Control.MousePosition;
+            Point cursorPos = Win32.GetCursorPosition();
             Point clientLoc = Win32.GetWindowClientAreaLocation(target.WindowHandle);
             Size sz = target.WindowSize;
             int relX, relY;
@@ -779,7 +779,7 @@ namespace TTMulti
             {
                 if (!IsActive)
                     return false;
-                Keys currentModifiers = System.Windows.Forms.Control.ModifierKeys;
+                Keys currentModifiers = Win32.GetModifierKeys();
                 if ((currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None)
                     return false;
                 return true;
@@ -849,7 +849,10 @@ namespace TTMulti
         private bool _switchingMode = false;
         private ToontownController _firstSelectedController = null;
         private ToontownController _secondSelectedController = null;
-        private System.Windows.Forms.Timer _switchingModeTimer = null;
+        // UI-framework-neutral timer (was a WinForms Timer). Marshals ticks to the UI thread via
+        // WindowWatcher.SynchronizingObject, which is bound lazily at Start because the Multicontroller
+        // singleton is constructed before Program.Main assigns the synchronizing object.
+        private System.Timers.Timer _switchingModeTimer = null;
         private HashSet<ToontownController> _switchedControllers = new HashSet<ToontownController>();
         private HashSet<ToontownController> _markedForRemoval = new HashSet<ToontownController>();
 
@@ -881,9 +884,10 @@ namespace TTMulti
             UpdateOptions();
             
             // Initialize switching mode timer for mouse tracking
-            _switchingModeTimer = new System.Windows.Forms.Timer();
+            _switchingModeTimer = new System.Timers.Timer();
             _switchingModeTimer.Interval = 50; // Check every 50ms
-            _switchingModeTimer.Tick += SwitchingModeTimer_Tick;
+            _switchingModeTimer.AutoReset = true;
+            _switchingModeTimer.Elapsed += (s, e) => SwitchingModeTimer_Tick(s, EventArgs.Empty);
         }
 
         internal void UpdateOptions()
@@ -1401,7 +1405,7 @@ namespace TTMulti
                 if (msg == Win32.WM.HOTKEY || msg == Win32.WM.KEYDOWN)
                 {
                     // Check if any modifiers are currently pressed - if so, don't switch modes, let it pass through to games
-                    Keys currentModifiers = System.Windows.Forms.Control.ModifierKeys;
+                    Keys currentModifiers = Win32.GetModifierKeys();
                     bool hasModifiers = (currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None;
                     
                     if (hasModifiers)
@@ -1469,7 +1473,7 @@ namespace TTMulti
                 && Properties.Settings.Default.replicateMouseKeyCode != 0)
             {
                 // If any modifiers are down, treat this as a normal key so combinations like Shift+F6 pass through
-                Keys currentModifiers = System.Windows.Forms.Control.ModifierKeys;
+                Keys currentModifiers = Win32.GetModifierKeys();
                 bool hasModifiers = (currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None;
                 if (hasModifiers)
                 {
@@ -1512,6 +1516,9 @@ namespace TTMulti
                         _secondSelectedController = null;
                         _markedForRemoval.Clear(); // Clear removal marks when entering switching mode
                         _swapScreenGeometryOps.Clear();
+                        // Bind the UI-thread marshaller lazily: it is assigned in Program.Main after this
+                        // singleton is constructed, and switching mode can only be entered well after startup.
+                        _switchingModeTimer.SynchronizingObject = WindowWatcher.Instance.SynchronizingObject;
                         _switchingModeTimer.Start();
                         
                         // Install global mouse hook to block clicks during switching mode
@@ -1731,7 +1738,7 @@ namespace TTMulti
                 && Properties.Settings.Default.zeroPowerThrowKeyCode != 0)
             {
                 // If any modifiers are down, treat this as a normal key so combinations pass through
-                Keys currentModifiers = System.Windows.Forms.Control.ModifierKeys;
+                Keys currentModifiers = Win32.GetModifierKeys();
                 bool hasModifiers = (currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None;
                 if (hasModifiers)
                 {

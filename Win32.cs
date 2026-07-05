@@ -200,6 +200,30 @@ namespace TTMulti
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool GetCursorPos(out Point lpPoint);
 
+        [DllImport("user32.dll")]
+        internal static extern short GetKeyState(int nVirtKey);
+
+        /// <summary>Cursor position in screen (physical) coordinates — UI-framework-neutral replacement for Control.MousePosition.</summary>
+        internal static Point GetCursorPosition()
+        {
+            GetCursorPos(out Point p);
+            return p;
+        }
+
+        /// <summary>
+        /// Currently pressed Shift/Ctrl/Alt as <see cref="System.Windows.Forms.Keys"/> modifier flags —
+        /// UI-framework-neutral replacement for Control.ModifierKeys with matching semantics (GetKeyState-based,
+        /// same three modifiers).
+        /// </summary>
+        internal static System.Windows.Forms.Keys GetModifierKeys()
+        {
+            var modifiers = System.Windows.Forms.Keys.None;
+            if ((GetKeyState(0x10) & 0x8000) != 0) modifiers |= System.Windows.Forms.Keys.Shift;   // VK_SHIFT
+            if ((GetKeyState(0x11) & 0x8000) != 0) modifiers |= System.Windows.Forms.Keys.Control; // VK_CONTROL
+            if ((GetKeyState(0x12) & 0x8000) != 0) modifiers |= System.Windows.Forms.Keys.Alt;     // VK_MENU
+            return modifiers;
+        }
+
         [DllImport("user32.dll", SetLastError=true)]
         internal static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
 
