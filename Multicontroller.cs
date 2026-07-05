@@ -1163,10 +1163,7 @@ namespace TTMulti
 
         private BorderWnd GetBorderWindow(ToontownController controller)
         {
-            // Use reflection to access the private _borderWnd field
-            var field = typeof(ToontownController).GetField("_borderWnd", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            return field?.GetValue(controller) as BorderWnd;
+            return controller?.BorderWindow;
         }
 
         private ToontownController GetControllerUnderCursor()

@@ -185,13 +185,15 @@ namespace TTMulti
         public bool ErrorOccurredPostingMessage { get; private set; } = false;
 
         BorderWnd _borderWnd = new BorderWnd();
-        MouseEventOverlay _overlayWnd = new MouseEventOverlay();
+
+        /// <summary>The border overlay window (exposed so Multicontroller's switching-mode display can set its
+        /// state directly instead of reaching in via reflection) — PERF-09 / CORR-10.</summary>
+        internal BorderWnd BorderWindow => _borderWnd;
 
         // This class is needed to queue background operations because handles can only be accessed on the UI thread
         private struct ReorderUtilityWindowsState
         {
             public IntPtr BorderWindowHandle;
-            public IntPtr OverlayWindowHandle;
         }
 
         // Timer to send keep-alive key presses
@@ -229,7 +231,6 @@ namespace TTMulti
 
             Properties.Settings.Default.PropertyChanged += Settings_PropertyChanged;
 
-            _overlayWnd.MouseEvent += _overlayWnd_MouseEvent;
 
             keepAliveTimer.Elapsed += KeepAliveTimer_Elapsed;
             windowValidationTimer.Elapsed += WindowValidationTimer_Elapsed;
@@ -296,12 +297,10 @@ namespace TTMulti
                 {
                     case Win32.ShowWindowCommands.ShowMinimized:
                         _borderWnd.Hide();
-                        _overlayWnd.Hide();
                         break;
                     default:
                         // TODO: why is this needed?
                         _borderWnd.WindowState = FormWindowState.Normal;
-                        _overlayWnd.WindowState = FormWindowState.Normal;
                         break;
                 }
 
@@ -313,7 +312,7 @@ namespace TTMulti
         {
             if (HasWindow && WindowHandle == e.WindowHandle)
             {
-                _borderWnd.Size = _overlayWnd.Size = WindowSize = e.ClientAreaSize;
+                _borderWnd.Size = WindowSize = e.ClientAreaSize;
                 
                 // Clear switched controllers when window is resized (but not on initial detection)
                 if (!e.PreviousClientAreaSize.IsEmpty)
@@ -327,7 +326,7 @@ namespace TTMulti
         {
             if (HasWindow && WindowHandle == e.WindowHandle)
             {
-                _borderWnd.Location = _overlayWnd.Location = e.ClientAreaLocation;
+                _borderWnd.Location = e.ClientAreaLocation;
             }
         }
 
@@ -416,15 +415,6 @@ namespace TTMulti
             else if (!showBorderWindow && _borderWnd.Visible)
             {
                 _borderWnd.Hide();
-            }
-
-            if (showMouseOverlayWindow && !_overlayWnd.Visible)
-            {
-                _overlayWnd.Show();
-            }
-            else if (!showMouseOverlayWindow && _overlayWnd.Visible)
-            {
-                _overlayWnd.Hide();
             }
 
             // Update caption color based on border visibility
@@ -607,20 +597,13 @@ namespace TTMulti
                     _borderWnd.ShowFakeCursor = false;
             }
 
-            if (showMouseOverlayWindow)
-            {
-                // TODO: why is this needed?
-                _overlayWnd.WindowState = FormWindowState.Normal;
-            }
-            
-            if (showBorderWindow || showMouseOverlayWindow)
+            if (showBorderWindow)
             {
                 // Queue utility window reordering on background threads because operations involving a Toontown window
                 // seem to take significantly longer and freeze the UI
                 ThreadPool.QueueUserWorkItem(ReorderUtilityWindowsProc, new ReorderUtilityWindowsState
                 {
-                    BorderWindowHandle = _borderWnd.Handle,
-                    OverlayWindowHandle = _overlayWnd.Handle
+                    BorderWindowHandle = _borderWnd.Handle
                 });
             }
 
@@ -648,12 +631,12 @@ namespace TTMulti
         {
             /*
             * Order the windows in the following z-order:
-            * 1 - overlay window
-            * 2 - border window
-            * 3 - Toontown window
-            * 
-            * The border and overlay windows are above the multicontroller window at first, so we move them to be 
-            * underneath the Toontown window first to prevent the multicontroller window from ending up in the back.
+            * 1 - border window
+            * 2 - Toontown window
+            *
+            * The border window is above the multicontroller window at first, so we move it underneath the Toontown
+            * window first, then bring the Toontown window under it, to keep the multicontroller window from ending
+            * up in the back.
             */
 
             // Validate window is still valid before reordering
@@ -667,26 +650,15 @@ namespace TTMulti
 
             ReorderUtilityWindowsState handles = (ReorderUtilityWindowsState)state;
 
-            IntPtr wndPosInfo = Win32.BeginDeferWindowPos(3);
+            IntPtr wndPosInfo = Win32.BeginDeferWindowPos(2);
 
-            // Move overlay window immediately underneath Toontown window in the z-order
-            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, handles.OverlayWindowHandle, WindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
-            
-            // Move border window immediately underneath overlay window in the z-order
-            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, handles.BorderWindowHandle, handles.OverlayWindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
+            // Move border window immediately underneath the Toontown window in the z-order
+            wndPosInfo = Win32.DeferWindowPos(wndPosInfo, handles.BorderWindowHandle, WindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
 
-            // Move Toontown window immediately underneath border window in the z-order
+            // Move Toontown window immediately underneath the border window in the z-order
             wndPosInfo = Win32.DeferWindowPos(wndPosInfo, WindowHandle, handles.BorderWindowHandle, 0, 0, 0, 0, Win32.SetWindowPosFlags.DoNotActivate | Win32.SetWindowPosFlags.IgnoreMove | Win32.SetWindowPosFlags.IgnoreResize);
 
             Win32.EndDeferWindowPos(wndPosInfo);
-        }
-        
-        private void _overlayWnd_MouseEvent(object sender, Message m)
-        {
-            if (multicontroller.ActiveControllers.Contains(this))
-            {
-                MouseEvent?.Invoke(this, m);
-            }
         }
 
         /// <summary>
@@ -714,8 +686,8 @@ namespace TTMulti
                 Point clientLocation = Point.Empty;
                 if (Win32.ClientToScreen(WindowHandle, ref clientLocation))
                 {
-                    _borderWnd.Size = _overlayWnd.Size = clientSize;
-                    _borderWnd.Location = _overlayWnd.Location = clientLocation;
+                    _borderWnd.Size = clientSize;
+                    _borderWnd.Location = clientLocation;
                 }
             }
             else
@@ -844,7 +816,6 @@ namespace TTMulti
             windowValidationTimer.Dispose();
 
             _borderWnd.Close();
-            _overlayWnd.Close();
 
             WindowWatcher.Instance.ActiveWindowChanged -= WindowWatcher_ActiveWindowChanged;
             WindowWatcher.Instance.WindowClosed -= WindowWatcher_WindowClosed;
