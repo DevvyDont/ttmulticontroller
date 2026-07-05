@@ -15,28 +15,39 @@ namespace TTMulti.Ui.Settings
     {
         private readonly SettingsSession _session = new SettingsSession();
 
+        private System.Collections.Generic.Dictionary<string, System.Windows.FrameworkElement> _pages;
+
         public SettingsWindow()
         {
             InitializeComponent();
             // Every page binds directly to the live settings object (matching the old dialog's data-bindings).
             DataContext = Properties.Settings.Default;
+
+            // Sub-panels whose controls need read-modify-write over a shared setting get their own DataContext.
+            switchKeyPanel.DataContext = new SwitchKeyViewModel();
+            autoFindModifiersPanel.DataContext = new ModifierFlagsViewModel(
+                () => Properties.Settings.Default.autoFindWindowsKeyModifiers,
+                v => Properties.Settings.Default.autoFindWindowsKeyModifiers = v);
+
+            _pages = new System.Collections.Generic.Dictionary<string, System.Windows.FrameworkElement>
+            {
+                { "Controller Modes", pageModes },
+                { "Hotkeys", pageHotkeys },
+                { "Multi-Click", pageMultiClick },
+                { "Auto-Find", pageAutoFind },
+                { "Colors", pageColors },
+                { "General", pageGeneral },
+            };
         }
 
         private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (pageModes == null)
+            if (_pages == null)
                 return; // still initializing
 
-            pageModes.Visibility = Visibility.Collapsed;
-            pageHotkeys.Visibility = Visibility.Collapsed;
-            pageGeneral.Visibility = Visibility.Collapsed;
-
-            switch (navList.SelectedIndex)
-            {
-                case 0: pageModes.Visibility = Visibility.Visible; break;
-                case 1: pageHotkeys.Visibility = Visibility.Visible; break;
-                case 2: pageGeneral.Visibility = Visibility.Visible; break;
-            }
+            string selected = (navList.SelectedItem as ListBoxItem)?.Content as string;
+            foreach (var kv in _pages)
+                kv.Value.Visibility = kv.Key == selected ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

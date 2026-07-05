@@ -15,6 +15,7 @@
     WindowStartupLocation="CenterOwner">
     <ui:FluentWindow.Resources>
         <local:InverseBooleanConverter x:Key="InverseBool" />
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <Style x:Key="SectionHeader" TargetType="TextBlock">
             <Setter Property="FontSize" Value="15" />
@@ -65,6 +66,9 @@
                 SelectionChanged="NavList_SelectionChanged">
                 <ListBoxItem Content="Controller Modes" IsSelected="True" />
                 <ListBoxItem Content="Hotkeys" />
+                <ListBoxItem Content="Multi-Click" />
+                <ListBoxItem Content="Auto-Find" />
+                <ListBoxItem Content="Colors" />
                 <ListBoxItem Content="General" />
             </ListBox>
 
@@ -115,6 +119,42 @@
                                     <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding controlAllGroupsKeyCode, Mode=TwoWay}" />
                                 </Grid>
                                 <CheckBox Margin="0,3" Content="Include in mode-key cycle" IsChecked="{Binding allGroupModeCycleWithModeHotkey, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Switching Mode" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox Margin="0,3" Content="Enable Switching Mode" IsChecked="{Binding switchingModeEnabled, Mode=TwoWay}" />
+                                <Grid x:Name="switchKeyPanel" Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switch binding" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <ComboBox MinWidth="150" SelectedIndex="{Binding ComboIndex, Mode=TwoWay}">
+                                            <ComboBoxItem Content="Left Mouse Button" />
+                                            <ComboBoxItem Content="Right Mouse Button" />
+                                            <ComboBoxItem Content="Middle Mouse Button" />
+                                            <ComboBoxItem Content="Keyboard Key…" />
+                                        </ComboBox>
+                                        <ctrl:KeyPickerBox
+                                            Margin="8,0,0,0"
+                                            MinWidth="120"
+                                            KeyCode="{Binding KeyboardKeyCode, Mode=TwoWay}"
+                                            Visibility="{Binding IsKeyboard, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Remove-from-switch key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding switchingModeRemoveKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Place windows when Alt is released" IsChecked="{Binding autoFindPlacementOnAltRelease, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -220,6 +260,227 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Keep-Alive key" />
                                     <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding keepAliveKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ── Multi-Click (Controlled Multi-Click Mode) ──────────────── -->
+                    <StackPanel x:Name="pageMultiClick" Visibility="Collapsed">
+                        <Border Style="{StaticResource Card}">
+                            <CheckBox Content="Enable Controlled Multi-Click Mode" IsChecked="{Binding controlledMulticlickEnabled, Mode=TwoWay}" />
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Activation" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Activation key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding controlledMulticlickActivateKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <StackPanel Margin="0,3" Orientation="Horizontal">
+                                    <RadioButton Content="Hold" GroupName="CmActivate" IsChecked="{Binding controlledMulticlickActivateHold, Mode=TwoWay}" />
+                                    <RadioButton Margin="16,0,0,0" Content="Toggle" GroupName="CmActivate" IsChecked="{Binding controlledMulticlickActivateHold, Converter={StaticResource InverseBool}, Mode=TwoWay}" />
+                                </StackPanel>
+                                <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding controlledMulticlickActivateGlobal, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Regular Click" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickRegularClickUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding controlledMulticlickRegularClickUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickRegularClickMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Left click" />
+                                        <ComboBoxItem Content="Right click" />
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding controlledMulticlickRegularClickUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickRegularClickKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Trigger on release" IsChecked="{Binding controlledMulticlickRegularClickTriggerOnRelease, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Multi-Click" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickClickUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding controlledMulticlickClickUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickClickMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Left click" />
+                                        <ComboBoxItem Content="Right click" />
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding controlledMulticlickClickUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickClickKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Trigger on release" IsChecked="{Binding controlledMulticlickClickTriggerOnRelease, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Separate left / right clicks" IsChecked="{Binding controlledMulticlickClickSeparateLR, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ── Auto-Find ──────────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageAutoFind" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Game executables" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource RowLabel}" Margin="0,0,0,6"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="Semicolon-separated list of game .exe names to auto-find and pair." />
+                                <TextBox Text="{Binding autoFindExecutables, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Hotkey" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Auto-find key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding autoFindWindowsKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <StackPanel x:Name="autoFindModifiersPanel" Margin="0,3" Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource RowLabel}" Margin="0,0,12,0" Text="Modifiers:" />
+                                    <CheckBox Margin="0,0,12,0" Content="Alt" IsChecked="{Binding Alt, Mode=TwoWay}" />
+                                    <CheckBox Margin="0,0,12,0" Content="Ctrl" IsChecked="{Binding Control, Mode=TwoWay}" />
+                                    <CheckBox Content="Shift" IsChecked="{Binding Shift, Mode=TwoWay}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ── Colors ─────────────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageColors" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Border colours" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Multi-Mode left toon" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding multiModeLeftBorderColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Multi-Mode right toon" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding multiModeRightBorderColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mirror Mode" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding mirrorModeBorderColor, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Focused mode" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Focused window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding focusedModeFocusedColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Unfocused window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding focusedModeUnfocusedColor, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Switching mode" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switching (base)" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingModeColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Selected window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingSelectedColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switched window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingSwitchedColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Marked for removal" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingRemovedColor, Mode=TwoWay}" />
                                 </Grid>
                             </StackPanel>
                         </Border>
