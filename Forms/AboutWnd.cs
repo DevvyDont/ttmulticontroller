@@ -42,7 +42,14 @@ namespace TTMulti.Forms
 
         private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            System.Diagnostics.Process.Start(linkLabel1.Text.Substring(e.Link.Start, e.Link.Length));
+            string url = linkLabel1.Text.Substring(e.Link.Start, e.Link.Length);
+            // UseShellExecute is required to launch a URL: it defaults to false on modern .NET, where
+            // Process.Start(url) would otherwise throw Win32Exception.
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch { /* No browser / blocked; nothing useful to do. */ }
         }
     }
 }
