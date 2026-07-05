@@ -73,7 +73,7 @@ namespace TTMulti
         [DataMember]
         public CustomModeBindingAction Action { get; set; }
 
-        /// <summary>For <see cref="CustomModeBindingAction.SendRole"/>: a <see cref="TTMulti.Controls.KeyMapping.Title"/> (e.g. Forward; posted key is <see cref="TTMulti.Controls.KeyMapping.Key"/>) or <see cref="CustomModeWellKnownRoles.ZeroPowerThrow"/>.</summary>
+        /// <summary>For <see cref="CustomModeBindingAction.SendRole"/>: a <see cref="TTMulti.KeyMapping.Title"/> (e.g. Forward; posted key is <see cref="TTMulti.KeyMapping.Key"/>) or <see cref="CustomModeWellKnownRoles.ZeroPowerThrow"/>.</summary>
         [DataMember]
         public string RoleTitle { get; set; }
 

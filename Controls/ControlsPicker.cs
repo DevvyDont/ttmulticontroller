@@ -204,24 +204,4 @@ namespace TTMulti.Controls
         }
     }
 
-    [Serializable]
-    public class KeyMapping
-    {
-        public string Title { get; set; }
-        public Keys Key { get; set; }
-        public Keys LeftToonKey { get; set; }
-        public Keys RightToonKey { get; set; }
-        public bool ReadOnly { get; set; }
-
-        public KeyMapping() { }
-
-        public KeyMapping(string title, Keys key, Keys leftToonKey, Keys rightToonKey, bool readOnly)
-        {
-            Title = title;
-            Key = key;
-            LeftToonKey = leftToonKey;
-            RightToonKey = rightToonKey;
-            ReadOnly = readOnly;
-        }
-    }
 }

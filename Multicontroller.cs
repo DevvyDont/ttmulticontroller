@@ -904,7 +904,7 @@ namespace TTMulti
         /// directional movement action (Forward/Left/Backward/Right) in <paramref name="bindings"/>. Takes the
         /// binding list as a parameter so it is independent of settings and characterization-testable.
         /// </summary>
-        internal static bool IsDirectionalKey(IEnumerable<Controls.KeyMapping> bindings, Keys key)
+        internal static bool IsDirectionalKey(IEnumerable<KeyMapping> bindings, Keys key)
         {
             if (bindings == null)
                 return false;
