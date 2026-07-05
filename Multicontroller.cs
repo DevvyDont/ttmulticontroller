@@ -130,6 +130,12 @@ namespace TTMulti
         /// All controlled windows are now inactive
         /// </summary>
         public event EventHandler AllWindowsInactive;
+
+        /// <summary>
+        /// Raised when installing a low-level input hook fails, with a human-readable description of the
+        /// affected feature (WIN32-04). The main window surfaces these like failed hotkey registrations.
+        /// </summary>
+        public event EventHandler<string> InputCaptureFailed;
         
         internal List<ControllerGroup> ControllerGroups { get; } = new List<ControllerGroup>();
 
@@ -2536,6 +2542,13 @@ namespace TTMulti
                 hModule,
                 0
             );
+            if (_mouseHookHandle == IntPtr.Zero)
+            {
+                int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                System.Diagnostics.Trace.WriteLine("SetWindowsHookEx failed for switching-mode mouse hook: Win32 error " + err);
+                _hookInstance = null;
+                InputCaptureFailed?.Invoke(this, "Window switching click blocking (input hook, Win32 error " + err + ")");
+            }
         }
         
         /// <summary>
