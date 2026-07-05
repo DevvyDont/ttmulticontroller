@@ -297,6 +297,16 @@ namespace TTMulti
             return new IntPtr(unchecked((int)lp));
         }
 
+        /// <summary>
+        /// Packs a client-relative point into the lParam of a WM_*BUTTON* mouse message: the low word is X, the
+        /// high word is Y. X is masked to 16 bits; Y is shifted as-is — matching the exact packing the click
+        /// forwarding has always used (client coords are small and non-negative, so the asymmetry is immaterial).
+        /// </summary>
+        internal static IntPtr MakeMouseLParam(int x, int y)
+        {
+            return (IntPtr)((y << 16) | (x & 0xFFFF));
+        }
+
         static bool IsPostedKeyExtended(Keys vk)
         {
             switch (vk & Keys.KeyCode)
