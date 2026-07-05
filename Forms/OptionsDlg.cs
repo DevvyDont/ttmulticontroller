@@ -227,6 +227,18 @@ namespace TTMulti.Forms
         {
             controlsPicker.KeyMappings = Properties.SerializedSettings.Default.Bindings;
 
+            // The tabs below are built in code with coordinates calibrated for 120 DPI and are added AFTER the form
+            // auto-scaled its designer controls, so they never get rescaled and misrender at 100% / 150% scaling.
+            // Snapshot the existing (designer) controls now so we can scale only the runtime-added ones by the same
+            // factor the designer controls received (UX-07).
+            float dpiScale = AutoScaleDimensions.Width > 1f
+                ? CurrentAutoScaleDimensions.Width / AutoScaleDimensions.Width
+                : 1f;
+            var designerControls = new HashSet<Control>();
+            foreach (TabPage tp in tabControl1.TabPages)
+                foreach (Control c in tp.Controls)
+                    designerControls.Add(c);
+
             CreateSwitchingModeUI();
             LoadSwitchingModeSettings();
 
@@ -269,6 +281,16 @@ namespace TTMulti.Forms
                 checkBox4.Checked = !Properties.Settings.Default.disableKeepAlive;
             }
             
+            // Scale everything added at runtime (i.e. not in the pre-build designer snapshot) so the runtime tabs
+            // match the auto-scaled designer controls at the current DPI (UX-07).
+            if (Math.Abs(dpiScale - 1f) > 0.01f)
+            {
+                foreach (TabPage tp in tabControl1.TabPages)
+                    foreach (Control c in tp.Controls)
+                        if (!designerControls.Contains(c))
+                            c.Scale(new SizeF(dpiScale, dpiScale));
+            }
+
             // Reorder tabs to match desired order (use TabPage.Name, not Text, so captions can change in the designer)
             var tabPage6 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage6");
             var tabPage3 = tabControl1.TabPages.Cast<TabPage>().FirstOrDefault(t => t.Name == "tabPage3");
