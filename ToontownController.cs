@@ -54,6 +54,16 @@ namespace TTMulti
             get => _windowHandle;
             set
             {
+                // Setting the handle cascades into the border window (WinForms) and the WindowWatcher list, both of
+                // which are UI-thread affine.  The validation/keep-alive timers fire on ThreadPool threads, so marshal
+                // the whole mutation to the UI thread (matching WindowWatcher's own SynchronizingObject) — CORR-07.
+                var sync = WindowWatcher.Instance.SynchronizingObject;
+                if (sync != null && sync.InvokeRequired)
+                {
+                    sync.BeginInvoke(new Action(() => WindowHandle = value), null);
+                    return;
+                }
+
                 if (_windowHandle != value)
                 {
                     // If we're removing the window handle, reset caption color to default before disconnecting
@@ -760,17 +770,23 @@ namespace TTMulti
             }
         }
 
-        /// <summary>Record/clear a forwarded key's held state so <see cref="ReleaseAllHeldKeys"/> can release it later.</summary>
+        /// <summary>
+        /// Record/clear a forwarded key's held state so <see cref="ReleaseAllHeldKeys"/> can release it later.
+        /// Locks because the keep-alive timer posts from a ThreadPool thread while forwarding runs on the UI thread.
+        /// </summary>
         void TrackHeldKey(Win32.WM msg, IntPtr wParam)
         {
             Keys key = (Keys)wParam & Keys.KeyCode;
             if (key == Keys.None)
                 return;
 
-            if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.SYSKEYDOWN)
-                _heldKeys.Add(key);
-            else if (msg == Win32.WM.KEYUP || msg == Win32.WM.SYSKEYUP)
-                _heldKeys.Remove(key);
+            lock (_heldKeys)
+            {
+                if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.SYSKEYDOWN)
+                    _heldKeys.Add(key);
+                else if (msg == Win32.WM.KEYUP || msg == Win32.WM.SYSKEYUP)
+                    _heldKeys.Remove(key);
+            }
         }
 
         /// <summary>
@@ -779,17 +795,36 @@ namespace TTMulti
         /// </summary>
         public void ReleaseAllHeldKeys()
         {
-            if (_heldKeys.Count == 0)
-                return;
+            Keys[] snapshot;
+            lock (_heldKeys)
+            {
+                if (_heldKeys.Count == 0)
+                    return;
+                snapshot = new Keys[_heldKeys.Count];
+                _heldKeys.CopyTo(snapshot);
+                _heldKeys.Clear();
+            }
 
-            foreach (Keys key in _heldKeys.ToArray())
+            foreach (Keys key in snapshot)
                 PostMessage(Win32.WM.KEYUP, (IntPtr)key, Win32.MakePostedKeyLParam(key, true));
-
-            _heldKeys.Clear();
         }
 
         public void Shutdown()
         {
+            // Clear the handle first so any in-flight keep-alive tick sees HasWindow == false and neither posts
+            // nor reschedules itself.  Then stop both timers.  Without this a removed controller kept firing the
+            // 60s keep-alive into the live game window and left a stale handle in the WindowWatcher poll list (CORR-06).
+            if (_windowHandle != IntPtr.Zero)
+            {
+                if (Properties.Settings.Default.enableCaptionColor)
+                    Win32.SetWindowCaptionColor(_windowHandle, null);
+                WindowWatcher.Instance.StopWatchingWindow(_windowHandle);
+                _windowHandle = IntPtr.Zero;
+            }
+
+            keepAliveTimer.Stop();
+            keepAliveTimer.Dispose();
+
             windowValidationTimer.Stop();
             windowValidationTimer.Dispose();
 
