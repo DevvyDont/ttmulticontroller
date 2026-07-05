@@ -2,7 +2,11 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net481</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Keep implicit usings / nullable OFF so the retarget stays a pure runtime swap with zero source churn. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
     <RootNamespace>TTMulti</RootNamespace>
     <AssemblyName>ToontownMulticontroller</AssemblyName>
     <!-- AnyCPU (runs 64-bit on a 64-bit OS). The forced x86 was unjustified; all interop is IntPtr-based and
@@ -14,7 +18,6 @@
     <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
     <!-- With the WPF (WinFx) and ClickOnce manifest pipelines gone, this now embeds as the native Win32 manifest. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <!-- Roslyn analyzers on (opt-in for .NET Framework), Default level, warnings only — never fail the build. -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
@@ -28,26 +31,24 @@
     <!-- The resx files embed binary resources (cursors/bitmaps via ResXFileRef). The modern build (dotnet/newer
          msbuild) requires the preserialized-resource path + System.Resources.Extensions to read them. -->
     <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+    <!-- NU1510 hints that these two packages are "likely unnecessary" because the modern framework nominally
+         provides them. Both are genuinely required: System.Configuration.ConfigurationManager supplies the
+         SettingsProvider/ApplicationSettingsBase types PortableSettingsProvider extends, and
+         System.Resources.Extensions is needed to read the binary (preserialized) resx resources at runtime.
+         WFO0003 wants high-DPI config out of app.manifest and into code; we deliberately keep it in the manifest
+         (applies before the first window is created — Application.SetHighDpiMode is only the unembedded-manifest
+         fallback). Revisit WFO0003 alongside PerMonitorV2 in the UI stage. -->
+    <NoWarn>$(NoWarn);NU1510;WFO0003</NoWarn>
   </PropertyGroup>
 
-  <!-- Framework assemblies actually used. The unused WPF stack (WindowsBase, PresentationCore,
-       PresentationFramework, WindowsFormsIntegration, System.Xaml) is intentionally dropped. -->
+  <!-- Framework references (System.*, System.Drawing, System.Runtime.Serialization, Microsoft.CSharp) come
+       implicitly from the WindowsDesktop shared framework once UseWindowsForms is set. Only out-of-framework
+       packages are listed. System.Configuration.ConfigurationManager provides the ApplicationSettingsBase /
+       SettingsProvider stack the portable PortableSettingsProvider extends. System.Resources.Extensions is
+       required at runtime to read the binary (preserialized) resx resources. -->
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="Microsoft.CSharp" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.Resources.Extensions" Version="8.0.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.0" />
+    <PackageReference Include="System.Resources.Extensions" Version="10.0.0" />
   </ItemGroup>
 
   <!-- Settings + Resources: keep the designer generators and dependency metadata (files themselves are globbed). -->

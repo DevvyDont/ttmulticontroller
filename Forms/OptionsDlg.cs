@@ -106,10 +106,15 @@ namespace TTMulti.Forms
 
             try
             {
+                // ServicePointManager/WebRequest/HttpWebRequest are obsolete (SYSLIB0014) on modern .NET but still
+                // functional; the HttpClient rewrite lands in a follow-up (fix/update-check-httpclient) to keep this
+                // retarget mechanical.
+#pragma warning disable SYSLIB0014
                 // GitHub's API requires TLS 1.2+ and a User-Agent; enable Tls12 without clobbering existing flags.
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(apiUrl);
+#pragma warning restore SYSLIB0014
                 request.UserAgent = "ToontownMulticontroller";
                 request.Accept = "application/vnd.github+json";
 

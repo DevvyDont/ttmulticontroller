@@ -27,8 +27,9 @@
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
       <!-- Current behavior: system-DPI aware, declared in the manifest so the process is DPI-aware BEFORE the
-           first window is created (superseding the runtime SetProcessDPIAware() call in Program.cs, which is
-           kept as a fallback in case this manifest is not embedded). -->
+           first window is created. Program.cs also calls Application.SetHighDpiMode(SystemAware) as a runtime
+           fallback for the case where this manifest is not embedded; when the manifest wins the race (the normal
+           case) that call is a no-op. -->
       <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
 
       <!-- STAGED: Per-Monitor V2 (BUILD-03 / WIN32-06). DO NOT enable without validating on a mixed-DPI
@@ -39,7 +40,7 @@
                   <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/PM</dpiAware>
                   <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2,PerMonitor</dpiAwareness>
              2) enable the WinForms DpiAwareness section in app.config (see the comment there),
-             3) remove the SetProcessDPIAware() fallback in Program.cs,
+             3) change the Application.SetHighDpiMode(SystemAware) call in Program.cs to PerMonitorV2,
              4) audit the overlay/click coordinate math (ToontownController overlay positioning, Multicontroller
                 click lParam mapping) for per-monitor DPI. The frame-offset math already uses GetFrameThickness,
                 which becomes DPI-correct automatically under Per-Monitor V2. -->

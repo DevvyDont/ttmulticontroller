@@ -1,6 +1,13 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+
+// This is a Windows-only WinForms app (Win32 hooks, PostMessage, DWM). Declare the assembly's platform
+// explicitly: the SDK normally injects this for a -windows TFM, but GenerateAssemblyInfo=false (set to keep
+// this hand-written file) suppresses that injection, which would otherwise leave CA1416 treating every
+// WinForms/Win32 call as "reachable on all platforms".
+[assembly: SupportedOSPlatform("windows")]
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information

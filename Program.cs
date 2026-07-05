@@ -21,8 +21,15 @@ namespace TTMulti
         [STAThread]
         static void Main(string[] args)
         {
-            // DPI awareness (system-DPI) is now declared in app.manifest, which the SDK build embeds as the native
-            // Win32 manifest — so it applies before the first window is created. (BUILD-03)
+            // DPI awareness (system-DPI) is declared in app.manifest, which the SDK build embeds as the native
+            // Win32 manifest — so it applies before the first window is created (BUILD-03). SetHighDpiMode below is
+            // a belt-and-suspenders no-op when the manifest wins the race, and covers the case where it doesn't.
+            // Per-monitor-v2 is intentionally deferred to the UI stage (needs overlay/border coordinate rework).
+            Application.SetHighDpiMode(HighDpiMode.SystemAware);
+            // Pin the classic WinForms default font. Modern .NET defaults to Segoe UI 9pt instead of the
+            // .NET Framework Microsoft Sans Serif 8.25pt this UI was laid out against; without the pin every
+            // form relayouts. The UI-redesign stage drops this and re-lays-out against Segoe UI deliberately.
+            Application.SetDefaultFont(new System.Drawing.Font("Microsoft Sans Serif", 8.25f));
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
