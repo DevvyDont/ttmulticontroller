@@ -1370,6 +1370,27 @@ namespace TTMulti
         [DllImport("user32.dll", SetLastError = true)]
         internal static extern IntPtr SetWindowsHookEx(int hookType, HookProc lpfn, IntPtr hMod, uint dwThreadId);
 
+        // --- WinEvent hooks (event-driven window tracking; replaces WindowWatcher's poll loop) ---
+        internal delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+            int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        internal static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
+            WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+
+        internal const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+        internal const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+        internal const uint EVENT_SYSTEM_MINIMIZESTART = 0x0016;
+        internal const uint EVENT_SYSTEM_MINIMIZEEND = 0x0017;
+        internal const uint EVENT_OBJECT_DESTROY = 0x8001;
+        internal const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
+        internal const int OBJID_WINDOW = 0;
+        internal const int CHILDID_SELF = 0;
+
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool UnhookWindowsHookEx(IntPtr hhk);

@@ -1688,6 +1688,8 @@ namespace TTMulti.Forms
             UnregisterHotkey();
 
             controller?.ShutdownUninstallSwitchingMouseHook();
+
+            WindowWatcher.Instance.Shutdown();
         }
 
         private void Controller_GroupsChanged(object sender, EventArgs e)

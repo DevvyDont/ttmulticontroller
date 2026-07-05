@@ -1,55 +1,51 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Timers;
 
 namespace TTMulti
 {
     /// <summary>
-    /// Global watcher to notify when windows are activated, deactivated, or closed.
+    /// Global watcher that notifies when watched windows are activated, moved, resized, change show state, or close.
     /// Windows must be added to the watch list to be notified.
-    /// TODO: set the synchronizing object to a form
+    ///
+    /// Event-driven via SetWinEventHook (foreground / location-change / minimize / destroy) instead of a polling
+    /// timer: no per-tick Win32 calls when nothing is happening, and OUT_OF_CONTEXT callbacks are delivered on the
+    /// UI thread (the thread that installed the hooks), so all watcher state and events stay on the UI thread.
     /// </summary>
     class WindowWatcher
     {
         public static WindowWatcher Instance { get; } = new WindowWatcher();
 
-        /// <summary>
-        /// A watched window was activated or deactivated
-        /// </summary>
+        /// <summary>A watched window was activated or deactivated</summary>
         public event EventHandler<Events.WindowActivatedEventArgs> ActiveWindowChanged;
 
-        /// <summary>
-        /// A watched window was closed
-        /// </summary>
+        /// <summary>A watched window was closed</summary>
         public event EventHandler<Events.WindowClosedEventArgs> WindowClosed;
 
-        /// <summary>
-        /// The client area size of a watched window was changed
-        /// </summary>
+        /// <summary>The client area size of a watched window was changed</summary>
         public event EventHandler<Events.WindowClientAreaSizeChangedEventArgs> WindowClientAreaSizeChanged;
 
-        /// <summary>
-        /// The client area location of a watched window was moved
-        /// </summary>
+        /// <summary>The client area location of a watched window was moved</summary>
         public event EventHandler<Events.WindowClientAreaLocationChangedEventArgs> WindowClientAreaLocationChanged;
 
-        /// <summary>
-        /// The show state (minimized, normal, maximized) of a watched window was changed
-        /// </summary>
+        /// <summary>The show state (minimized, normal, maximized) of a watched window was changed</summary>
         public event EventHandler<Events.WindowShowStateChangedEventArgs> WindowShowStateChanged;
 
+        private ISynchronizeInvoke _synchronizingObject;
+
         /// <summary>
-        /// Synchronizing object for event callbacks
+        /// The UI thread's synchronizing object. Assigning it (on the UI thread, at startup) installs the WinEvent
+        /// hooks so their callbacks are delivered on that thread. Also used by other components to marshal to the UI.
         /// </summary>
         public ISynchronizeInvoke SynchronizingObject
         {
-            get => watchTimer.SynchronizingObject;
-            set => watchTimer.SynchronizingObject = value;
+            get => _synchronizingObject;
+            set
+            {
+                _synchronizingObject = value;
+                InstallHooks();
+            }
         }
 
         private class WindowInfo
@@ -66,163 +62,180 @@ namespace TTMulti
             }
         }
 
-        private List<IntPtr> watchedWindowHandles = new List<IntPtr>();
-
-        private Dictionary<IntPtr, WindowInfo> lastWindowInfos = new Dictionary<IntPtr, WindowInfo>();
-
+        private readonly HashSet<IntPtr> watchedWindowHandles = new HashSet<IntPtr>();
+        private readonly Dictionary<IntPtr, WindowInfo> lastWindowInfos = new Dictionary<IntPtr, WindowInfo>();
         private IntPtr lastActiveWindowHandle = IntPtr.Zero;
 
-        private Timer watchTimer = new Timer(15);
+        // Kept alive for the lifetime of the hooks so the unmanaged callback is not garbage-collected.
+        private Win32.WinEventDelegate _winEventProc;
+        private readonly List<IntPtr> _hookHandles = new List<IntPtr>();
+        private bool _hooksInstalled;
 
-        private WindowWatcher()
+        private WindowWatcher() { }
+
+        private void InstallHooks()
         {
-            watchTimer.Elapsed += Timer_Elapsed;
-            watchTimer.AutoReset = false;
-            watchTimer.Start();
+            if (_hooksInstalled)
+                return;
+
+            _winEventProc = WinEventProc;
+
+            // Narrow, precise hooks minimize how often the (system-wide) callback is invoked for events we ignore.
+            AddHook(Win32.EVENT_SYSTEM_FOREGROUND, Win32.EVENT_SYSTEM_FOREGROUND);
+            AddHook(Win32.EVENT_SYSTEM_MINIMIZESTART, Win32.EVENT_SYSTEM_MINIMIZEEND);
+            AddHook(Win32.EVENT_OBJECT_DESTROY, Win32.EVENT_OBJECT_DESTROY);
+            AddHook(Win32.EVENT_OBJECT_LOCATIONCHANGE, Win32.EVENT_OBJECT_LOCATIONCHANGE);
+
+            _hooksInstalled = true;
         }
 
-        /// <summary>
-        /// Add a window handle to be notified when the window is closed or it becomes active
-        /// </summary>
+        private void AddHook(uint eventMin, uint eventMax)
+        {
+            IntPtr h = Win32.SetWinEventHook(eventMin, eventMax, IntPtr.Zero, _winEventProc, 0, 0, Win32.WINEVENT_OUTOFCONTEXT);
+            if (h != IntPtr.Zero)
+                _hookHandles.Add(h);
+        }
+
+        /// <summary>Uninstall the WinEvent hooks (call on app shutdown so no callbacks arrive during teardown).</summary>
+        public void Shutdown()
+        {
+            foreach (IntPtr h in _hookHandles)
+                Win32.UnhookWinEvent(h);
+            _hookHandles.Clear();
+            _hooksInstalled = false;
+        }
+
+        /// <summary>Add a window handle to be notified when it is moved, resized, minimized, activated, or closed.</summary>
         public void WatchWindow(IntPtr windowHandle)
         {
-            if (!watchedWindowHandles.Contains(windowHandle))
-            {
-                watchedWindowHandles.Add(windowHandle);
-            }
+            if (windowHandle == IntPtr.Zero || !watchedWindowHandles.Add(windowHandle))
+                return;
+
+            // Seed initial state and fire the initial events immediately (the poll used to do this on its next tick).
+            SeedWindow(windowHandle);
         }
 
-        /// <summary>
-        /// Stop notifications for a window
-        /// </summary>
+        /// <summary>Stop notifications for a window.</summary>
         public void StopWatchingWindow(IntPtr windowHandle)
         {
             watchedWindowHandles.Remove(windowHandle);
             lastWindowInfos.Remove(windowHandle);
         }
 
-        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        private void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+            int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
         {
-            // Check if active window has changed
-            IntPtr activeWindowHandle = Win32.GetForegroundWindow();
+            // Only the window object itself, not child objects / caret / cursor, etc.
+            if (idObject != Win32.OBJID_WINDOW || idChild != Win32.CHILDID_SELF)
+                return;
 
-            if (activeWindowHandle != lastActiveWindowHandle)
+            switch (eventType)
             {
-                // Only notify on watched windows
-                if (watchedWindowHandles.Contains(lastActiveWindowHandle) || watchedWindowHandles.Contains(activeWindowHandle))
-                {
-                    ActiveWindowChanged?.Invoke(this, new Events.WindowActivatedEventArgs(lastActiveWindowHandle, activeWindowHandle));
-                }
-                
-                lastActiveWindowHandle = activeWindowHandle;
+                case Win32.EVENT_SYSTEM_FOREGROUND:
+                    HandleForegroundChanged(hwnd);
+                    break;
+
+                case Win32.EVENT_OBJECT_DESTROY:
+                    if (watchedWindowHandles.Contains(hwnd))
+                        HandleWindowClosed(hwnd);
+                    break;
+
+                case Win32.EVENT_OBJECT_LOCATIONCHANGE:
+                case Win32.EVENT_SYSTEM_MINIMIZESTART:
+                case Win32.EVENT_SYSTEM_MINIMIZEEND:
+                    if (watchedWindowHandles.Contains(hwnd))
+                        RefreshWindowInfo(hwnd);
+                    break;
             }
+        }
 
-            // Collect all closed windows first, then process them
-            // This prevents issues when multiple windows close simultaneously
-            List<IntPtr> closedWindows = new List<IntPtr>();
-            
-            foreach (IntPtr windowHandle in watchedWindowHandles.ToArray())
+        private void HandleForegroundChanged(IntPtr activeWindowHandle)
+        {
+            if (activeWindowHandle == lastActiveWindowHandle)
+                return;
+
+            // Only notify when a watched window gained or lost the foreground.
+            if (watchedWindowHandles.Contains(lastActiveWindowHandle) || watchedWindowHandles.Contains(activeWindowHandle))
+                ActiveWindowChanged?.Invoke(this, new Events.WindowActivatedEventArgs(lastActiveWindowHandle, activeWindowHandle));
+
+            lastActiveWindowHandle = activeWindowHandle;
+        }
+
+        private void HandleWindowClosed(IntPtr windowHandle)
+        {
+            WindowClosed?.Invoke(this, new Events.WindowClosedEventArgs(windowHandle));
+            watchedWindowHandles.Remove(windowHandle);
+            lastWindowInfos.Remove(windowHandle);
+        }
+
+        private void SeedWindow(IntPtr windowHandle)
+        {
+            if (!TryGetWindowState(windowHandle, out Size size, out Point location, out Win32.ShowWindowCommands showState))
+                return;
+
+            lastWindowInfos[windowHandle] = new WindowInfo(size, location, showState);
+
+            WindowShowStateChanged?.Invoke(this, new Events.WindowShowStateChangedEventArgs(windowHandle, Win32.ShowWindowCommands.Hide, showState));
+            WindowClientAreaSizeChanged?.Invoke(this, new Events.WindowClientAreaSizeChangedEventArgs(windowHandle, Size.Empty, size));
+            WindowClientAreaLocationChanged?.Invoke(this, new Events.WindowClientAreaLocationChangedEventArgs(windowHandle, Point.Empty, location));
+        }
+
+        private void RefreshWindowInfo(IntPtr windowHandle)
+        {
+            if (!TryGetWindowState(windowHandle, out Size size, out Point location, out Win32.ShowWindowCommands showState))
             {
-                // Check if window has been closed
                 if (!Win32.IsWindow(windowHandle))
-                {
-                    closedWindows.Add(windowHandle);
-                }
+                    HandleWindowClosed(windowHandle);
+                return;
             }
-            
-            // Process all closed windows - fire events and remove from tracking
-            foreach (IntPtr windowHandle in closedWindows)
+
+            if (!lastWindowInfos.TryGetValue(windowHandle, out WindowInfo last))
             {
-                // Double-check the window is still closed (it shouldn't have been recreated)
-                if (!Win32.IsWindow(windowHandle))
-                {
-                    WindowClosed?.Invoke(this, new Events.WindowClosedEventArgs(windowHandle));
-
-                    watchedWindowHandles.Remove(windowHandle);
-                    lastWindowInfos.Remove(windowHandle);
-                }
+                SeedWindow(windowHandle);
+                return;
             }
-            
-            // Continue processing remaining windows
-            foreach (IntPtr windowHandle in watchedWindowHandles.ToArray())
+
+            if (last.ShowState != showState)
             {
-
-                // Try to get window info - if this fails, the window might be closing
-                Size clientAreaSize;
-                Point clientAreaLocation;
-                Win32.ShowWindowCommands showState;
-                
-                try
-                {
-                    clientAreaSize = Win32.GetWindowClientAreaSize(windowHandle);
-                    clientAreaLocation = Win32.GetWindowClientAreaLocation(windowHandle);
-                    showState = Win32.GetWindowShowState(windowHandle);
-                    
-                    // Double-check window is still valid after getting info
-                    // (window might have closed between IsWindow check and getting info)
-                    if (!Win32.IsWindow(windowHandle))
-                    {
-                        WindowClosed?.Invoke(this, new Events.WindowClosedEventArgs(windowHandle));
-
-                        watchedWindowHandles.Remove(windowHandle);
-                        lastWindowInfos.Remove(windowHandle);
-
-                        continue;
-                    }
-                }
-                catch
-                {
-                    // Error getting window info - window is likely closed
-                    // Verify with IsWindow one more time
-                    if (!Win32.IsWindow(windowHandle))
-                    {
-                        WindowClosed?.Invoke(this, new Events.WindowClosedEventArgs(windowHandle));
-
-                        watchedWindowHandles.Remove(windowHandle);
-                        lastWindowInfos.Remove(windowHandle);
-                    }
-                    
-                    continue;
-                }
-                
-                if (lastWindowInfos.ContainsKey(windowHandle))
-                {
-                    WindowInfo lastInfo = lastWindowInfos[windowHandle];
-
-                    if (lastInfo.ShowState != showState)
-                    {
-                        WindowShowStateChanged?.Invoke(this, new Events.WindowShowStateChangedEventArgs(windowHandle, lastInfo.ShowState, showState));
-                        
-                        lastInfo.ShowState = showState;
-                    }
-
-                    if (lastInfo.ClientAreaSize != clientAreaSize)
-                    {
-                        WindowClientAreaSizeChanged?.Invoke(this, new Events.WindowClientAreaSizeChangedEventArgs(windowHandle, lastInfo.ClientAreaSize, clientAreaSize));
-
-                        lastInfo.ClientAreaSize = clientAreaSize;
-                    }
-
-                    if (lastInfo.ClientAreaScreenLocation != clientAreaLocation)
-                    {
-                        WindowClientAreaLocationChanged?.Invoke(this, new Events.WindowClientAreaLocationChangedEventArgs(windowHandle, lastInfo.ClientAreaScreenLocation, clientAreaLocation));
-
-                        lastInfo.ClientAreaScreenLocation = clientAreaLocation;
-                    }
-                }
-                else
-                {
-                    lastWindowInfos.Add(windowHandle, new WindowInfo(clientAreaSize, clientAreaLocation, showState));
-
-                    WindowShowStateChanged?.Invoke(this, new Events.WindowShowStateChangedEventArgs(windowHandle, Win32.ShowWindowCommands.Hide, showState));
-
-                    WindowClientAreaSizeChanged?.Invoke(this, new Events.WindowClientAreaSizeChangedEventArgs(windowHandle, Size.Empty, clientAreaSize));
-
-                    WindowClientAreaLocationChanged?.Invoke(this, new Events.WindowClientAreaLocationChangedEventArgs(windowHandle, Point.Empty, clientAreaLocation));
-                }
+                WindowShowStateChanged?.Invoke(this, new Events.WindowShowStateChangedEventArgs(windowHandle, last.ShowState, showState));
+                last.ShowState = showState;
             }
 
-            watchTimer.Start();
+            if (last.ClientAreaSize != size)
+            {
+                WindowClientAreaSizeChanged?.Invoke(this, new Events.WindowClientAreaSizeChangedEventArgs(windowHandle, last.ClientAreaSize, size));
+                last.ClientAreaSize = size;
+            }
+
+            if (last.ClientAreaScreenLocation != location)
+            {
+                WindowClientAreaLocationChanged?.Invoke(this, new Events.WindowClientAreaLocationChangedEventArgs(windowHandle, last.ClientAreaScreenLocation, location));
+                last.ClientAreaScreenLocation = location;
+            }
+        }
+
+        private static bool TryGetWindowState(IntPtr windowHandle, out Size size, out Point location, out Win32.ShowWindowCommands showState)
+        {
+            size = Size.Empty;
+            location = Point.Empty;
+            showState = Win32.ShowWindowCommands.Hide;
+
+            if (!Win32.IsWindow(windowHandle))
+                return false;
+
+            try
+            {
+                size = Win32.GetWindowClientAreaSize(windowHandle);
+                location = Win32.GetWindowClientAreaLocation(windowHandle);
+                showState = Win32.GetWindowShowState(windowHandle);
+            }
+            catch
+            {
+                return false;
+            }
+
+            // The window may have closed between the IsWindow check and reading its info.
+            return Win32.IsWindow(windowHandle);
         }
     }
 }
