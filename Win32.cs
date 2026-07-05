@@ -442,6 +442,19 @@ namespace TTMulti
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         internal static extern IntPtr GetModuleHandle(string lpModuleName);
 
+        // Last system-wide input time — used by the hook watchdog to skip re-arming while the machine is idle
+        // (a low-level hook can only be silently dropped by Windows when it is invoked, i.e. when input occurs).
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct LASTINPUTINFO
+        {
+            internal uint cbSize;
+            internal uint dwTime;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
         [StructLayout(LayoutKind.Sequential)]
         internal struct MSLLHOOKSTRUCT
         {

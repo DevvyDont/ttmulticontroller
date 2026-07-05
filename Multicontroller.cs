@@ -2572,6 +2572,29 @@ namespace TTMulti
         {
             UninstallMouseHook();
         }
+
+        /// <summary>
+        /// Re-arms the switching-mode mouse hook if we believe it is installed. Windows silently unhooks a
+        /// low-level hook whose callback exceeds LowLevelHooksTimeout, with no notification, leaving the feature
+        /// dead mid-session; the watchdog (MulticontrollerWnd) calls this periodically after input to heal that.
+        /// Unhook-then-reinstall is a no-op-then-fresh-install when the hook is already gone, and an atomic swap
+        /// when it is healthy. Must run on the same (UI) thread that pumps the hook — the watchdog guarantees that.
+        /// </summary>
+        internal void RearmSwitchingMouseHookIfInstalled()
+        {
+            if (_mouseHookHandle == IntPtr.Zero || _mouseHookProc == null)
+                return;
+            Win32.UnhookWindowsHookEx(_mouseHookHandle);
+            _mouseHookHandle = Win32.SetWindowsHookEx(Win32.WH_MOUSE_LL, _mouseHookProc, Win32.GetModuleHandle(null), 0);
+            System.Diagnostics.Trace.WriteLine("Hook watchdog: re-armed switching-mode mouse hook (handle=" + _mouseHookHandle + ")");
+            if (_mouseHookHandle == IntPtr.Zero)
+            {
+                int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                System.Diagnostics.Trace.WriteLine("Hook watchdog: switching-mode mouse hook re-arm FAILED (Win32 error " + err + ")");
+                _hookInstance = null;
+                InputCaptureFailed?.Invoke(this, "Window switching click blocking (input hook re-arm, Win32 error " + err + ")");
+            }
+        }
         
         /// <summary>
         /// Handle a switching-mode selection click on the UI thread.  Deferred out of the low-level mouse hook
