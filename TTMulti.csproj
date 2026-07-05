@@ -16,6 +16,11 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <!-- Roslyn analyzers on (opt-in for .NET Framework), Default level, warnings only — never fail the build. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Default</AnalysisMode>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Keep the flat bin\Debug\ output layout (not bin\Debug\net481\) that the old project and tooling expect. -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!-- WinForms .resx are named from their adjacent .cs class (matches the old DependentUpon behavior). -->

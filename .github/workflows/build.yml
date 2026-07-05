@@ -1,0 +1,32 @@
+name: build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (Release, AnyCPU)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # VS MSBuild carries the .NET Framework 4.8.1 targeting pack + the SDK-style project resolver,
+      # which is the most reliable way to build this net481 SDK-style project on a hosted runner.
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore & build
+        run: msbuild TTMulti.csproj /t:Restore,Build /p:Configuration=Release /v:m /nologo
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: ToontownMulticontroller
+          path: bin/Release/
+          if-no-files-found: error
