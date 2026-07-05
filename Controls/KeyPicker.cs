@@ -11,8 +11,9 @@ namespace TTMulti.Controls
 {
     public partial class KeyPicker : UserControl
     {
-        private const string DISABLED_FOCUSED_TEXT = "Disabled - press a key";
-        private const string DISABLED_UNFOCUSED_TEXT = "Disabled - click to set";
+        private const string DISABLED_FOCUSED_TEXT = "Disabled — Space to set";
+        private const string DISABLED_UNFOCUSED_TEXT = "Disabled — click to set";
+        private const string ARMED_TEXT = "Press a key…";
 
         public delegate void KeyChosenHandler(KeyPicker chooser, Keys keyChosen);
 
@@ -21,6 +22,10 @@ namespace TTMulti.Controls
         Keys _key = Keys.None;
 
         bool isActive = false;
+
+        // True only while actively waiting to capture the next key press (armed via click or Space). When false,
+        // Tab/Enter/Escape navigate normally so the control isn't a keyboard trap (UX-04).
+        bool _isArmed = false;
 
         private readonly ToolTip _toolTip = new ToolTip
         {
@@ -121,15 +126,21 @@ namespace TTMulti.Controls
         public KeyPicker()
         {
             InitializeComponent();
+            textBox1.ReadOnly = true; // it only displays the bound key; typing must not edit it
+            textBox1.Cursor = Cursors.Hand;
             textBox1.Text = _key.ToString();
             textBox1.Enter += TextBox1_Enter;
             textBox1.Leave += TextBox1_Leave;
-            _toolTip.SetToolTip(textBox1, "Double-click to clear");
+            textBox1.Click += textBox1_Click;
+            textBox1.AccessibleName = "Key binding";
+            textBox1.AccessibleDescription = "Click or press Space to set a key, then press the key. Press Delete to clear.";
+            _toolTip.SetToolTip(textBox1, "Click or press Space to set; Delete to clear");
         }
 
         private void TextBox1_Leave(object sender, EventArgs e)
         {
             isActive = false;
+            _isArmed = false;
 
             if (ChosenKey == Keys.None)
             {
@@ -149,33 +160,79 @@ namespace TTMulti.Controls
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            switch (keyData)
+            // Only capture navigation keys while actively armed; otherwise let Tab/Enter/Escape do their normal
+            // navigation/dialog jobs so the control is not a keyboard trap (UX-04).
+            if (_isArmed)
             {
-                case Keys.Tab:
-                case Keys.Escape:
-                case Keys.Enter:
-                    keyDown(keyData);
-                    return true;
+                switch (keyData)
+                {
+                    case Keys.Escape:
+                        CancelCapture();
+                        return true;
+                    case Keys.Tab:
+                    case Keys.Enter:
+                        Capture(keyData);
+                        return true;
+                }
             }
 
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        private void textBox1_KeyDown(object sender, KeyEventArgs e)
+        private void textBox1_Click(object sender, EventArgs e)
         {
-            keyDown(e.KeyCode);
-            e.SuppressKeyPress = true;
+            if (!_isArmed)
+                ArmCapture();
         }
 
-        private void keyDown(Keys key)
+        private void textBox1_KeyDown(object sender, KeyEventArgs e)
         {
+            if (_isArmed)
+            {
+                if (e.KeyCode == Keys.Escape)
+                    CancelCapture();
+                else
+                    Capture(e.KeyCode);
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            // Not armed: Space arms capture, Delete/Backspace clears, everything else navigates normally.
+            if (e.KeyCode == Keys.Space)
+            {
+                ArmCapture();
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Delete || e.KeyCode == Keys.Back)
+            {
+                Capture(Keys.None);
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void ArmCapture()
+        {
+            _isArmed = true;
+            textBox1.Text = ARMED_TEXT;
+            textBox1.Font = new Font(textBox1.Font, FontStyle.Italic);
+        }
+
+        private void CancelCapture()
+        {
+            _isArmed = false;
+            ChosenKey = _key; // restore the display of the current key
+        }
+
+        private void Capture(Keys key)
+        {
+            _isArmed = false;
             ChosenKey = key;
             KeyChosen?.Invoke(this, ChosenKey);
         }
 
         private void textBox1_DoubleClick(object sender, EventArgs e)
         {
-            keyDown(Keys.None);
+            Capture(Keys.None);
         }
 
     }
