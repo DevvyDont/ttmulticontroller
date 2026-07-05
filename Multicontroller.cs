@@ -2352,6 +2352,28 @@ namespace TTMulti
         private const int AutoPlacementHeightOverlap = 7;
 
         /// <summary>
+        /// Per-window invisible-frame offsets so placed windows meet edge-to-edge. Uses the real DWM frame
+        /// thickness (accurate per window, and DPI-correct — including automatically once Per-Monitor V2 is
+        /// enabled) instead of the fixed 100%-DPI constants, falling back to the constants if the DWM query
+        /// returns implausible values (e.g. a window still mid-restore) — WIN32-06.
+        /// </summary>
+        private static void GetPlacementFrameOffsets(IntPtr hwnd, out int xOffset, out int wOverlap, out int hOverlap)
+        {
+            xOffset = AutoPlacementPositionOffset;
+            wOverlap = AutoPlacementWidthOverlap;
+            hOverlap = AutoPlacementHeightOverlap;
+
+            Win32.FrameThickness f = Win32.GetFrameThickness(hwnd);
+            // Sane range for an invisible resize border across DPI scales (~7px @100% ... ~16px @200%).
+            if (f.Left >= 0 && f.Left <= 40 && f.Right >= 0 && f.Right <= 40 && f.Bottom >= 0 && f.Bottom <= 40)
+            {
+                xOffset = f.Left;
+                wOverlap = f.Left + f.Right;
+                hOverlap = f.Bottom;
+            }
+        }
+
+        /// <summary>
         /// Apply a layout preset: order controllers by layout priority, then assign slot rects and minimized state.
         /// Extra windows (beyond slot count) are left unchanged. Extra slots (beyond window count) are ignored.
         /// When onlyControllers is non-null, only those controllers are moved (e.g. after a swap so only the swapped windows are repositioned).
@@ -2397,15 +2419,13 @@ namespace TTMulti
                     Win32.ShowWindow(controller.WindowHandle, Win32.ShowWindowCommands.Restore);
             }
 
-            // Place all windows (position/size).
-            int xOffset = AutoPlacementPositionOffset;
-            int wOverlap = AutoPlacementWidthOverlap;
-            int hOverlap = AutoPlacementHeightOverlap;
+            // Place all windows (position/size). Frame offsets are computed per window (WIN32-06).
             IntPtr hdwp = Win32.BeginDeferWindowPos(toMove.Count);
             if (hdwp != IntPtr.Zero)
             {
                 foreach (var (controller, info) in toMove)
                 {
+                    GetPlacementFrameOffsets(controller.WindowHandle, out int xOffset, out int wOverlap, out int hOverlap);
                     hdwp = Win32.DeferWindowPos(hdwp, controller.WindowHandle, IntPtr.Zero,
                         info.Rect.X - xOffset, info.Rect.Y, info.Rect.Width + wOverlap, info.Rect.Height + hOverlap,
                         Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
@@ -2417,6 +2437,7 @@ namespace TTMulti
             {
                 foreach (var (controller, info) in toMove)
                 {
+                    GetPlacementFrameOffsets(controller.WindowHandle, out int xOffset, out int wOverlap, out int hOverlap);
                     Win32.SetWindowPos(controller.WindowHandle, IntPtr.Zero,
                         info.Rect.X - xOffset, info.Rect.Y, info.Rect.Width + wOverlap, info.Rect.Height + hOverlap,
                         Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
