@@ -6,8 +6,9 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-using System.Deployment;
-using System.Deployment.Application;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
+using System.Threading.Tasks;
 using TTMulti.Controls;
 using System.Net;
 using System.Threading;
@@ -26,132 +27,172 @@ namespace TTMulti.Forms
             this.Icon = Properties.Resources.icon;
         }
 
-        // https://docs.microsoft.com/en-us/visualstudio/deployment/how-to-check-for-application-updates-programmatically-using-the-clickonce-deployment-api?view=vs-2015
-        private void checkUpdates_ClickOnce()
+        [DataContract]
+        private class GitHubRelease
         {
-            UpdateCheckInfo info = null;
-            ApplicationDeployment ad = ApplicationDeployment.CurrentDeployment;
+            [DataMember(Name = "tag_name")]
+            public string TagName { get; set; }
+
+            [DataMember(Name = "html_url")]
+            public string HtmlUrl { get; set; }
+
+            [DataMember(Name = "prerelease")]
+            public bool Prerelease { get; set; }
+        }
+
+        /// <summary>
+        /// Checks the latest published release on the project's GitHub repository (derived from homepageUrl) and,
+        /// if it is newer than this build, offers to open its download page. Async with an 8s timeout — no
+        /// Thread.Abort / DoEvents pump, and no dependency on ClickOnce (which the standalone build no longer uses).
+        /// </summary>
+        private async Task CheckForUpdatesAsync()
+        {
+            checkUpdateBtn.Enabled = false;
+            this.UseWaitCursor = true;
 
             try
             {
-                info = ad.CheckForDetailedUpdate();
-            }
-            catch (DeploymentDownloadException dde)
-            {
-                MessageBox.Show("The new version of the application cannot be downloaded at this time. \n\nPlease check your network connection, or try again later. Error: " + dde.Message);
-                return;
-            }
-            catch (InvalidDeploymentException ide)
-            {
-                MessageBox.Show("Cannot check for a new version of the application. The ClickOnce deployment is corrupt. Please redeploy the application and try again. Error: " + ide.Message);
-                return;
-            }
-            catch (InvalidOperationException ioe)
-            {
-                MessageBox.Show("This application cannot be updated. It is likely not a ClickOnce application. Error: " + ioe.Message);
-                return;
-            }
+                GitHubRelease release = await FetchLatestReleaseAsync();
 
-            if (info.UpdateAvailable)
-            {
-                Boolean doUpdate = true;
-
-                if (!info.IsUpdateRequired)
+                if (release == null || string.IsNullOrEmpty(release.TagName))
                 {
-                    DialogResult dr = MessageBox.Show("An update is available. Would you like to update the application now?", "Update Available", MessageBoxButtons.OKCancel);
-                    if (!(DialogResult.OK == dr))
+                    MessageBox.Show(this,
+                        "Could not check for updates. Please check your internet connection and try again later.",
+                        "Update check failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (IsNewerVersion(release.TagName, Application.ProductVersion))
+                {
+                    string message = string.Format(
+                        "An update is available: {0} (you have {1}).\n\nWould you like to open the download page?",
+                        release.TagName, Application.ProductVersion);
+
+                    if (MessageBox.Show(this, message, "Update available",
+                            MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
                     {
-                        doUpdate = false;
+                        string target = !string.IsNullOrEmpty(release.HtmlUrl)
+                            ? release.HtmlUrl
+                            : Properties.Settings.Default.homepageUrl;
+
+                        try { Process.Start(target); }
+                        catch { /* No browser / blocked; nothing useful to do. */ }
                     }
                 }
                 else
                 {
-                    // Display a message that the app MUST reboot. Display the minimum required version.
-                    MessageBox.Show("This application has detected a mandatory update from your current " +
-                        "version to version " + info.MinimumRequiredVersion.ToString() +
-                        ". The application will now install the update and restart.",
-                        "Update Available", MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-                }
-
-                if (doUpdate)
-                {
-                    try
-                    {
-                        ad.Update();
-                        MessageBox.Show("The application has been upgraded, and will now restart.");
-                        Application.Restart();
-                    }
-                    catch (DeploymentDownloadException dde)
-                    {
-                        MessageBox.Show("Cannot install the latest version of the application. \n\nPlease check your network connection, or try again later. Error: " + dde);
-                        return;
-                    }
+                    MessageBox.Show(this, "You already have the latest version.",
+                        "No updates available", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
-            else
+            finally
             {
-                MessageBox.Show("There are no updates available at the moment.", "No Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.UseWaitCursor = false;
+                checkUpdateBtn.Enabled = true;
             }
         }
 
-        private void checkUpdates_Standalone()
+        private static async Task<GitHubRelease> FetchLatestReleaseAsync()
         {
-            string latestVersion = null;
+            string apiUrl = BuildReleasesApiUrl(Properties.Settings.Default.homepageUrl);
+            if (apiUrl == null)
+                return null;
 
-            Thread fetchVersionThread = new Thread(() =>
+            try
             {
-                try
-                {
-                    HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(Properties.Settings.Default.homepageUrl + "/version.txt");
+                // GitHub's API requires TLS 1.2+ and a User-Agent; enable Tls12 without clobbering existing flags.
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
-                    using (HttpWebResponse response = (HttpWebResponse)webRequest.GetResponse())
-                    using (StreamReader sr = new StreamReader(response.GetResponseStream()))
-                    {
-                        latestVersion = sr.ReadToEnd();
-                    }
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(apiUrl);
+                request.UserAgent = "ToontownMulticontroller";
+                request.Accept = "application/vnd.github+json";
+
+                Task<WebResponse> responseTask = request.GetResponseAsync();
+                if (await Task.WhenAny(responseTask, Task.Delay(8000)) != responseTask)
+                {
+                    request.Abort();
+                    return null;
                 }
-                catch { }
-            })
-            { IsBackground = true };
 
-            fetchVersionThread.Start();
-
-            this.Enabled = false;
-            this.UseWaitCursor = true;
-
-            Stopwatch sw = Stopwatch.StartNew();
-            
-            while (fetchVersionThread.IsAlive && sw.ElapsedMilliseconds < 5000)
-            {
-                Application.DoEvents();
-                Thread.Sleep(10);
-            }
-
-            if (fetchVersionThread.IsAlive)
-            {
-                fetchVersionThread.Abort();
-                latestVersion = null;
-            }
-
-            if (!string.IsNullOrEmpty(latestVersion))
-            {
-                if (Application.ProductVersion != latestVersion)
+                using (HttpWebResponse response = (HttpWebResponse)await responseTask)
+                using (StreamReader sr = new StreamReader(response.GetResponseStream()))
                 {
-                    MessageBox.Show(string.Format("An update is available to version {0}. Click the About button to view the homepage.", latestVersion), "Update available");
-                }
-                else
-                {
-                    MessageBox.Show("No updates available.");
+                    string json = await sr.ReadToEndAsync();
+                    return ParseRelease(json);
                 }
             }
-            else
+            catch
             {
-                MessageBox.Show("Could not check for a new version of the application.", "Error");
+                // No network, 404, DNS failure, aborted-on-timeout, malformed response — treat as "can't check".
+                return null;
             }
+        }
 
-            this.UseWaitCursor = false;
-            this.Enabled = true;
+        private static GitHubRelease ParseRelease(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return null;
+
+            try
+            {
+                var serializer = new DataContractJsonSerializer(typeof(GitHubRelease));
+                using (var ms = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+                {
+                    return (GitHubRelease)serializer.ReadObject(ms);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Turns the homepage URL (https://github.com/owner/repo) into the "latest release" API endpoint. Returns
+        /// null if the homepage isn't a recognizable GitHub repo URL, so a misconfigured setting fails quietly.
+        /// </summary>
+        private static string BuildReleasesApiUrl(string homepageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(homepageUrl))
+                return null;
+
+            const string prefix = "https://github.com/";
+            string trimmed = homepageUrl.Trim().TrimEnd('/');
+            if (!trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            string ownerRepo = trimmed.Substring(prefix.Length);
+            if (ownerRepo.Split('/').Length != 2)
+                return null;
+
+            return "https://api.github.com/repos/" + ownerRepo + "/releases/latest";
+        }
+
+        private static bool IsNewerVersion(string latestTag, string current)
+        {
+            Version latest = ParseVersion(latestTag);
+            Version installed = ParseVersion(current);
+
+            if (latest != null && installed != null)
+                return latest > installed;
+
+            // If either side can't be parsed as a version, fall back to a conservative "different means newer".
+            return !string.Equals((latestTag ?? "").Trim(), (current ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static Version ParseVersion(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return null;
+
+            // Accept tags like "v1.4", "1.4.0", "1.4.0-beta": strip a leading v and any non-version suffix.
+            string trimmed = text.Trim().TrimStart('v', 'V');
+            int end = 0;
+            while (end < trimmed.Length && (char.IsDigit(trimmed[end]) || trimmed[end] == '.'))
+                end++;
+            trimmed = trimmed.Substring(0, end);
+
+            return Version.TryParse(trimmed, out Version v) ? v : null;
         }
 
         // Auto-find controls
@@ -2002,16 +2043,9 @@ namespace TTMulti.Forms
             Properties.Settings.Default.disableKeepAlive = !checkBox4.Checked;
         }
 
-        private void checkUpdateBtn_Click(object sender, EventArgs e)
+        private async void checkUpdateBtn_Click(object sender, EventArgs e)
         {
-            if (ApplicationDeployment.IsNetworkDeployed)
-            {
-                checkUpdates_ClickOnce();
-            }
-            else
-            {
-                checkUpdates_Standalone();
-            }
+            await CheckForUpdatesAsync();
         }
         
         private void addBindingBtn_Click(object sender, EventArgs e)
