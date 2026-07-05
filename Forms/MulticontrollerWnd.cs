@@ -1,99 +1,34 @@
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading;
 using System.Windows.Forms;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Diagnostics;
 using TTMulti;
+using TTMulti.Input;
 
 namespace TTMulti.Forms
 {
     /// <summary>
-    /// The main window. This window captures all input sent to the window and child controls by 
-    /// implementing IMessageFilter and overriding ProcessCmdKey(). All input is sent to the Multicontroller class.
-    /// A low-level keyboard hook is also used to listen for the mode key when a Toontown window is active.
+    /// The main window — now a thin UI shell (R5 of the WPF rebuild). All global input capture (hotkeys,
+    /// low-level hooks, WM_HOTKEY dispatch, message filtering, activation, watchdog, fake cursors) lives in
+    /// <see cref="InputCaptureHost"/>; this form supplies the HWND/marshalling via <see cref="IInputShell"/>
+    /// and keeps only presentation: status, colors, mode buttons, crosshairs, and dialogs.
     /// </summary>
-    internal partial class MulticontrollerWnd : Form, IMessageFilter
+    internal partial class MulticontrollerWnd : Form, IMessageFilter, IInputShell
     {
         /// <summary>
         /// This flag is used to ignore input while a dialog is open.
         /// </summary>
         bool ignoreMessages = false;
 
-        /// <summary>
-        /// The thread used to work around activation issues.
-        /// </summary>
-        Thread activationThread = null;
-
         Multicontroller controller;
-
-        bool userPromptedForAdminRights = false;
-
-        /// <summary>
-        /// When true, global-style captures (RegisterHotKey 0–3, layout presets, minimize-unconnected global path, multiclick mouse hook) are off so keys reach the game; id 4 (suspend toggle) stays registered.
-        /// </summary>
-        bool _globalHotkeysSuspended = false;
-
-        // The state the focus-driven hotkey table was last (re)registered for: MC active, suspended, and whether any
-        // game window is active (minimize-unconnected depends on that). Focus transitions that don't change these
-        // skip the full ~80-call teardown/rebuild + JSON reads (PERF-04). Moving between two game windows keeps all
-        // three unchanged, so it's a no-op; only MC<->game / game<->desktop transitions re-register.
-        private bool? _lastRegisteredActive;
-        private bool _lastRegisteredSuspended;
-        private bool _lastRegisteredAnyWindowActive;
-
-        // Low-level keyboard hook for minimize-unconnected when no modifier is set (RegisterHotKey doesn't work globally for single keys)
-        private static IntPtr _minimizeUnconnectedKeyboardHookHandle = IntPtr.Zero;
-        private static MulticontrollerWnd _minimizeUnconnectedHookForm = null;
-        private static int _minimizeUnconnectedHookKeyCode = 0;
-        private static Win32.HookProc _minimizeUnconnectedKeyboardHookProc = null;
-
-        // Low-level mouse hook for instant multi-click when using a mouse button (RegisterHotKey does not support mouse)
-        private static IntPtr _multiclickMouseHookHandle = IntPtr.Zero;
-        private static MulticontrollerWnd _multiclickMouseHookForm = null;
-        private static int _multiclickMouseHookButton = -1; // 0=Middle, 1=XButton1, 2=XButton2
-        private static Win32.HookProc _multiclickMouseHookProc = null;
-
-        // Single low-level keyboard hook that dispatches ALL Controlled Multi-Click Mode keys — activation,
-        // multi-click and regular-click. This replaces the three separate WH_KEYBOARD_LL hooks that used to be
-        // installed while the mode was active (each serialized every system-wide key event through this app's UI
-        // thread); one dispatcher does the same work with a single round-trip. Key codes are read live from
-        // Settings inside the proc, so no per-key re-install is needed. (PERF-02)
-        private static IntPtr _controlledMcKeyboardHookHandle = IntPtr.Zero;
-        private static MulticontrollerWnd _controlledMcKeyboardHookForm = null;
-        private static Win32.HookProc _controlledMcKeyboardHookProc = null;
-
-        // Low-level mouse hook that blocks left-clicks from focusing game windows while in Controlled Multi-Click Mode
-        private static IntPtr _controlledMcFocusBlockHookHandle = IntPtr.Zero;
-        private static MulticontrollerWnd _controlledMcFocusBlockHookForm = null;
-        private static Win32.HookProc _controlledMcFocusBlockHookProc = null;
-
-        // Timer that updates fake-cursor positions on all game windows while in Controlled Multi-Click Mode
-        private System.Windows.Forms.Timer _multiclickFakeCursorTimer;
-
-        // Watchdog for low-level hooks. Windows silently unhooks a WH_*_LL hook whose callback exceeds
-        // LowLevelHooksTimeout, with no notification, leaving the feature dead mid-session. This timer periodically
-        // re-arms the hooks we believe are installed. It runs on the UI thread (a WinForms Timer), which is the
-        // thread the hooks are installed on and must be re-installed on.
-        private System.Windows.Forms.Timer _hookWatchdogTimer;
-        private const int HookWatchdogIntervalMs = 15000;
-        // Last system-wide input tick seen by the watchdog. A hook can only be dropped when it is invoked, i.e.
-        // when input occurs, so we skip re-arming whenever no input happened since the previous tick.
-        private uint _lastWatchdogInputTick;
+        InputCaptureHost inputHost;
 
         internal MulticontrollerWnd()
         {
             InitializeComponent();
             this.Icon = Properties.Resources.icon;
 
-            // The crosshairs are custom-painted controls with no text, so give them accessible names/roles for
+            // The crosshairs are custom controls with no text, so give them accessible names/roles for
             // assistive technology and screen readers (UX-06).
             leftToonCrosshair.AccessibleName = "Left toon window";
             leftToonCrosshair.AccessibleDescription = "Drag the crosshair onto a Toontown window to control it as the left toon.";
@@ -101,38 +36,65 @@ namespace TTMulti.Forms
             rightToonCrosshair.AccessibleDescription = "Drag the crosshair onto a Toontown window to control it as the right toon.";
         }
 
-        /// <summary>
-        /// Activates the window.
-        /// Works around an issue where sometimes calling Activate() doesn't activate the window.
-        /// If calling Activate() doesn't work, this makes the window topmost and fakes a mouse event.
-        /// </summary>
-        // Set to true to cancel a running TryActivate loop (e.g. when the user deliberately focuses another window)
-        private volatile bool _cancelActivation = false;
+        // ── IInputShell ─────────────────────────────────────────────────────────────
 
-        // Set once the form starts closing so no new activation thread is spawned during teardown.
-        private volatile bool _closing = false;
-
-        internal void TryActivate()
+        void IInputShell.BeginInvoke(Action action)
         {
-            if (_closing)
+            if (IsDisposed || !IsHandleCreated)
                 return;
-
-            _cancelActivation = false;
-
-            // IsAlive (not ThreadState) is the correct liveness test: the thread is IsBackground, so its
-            // ThreadState always carries the Background flag and never equals Running — the old check let
-            // multiple activation threads run at once and interleave AttachThreadInput/TopMost (CORR-01).
-            if (activationThread == null || !activationThread.IsAlive)
+            try
             {
-                activationThread = new Thread(activationThreadFunc) { IsBackground = true };
-                activationThread.Start();
+                base.BeginInvoke(action);
             }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
+        }
+
+        bool IInputShell.SafeInvoke(Action action) => SafeInvoke(action);
+
+        IUiTimer IInputShell.CreateTimer(int intervalMs, Action tick) => new WinFormsUiTimer(intervalMs, tick);
+
+        void IInputShell.FinishActivation()
+        {
+            if (IsDisposed)
+                return;
+            this.TopMost = true;
+            this.Activate();
+            this.TopMost = Properties.Settings.Default.onTopWhenInactive;
+        }
+
+        void IInputShell.ShowWarning(string message, string title)
+        {
+            if (IsDisposed || !IsHandleCreated)
+                return;
+            BeginInvoke(new Action(() =>
+            {
+                if (!IsDisposed)
+                    MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }));
+        }
+
+        /// <summary>UI-thread timer over a WinForms Timer (the WPF shell uses a DispatcherTimer instead).</summary>
+        private sealed class WinFormsUiTimer : IUiTimer
+        {
+            private readonly Timer _timer;
+
+            internal WinFormsUiTimer(int intervalMs, Action tick)
+            {
+                _timer = new Timer { Interval = intervalMs };
+                _timer.Tick += (s, e) => tick();
+            }
+
+            public bool Enabled => _timer.Enabled;
+            public void Start() => _timer.Start();
+            public void Stop() => _timer.Stop();
+            public void Dispose() => _timer.Dispose();
         }
 
         /// <summary>
-        /// Marshal <paramref name="action"/> to the UI thread, returning false instead of throwing if the form's
-        /// handle is gone.  Prevents a dispose race (form closed between the check and the Invoke) from throwing on
-        /// the background activation thread, which — with no global handler installed — would crash the process (CORR-01).
+        /// Marshal <paramref name="action"/> to the UI thread, returning false instead of throwing if the
+        /// form's handle is gone. Prevents a dispose race from crashing the process on the background
+        /// activation thread (CORR-01).
         /// </summary>
         private bool SafeInvoke(Action action)
         {
@@ -153,58 +115,9 @@ namespace TTMulti.Forms
             }
         }
 
-        private void activationThreadFunc()
-        {
-            try
-            {
-                if (_cancelActivation)
-                    return;
+        internal void TryActivate() => inputHost?.TryActivate();
 
-                IntPtr hWnd = IntPtr.Zero;
-                if (!SafeInvoke(() => hWnd = this.Handle) || _cancelActivation || hWnd == IntPtr.Zero)
-                    return;
-
-                // Use AttachThreadInput so we can call SetForegroundWindow without Windows
-                // redirecting it to a taskbar flash.  We borrow the current foreground thread's
-                // input queue, steal focus cleanly, then detach.
-                IntPtr foregroundWnd = Win32.GetForegroundWindow();
-                uint foregroundThread = foregroundWnd != IntPtr.Zero
-                    ? Win32.GetWindowThreadProcessId(foregroundWnd, out _)
-                    : 0;
-                uint ourThread = Win32.GetCurrentThreadId();
-                bool attached = false;
-
-                try
-                {
-                    if (foregroundThread != 0 && foregroundThread != ourThread)
-                        attached = Win32.AttachThreadInput(foregroundThread, ourThread, true);
-
-                    Win32.BringWindowToTop(hWnd);
-                    Win32.SetForegroundWindow(hWnd);
-
-                    SafeInvoke(() =>
-                    {
-                        if (!this.IsDisposed && !_cancelActivation)
-                        {
-                            this.TopMost = true;
-                            this.Activate();
-                            this.TopMost = Properties.Settings.Default.onTopWhenInactive;
-                        }
-                    });
-                }
-                finally
-                {
-                    // Always detach the input queue we borrowed, even if activation was cancelled or failed.
-                    if (attached)
-                        Win32.AttachThreadInput(foregroundThread, ourThread, false);
-                }
-            }
-            catch
-            {
-                // Best-effort activation.  An unhandled exception on this background thread would crash the whole
-                // process (no AppDomain/thread exception handler is installed), so swallow it (CORR-01).
-            }
-        }
+        // ── Status display ──────────────────────────────────────────────────────────
 
         /// <summary>
         /// Short label for the status strip: mode name and current group when relevant (e.g. "Multi G2", "Mirror").
@@ -261,257 +174,50 @@ namespace TTMulti.Forms
             }
         }
 
+        // ── Input delegation to the host ────────────────────────────────────────────
+
         /// <summary>
-        /// Overrides keys that usually perform other functions like tab, arrow keys, etc. so that
-        /// we can use them for control. After getting intercepted, they are caught by the message filter.
+        /// Overrides keys that usually perform other functions (Tab, arrows, Alt) so they can be used for
+        /// game control; the decision logic lives in the host.
         /// </summary>
-        /// <param name="msg"></param>
-        /// <param name="keyData"></param>
-        /// <returns>
-        /// Returns true when the key should be intercepted so they don't perform their usual function.
-        /// </returns>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            switch (keyData)
+            if (inputHost != null)
             {
-                case Keys.Tab:
-                case Keys.Up:
-                case Keys.Down:
-                case Keys.Left:
-                case Keys.Right:
-                    // Intercept these for game control ONLY while actively controlling connected windows.
-                    // Otherwise (e.g. no game windows attached yet) let them navigate the UI so keyboard users
-                    // aren't locked out of the main window's controls (UX-06). Mnemonics still work either way.
-                    if (controller.IsActive && controller.AllControllersWithWindows.Any())
-                        return true;
-                    return base.ProcessCmdKey(ref msg, keyData);
-                case Keys.Alt:
-                    // Forward Alt key to ProcessInput for switching mode handling
-                    // Don't consume it here - let ProcessInput decide
-                    return controller.ProcessInput(msg.Msg, msg.WParam, msg.LParam);
-                default:
-                    break;
+                bool handled = inputHost.HandleCmdKey(msg.Msg, msg.WParam, msg.LParam, keyData, out bool useDefault);
+                if (!useDefault)
+                    return handled;
             }
-
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
         /// <summary>
-        /// IMessageFilter function implementation. This captures all keys sent to the window, including ones
-        /// that are sent directly to child controls, and sends them to the multicontroller.
+        /// IMessageFilter implementation: captures all keys sent to the window (including ones sent directly
+        /// to child controls) and routes them through the host into the multicontroller.
         /// </summary>
-        /// <param name="m"></param>
-        /// <returns>
-        /// Returns true when the key should be stopped from getting to its destination.
-        /// </returns>
         public bool PreFilterMessage(ref Message m)
         {
-            if (ignoreMessages)
+            if (ignoreMessages || inputHost == null)
             {
                 return false;
             }
 
-            bool ret = false;
-
-            var msg = (Win32.WM)m.Msg;
-
-            switch (msg)
-            {
-                case Win32.WM.KEYDOWN:
-                case Win32.WM.KEYUP:
-                case Win32.WM.SYSKEYDOWN:
-                case Win32.WM.SYSKEYUP:
-                case Win32.WM.SYSCOMMAND:
-                    ret = controller.ProcessInput(m.Msg, m.WParam, m.LParam);
-                    break;
-                case Win32.WM.LBUTTONDOWN:
-                case Win32.WM.LBUTTONUP:
-                case Win32.WM.RBUTTONDOWN:
-                case Win32.WM.RBUTTONUP:
-                case Win32.WM.MBUTTONDOWN:
-                case Win32.WM.MBUTTONUP:
-                case Win32.WM.MOUSEMOVE:
-                case Win32.WM.MOUSEWHEEL:
-                    // Intercept mouse messages and process them (especially important for switching mode)
-                    ret = controller.ProcessInput(m.Msg, m.WParam, m.LParam);
-                    break;
-                case Win32.WM.HOTKEY:
-                    // Let these hotkeys pass through to WndProc (see WndProc). Others are handled via ProcessInput.
-                    // Custom mode activation uses IDs CustomModeActivationHotkeyIdStart..End — must not go through ProcessInput alone.
-                    int hotkeyId = (int)m.WParam.ToInt64();
-                    if (hotkeyId == 3 || hotkeyId == 4 || hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25)
-                        || (hotkeyId >= CustomModeActivationHotkeyIdStart && hotkeyId <= CustomModeActivationHotkeyIdEnd))
-                    {
-                        ret = false;
-                    }
-                    else
-                    {
-                        // Process other hotkeys normally
-                        ret = controller.ProcessInput(m.Msg, m.WParam, m.LParam);
-                    }
-                    break;
-            }
-            
-            CheckControllerErrors();
-
-            return ret;
+            return inputHost.PreFilterMessage(m.Msg, m.WParam, m.LParam);
         }
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == (int)Win32.WM.HOTKEY)
-            {
-                int hotkeyId = (int)m.WParam.ToInt64();
-                
-                // Check if this is auto-find windows hotkey (ID 7)
-                if (hotkeyId == 7)
-                {
-                    controller.AutoFindAndAssignWindows();
-                    if (controller.IsActive || controller.AllControllersWithWindows.Any(c => c.IsWindowActive))
-                    {
-                        RegisterHotkey();
-                    }
-                    if (controller.IsActive)
-                    {
-                        RegisterAutoFindHotkey();
-                        RegisterLayoutPresetHotkeys();
-                    }
-                }
-                // Check if this is minimize unconnected Toontown windows hotkey (ID 9)
-                else if (hotkeyId == 9)
-                {
-                    controller.ToggleMinimizeUnconnectedWindows();
-                }
-                else if (hotkeyId == 4)
-                {
-                    _globalHotkeysSuspended = !_globalHotkeysSuspended;
-                    RefreshGlobalHotkeyRegistration();
-                    UpdateSuspendIndicator();
-                }
-                // Layout preset hotkeys (ID 10-25)
-                else if (hotkeyId >= 10 && hotkeyId <= 25)
-                {
-                    int presetIndex = hotkeyId - 10;
-                    var file = LayoutPresetStorage.Load();
-                    if (file?.Presets != null && presetIndex < file.Presets.Count)
-                    {
-                        controller.ApplyLayoutPreset(file.Presets[presetIndex]);
-                        Properties.Settings.Default.lastUsedLayoutPresetIndex = presetIndex;
-                        Properties.Settings.Default.Save();
-                        BeginInvoke(new Action(() => TryActivate()));
-                    }
-                }
-                else if (hotkeyId == 3)
-                {
-                    controller.ToggleModeLock();
-                    UpdateModeLockVisuals();
-                }
-                else if (hotkeyId == 0)
-                {
-                    // Mode switching hotkey (ID 0)
-                    // Check if any modifiers are currently pressed - if so, don't switch modes, let it pass through to games
-                    Keys currentModifiers = Control.ModifierKeys;
-                    bool hasModifiers = (currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None;
-                    
-                    if (hasModifiers)
-                    {
-                        // Modifiers are pressed - don't switch modes, let the key pass through to games
-                        // Convert HOTKEY message to KEYDOWN so it gets processed normally
-                        Keys keyCode = (Keys)Properties.Settings.Default.modeKeyCode;
-                        controller.ProcessInput((int)Win32.WM.KEYDOWN, (IntPtr)keyCode, IntPtr.Zero);
-                    }
-                    else
-                    {
-                        // No modifiers - handle as mode switch
-                        controller.ProcessInput(m.Msg, m.WParam, m.LParam);
-                    }
-                }
-                else if (hotkeyId == 1)
-                {
-                    // Instant Multi-Click hotkey (ID 1)
-                    // Check if any modifiers are currently pressed - if so, don't execute multi-click, let it pass through to games
-                    Keys currentModifiers = Control.ModifierKeys;
-                    bool hasModifiers = (currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None;
-                    
-                    if (hasModifiers)
-                    {
-                        // Modifiers are pressed - don't execute multi-click, let the key pass through to games
-                        // Convert HOTKEY message to KEYDOWN so it gets processed normally
-                        Keys keyCode = (Keys)Properties.Settings.Default.replicateMouseKeyCode;
-                        controller.ProcessInput((int)Win32.WM.KEYDOWN, (IntPtr)keyCode, IntPtr.Zero);
-                    }
-                    else
-                    {
-                        // No modifiers - handle as multi-click
-                        controller.ProcessInput(m.Msg, m.WParam, m.LParam);
-                    }
-                }
-                else if (hotkeyId >= CustomModeActivationHotkeyIdStart && hotkeyId <= CustomModeActivationHotkeyIdEnd)
-                {
-                    if (_customModeActivationHotkeyIds.TryGetValue(hotkeyId, out string customModeId) && !string.IsNullOrEmpty(customModeId))
-                    {
-                        Keys currentModifiers = Control.ModifierKeys;
-                        bool hasModifiers = (currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None;
-                        if (hasModifiers)
-                        {
-                            var file = CustomModeStorage.Load();
-                            var mode = file.Modes?.FirstOrDefault(cm => string.Equals(cm.Id, customModeId, StringComparison.Ordinal));
-                            if (mode != null && mode.ActivationHotkeyCode != 0)
-                                controller.ProcessInput((int)Win32.WM.KEYDOWN, (IntPtr)(Keys)mode.ActivationHotkeyCode, IntPtr.Zero);
-                        }
-                        else
-                        {
-                            if (!controller.IsActive)
-                                BeginInvoke(new Action(TryActivate));
-                            controller.ActivateCustomModeDefinition(customModeId);
-                        }
-                    }
-                }
-                else if (hotkeyId == 2)
-                {
-                    // Zero Power Throw hotkey (ID 2)
-                    // Check if any modifiers are currently pressed - if so, don't execute zero power throw, let it pass through to games
-                    Keys currentModifiers = Control.ModifierKeys;
-                    bool hasModifiers = (currentModifiers & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None;
-                    
-                    if (hasModifiers)
-                    {
-                        // Modifiers are pressed - don't execute zero power throw, let the key pass through to games
-                        // Convert HOTKEY message to KEYDOWN so it gets processed normally
-                        Keys keyCode = (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode;
-                        controller.ProcessInput((int)Win32.WM.KEYDOWN, (IntPtr)keyCode, IntPtr.Zero);
-                    }
-                    else
-                    {
-                        // No modifiers - handle as zero power throw
-                        controller.ProcessInput(m.Msg, m.WParam, m.LParam);
-                    }
-                }
-                else
-                {
-                    controller.ProcessInput(m.Msg, m.WParam, m.LParam);
-                }
-                
-                CheckControllerErrors();
-            }
-
+            inputHost?.HandleWindowMessage(m.Msg, m.WParam, m.LParam);
             base.WndProc(ref m);
         }
 
-        internal void CheckControllerErrors()
-        {
-            if (!userPromptedForAdminRights && controller.ErrorOccurredPostingMessage)
-            {
-                userPromptedForAdminRights = true;
+        // ── Admin-rights prompt (raised by the host, shown here) ────────────────────
 
-                // CheckControllerErrors runs at the tail of PreFilterMessage, i.e. inside input dispatch. Showing a
-                // modal dialog here would pump messages mid-keystroke: any key already forwarded as KEYDOWN would
-                // never get its KEYUP delivered while the modal loop runs (stuck key in the games), and low-level
-                // hooks/WM_HOTKEY keep firing behind the box. So release held forwarded keys now, then defer the
-                // prompt onto the message loop with ignoreMessages gating our own filter while it's up. (UX-09)
-                controller.ReleaseAllHeldForwardedKeys();
-                BeginInvoke(new Action(PromptForAdminRights));
-            }
+        private void InputHost_AdminRightsPromptNeeded(object sender, EventArgs e)
+        {
+            // Held forwarded keys were already released by the host; defer the modal prompt onto the message
+            // loop with ignoreMessages gating our own filter while it's up (UX-09).
+            BeginInvoke(new Action(PromptForAdminRights));
         }
 
         private void PromptForAdminRights()
@@ -548,13 +254,9 @@ namespace TTMulti.Forms
             Properties.Settings.Default.lastLocation = this.Location;
             Properties.Settings.Default.Save();
         }
-        
+
         private void ReloadOptions()
         {
-            _globalHotkeysSuspended = false;
-            UpdateSuspendIndicator();
-            // Settings just changed — re-evaluate hotkey conflicts and allow warning about them again (UX-01).
-            _reportedHotkeyFailures.Clear();
             this.TopMost = Properties.Settings.Default.onTopWhenInactive;
             panel1.Visible = !Properties.Settings.Default.compactUI;
             controller.UpdateOptions();
@@ -562,15 +264,12 @@ namespace TTMulti.Forms
 
             // Update UI colors to reflect any changes
             UpdateUIColors();
-            
-            // Re-register the focus-driven hotkeys for the current state (force: settings just changed), plus the
-            // separately-managed controlled-multiclick hooks.
-            UnregisterControlledMulticlickHotkeys();
-            RegisterFocusHotkeys(force: true);
-            RegisterControlledMulticlickHotkeys();
 
+            // Reset suspension, allow re-reporting hotkey conflicts, and rebuild all registrations (the
+            // host raises SuspendStateChanged, which refreshes the title's suspend indicator).
+            inputHost.OnSettingsReloaded();
         }
-        
+
         /// <summary>
         /// Updates the colors of the mode buttons and crosshair controls to reflect current color settings.
         /// </summary>
@@ -579,989 +278,39 @@ namespace TTMulti.Forms
             // Update Multi-Mode button colors
             multiModeRadio.FlatAppearance.BorderColor = Colors.LeftGroup;
             multiModeRadio.FlatAppearance.CheckedBackColor = Colors.LeftGroup;
-            
+
             // Update Mirror Mode button colors
             mirrorModeRadio.FlatAppearance.BorderColor = Colors.AllGroups;
             mirrorModeRadio.FlatAppearance.CheckedBackColor = Colors.AllGroups;
-            
+
             // Update crosshair colors
             leftToonCrosshair.SelectedBorderColor = Colors.LeftGroup;
             rightToonCrosshair.SelectedBorderColor = Colors.RightGroup;
-            
+
             // Force a repaint of the buttons to show the updated colors
             multiModeRadio.Invalidate();
             mirrorModeRadio.Invalidate();
         }
 
-        // Global hotkey registration failures already shown to the user this settings-session, so each dead
-        // hotkey is reported at most once (cleared in ReloadOptions when settings change) — UX-01.
-        readonly System.Collections.Generic.HashSet<string> _reportedHotkeyFailures = new System.Collections.Generic.HashSet<string>();
-        // Failures accumulated during the current RegisterHotkey() pass, before they are reported.
-        readonly System.Collections.Generic.List<string> _pendingHotkeyFailures = new System.Collections.Generic.List<string>();
-
-        /// <summary>
-        /// Registers a global hotkey and records a readable failure if RegisterHotKey returns false, so a dead
-        /// hotkey (owned by another program, or assigned to two features so the second registration fails) is
-        /// surfaced instead of silently doing nothing when pressed (UX-01).
-        /// </summary>
-        private bool TryRegisterGlobalHotKey(int id, Win32.KeyModifiers modifiers, Keys key, string featureName)
-        {
-            bool ok = Win32.RegisterHotKey(this.Handle, id, modifiers, key);
-            if (!ok)
-            {
-                int err = Marshal.GetLastWin32Error();
-                System.Diagnostics.Trace.WriteLine("RegisterHotKey failed for \"" + featureName + "\" (" + DescribeHotkey(modifiers, key) + "): Win32 error " + err);
-                _pendingHotkeyFailures.Add(featureName + ": " + DescribeHotkey(modifiers, key));
-            }
-            return ok;
-        }
-
-        /// <summary>
-        /// Installs a low-level hook, surfacing a readable failure if SetWindowsHookEx returns null so the
-        /// affected feature does not silently stop working (WIN32-04). Failures are reported through the same
-        /// consolidated warning as failed hotkey registrations.
-        /// </summary>
-        private IntPtr TryInstallLowLevelHook(int hookType, Win32.HookProc proc, string featureName)
-        {
-            IntPtr handle = Win32.SetWindowsHookEx(hookType, proc, Win32.GetModuleHandle(null), 0);
-            if (handle == IntPtr.Zero)
-            {
-                int err = Marshal.GetLastWin32Error();
-                System.Diagnostics.Trace.WriteLine("SetWindowsHookEx failed for \"" + featureName + "\": Win32 error " + err);
-                _pendingHotkeyFailures.Add(featureName + " (input hook, Win32 error " + err + ")");
-                ReportPendingHotkeyFailures();
-            }
-            return handle;
-        }
-
-        private static string DescribeHotkey(Win32.KeyModifiers modifiers, Keys key)
-        {
-            string prefix = "";
-            if ((modifiers & Win32.KeyModifiers.Control) != 0) prefix += "Ctrl+";
-            if ((modifiers & Win32.KeyModifiers.Alt) != 0) prefix += "Alt+";
-            if ((modifiers & Win32.KeyModifiers.Shift) != 0) prefix += "Shift+";
-            if ((modifiers & Win32.KeyModifiers.Windows) != 0) prefix += "Win+";
-            return prefix + (key & Keys.KeyCode).ToString();
-        }
-
-        /// <summary>
-        /// Shows a single consolidated warning for any global hotkeys that failed to register this pass and have
-        /// not already been reported.  Deferred via BeginInvoke so the modal dialog never opens from inside an
-        /// activation/registration event (avoids reentrancy) — UX-01.
-        /// </summary>
-        private void ReportPendingHotkeyFailures()
-        {
-            if (_pendingHotkeyFailures.Count == 0)
-                return;
-
-            var newFailures = _pendingHotkeyFailures.Where(f => _reportedHotkeyFailures.Add(f)).ToList();
-            _pendingHotkeyFailures.Clear();
-
-            if (newFailures.Count == 0 || IsDisposed || !IsHandleCreated)
-                return;
-
-            string message = "These global hotkeys or input hooks could not be registered — another program may "
-                + "already be using them, or two features are assigned the same key:\n\n  "
-                + string.Join("\n  ", newFailures)
-                + "\n\nOpen Options and pick different keys to fix this.";
-
-            BeginInvoke(new Action(() =>
-            {
-                if (!IsDisposed)
-                    MessageBox.Show(this, message, "Hotkey Not Registered", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }));
-        }
-
-        /// <summary>
-        /// Surfaces a hook-install failure raised by the controller (switching-mode mouse hook) through the same
-        /// consolidated warning as failed hotkey registrations (WIN32-04).
-        /// </summary>
-        private void Controller_InputCaptureFailed(object sender, string description)
-        {
-            _pendingHotkeyFailures.Add(description);
-            ReportPendingHotkeyFailures();
-        }
-
-        /// <summary>
-        /// Watchdog tick: re-arm the low-level hooks we believe are installed, but only when input has occurred
-        /// since the previous tick. A WH_*_LL hook is only ever silently dropped by Windows at the moment its
-        /// callback runs and exceeds LowLevelHooksTimeout, so with no input there is nothing to heal — skipping
-        /// keeps healthy hooks from being needlessly torn down and reinstalled while the machine is idle.
-        /// </summary>
-        private void HookWatchdog_Tick(object sender, EventArgs e)
-        {
-            uint inputTick = GetLastSystemInputTick();
-            if (inputTick == _lastWatchdogInputTick)
-                return;
-            _lastWatchdogInputTick = inputTick;
-            RearmInstalledLowLevelHooks();
-        }
-
-        private static uint GetLastSystemInputTick()
-        {
-            var lii = new Win32.LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf(typeof(Win32.LASTINPUTINFO)) };
-            return Win32.GetLastInputInfo(ref lii) ? lii.dwTime : 0;
-        }
-
-        /// <summary>
-        /// Re-arms every low-level hook whose handle is non-zero (i.e. that we believe is installed). Unhook then
-        /// reinstall: a no-op-then-fresh-install if Windows already dropped it, an atomic swap if it is healthy.
-        /// The sub-millisecond gap between unhook and reinstall is why this only runs at a coarse interval.
-        /// </summary>
-        private void RearmInstalledLowLevelHooks()
-        {
-            RearmLowLevelHook(ref _minimizeUnconnectedKeyboardHookHandle, _minimizeUnconnectedKeyboardHookProc, Win32.WH_KEYBOARD_LL, "Minimize unconnected windows key");
-            RearmLowLevelHook(ref _multiclickMouseHookHandle, _multiclickMouseHookProc, Win32.WH_MOUSE_LL, "Instant Multi-Click mouse button");
-            RearmLowLevelHook(ref _controlledMcKeyboardHookHandle, _controlledMcKeyboardHookProc, Win32.WH_KEYBOARD_LL, "Controlled Multi-Click keys");
-            RearmLowLevelHook(ref _controlledMcFocusBlockHookHandle, _controlledMcFocusBlockHookProc, Win32.WH_MOUSE_LL, "Controlled Multi-Click focus block");
-            controller?.RearmSwitchingMouseHookIfInstalled();
-        }
-
-        private void RearmLowLevelHook(ref IntPtr handle, Win32.HookProc proc, int hookType, string featureName)
-        {
-            if (handle == IntPtr.Zero || proc == null)
-                return;
-            Win32.UnhookWindowsHookEx(handle);
-            handle = Win32.SetWindowsHookEx(hookType, proc, Win32.GetModuleHandle(null), 0);
-            System.Diagnostics.Trace.WriteLine("Hook watchdog: re-armed " + featureName + " (handle=" + handle + ")");
-            if (handle == IntPtr.Zero)
-            {
-                int err = Marshal.GetLastWin32Error();
-                System.Diagnostics.Trace.WriteLine("Hook watchdog: re-arm FAILED for " + featureName + " (Win32 error " + err + ")");
-                _pendingHotkeyFailures.Add(featureName + " (input hook re-arm, Win32 error " + err + ")");
-                ReportPendingHotkeyFailures();
-            }
-        }
-
-        /// <summary>
-        /// Rebuild the focus-driven hotkey table (unregister all, then register for the current active/suspended
-        /// state). Skips the work when that state is unchanged unless <paramref name="force"/> is set (e.g. after a
-        /// settings change). The individual Register* methods self-gate on IsActive/suspended (PERF-04).
-        /// </summary>
-        private void RegisterFocusHotkeys(bool force = false)
-        {
-            bool active = controller.IsActive;
-            bool anyWindowActive = controller.AllControllersWithWindows.Any(c => c.IsWindowActive);
-            if (!force
-                && _lastRegisteredActive == active
-                && _lastRegisteredSuspended == _globalHotkeysSuspended
-                && _lastRegisteredAnyWindowActive == anyWindowActive)
-                return;
-
-            _lastRegisteredActive = active;
-            _lastRegisteredSuspended = _globalHotkeysSuspended;
-            _lastRegisteredAnyWindowActive = anyWindowActive;
-
-            UnregisterHotkey();
-            UnregisterAutoFindHotkey();
-            UnregisterLayoutPresetHotkeys();
-            UnregisterMinimizeUnconnectedHotkey();
-
-            RegisterHotkey();
-            RegisterAutoFindHotkey();
-            RegisterLayoutPresetHotkeys();
-            RegisterMinimizeUnconnectedHotkey();
-        }
-
-        private void RegisterHotkey()
-        {
-            _pendingHotkeyFailures.Clear();
-            UninstallMulticlickMouseHook();
-            Win32.UnregisterHotKey(this.Handle, 0);
-            Win32.UnregisterHotKey(this.Handle, 1);
-            Win32.UnregisterHotKey(this.Handle, 2);
-            Win32.UnregisterHotKey(this.Handle, 3);
-            Win32.UnregisterHotKey(this.Handle, 4);
-            UnregisterCustomModeActivationHotkeys();
-
-            // Suspend-global toggle (ID 4) — always registered when configured, including while suspended, so the user can turn globals back on.
-            if (Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode != 0)
-                TryRegisterGlobalHotKey(4, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode, "Suspend global hotkeys toggle");
-
-            if (_globalHotkeysSuspended)
-            {
-                ReportPendingHotkeyFailures();
-                return;
-            }
-
-            // Mode/Activate (ID 0)
-            bool modeGlobal = Properties.Settings.Default.modeHotkeyGlobal;
-            if (modeGlobal)
-            {
-                TryRegisterGlobalHotKey(0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode, "Mode / Activate");
-            }
-            else if (controller.IsActive)
-            {
-                TryRegisterGlobalHotKey(0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode, "Mode / Activate");
-            }
-
-            // Instant Multi-Click (ID 1) - keyboard hotkey or mouse hook (RegisterHotKey does not support mouse buttons)
-            if (Properties.Settings.Default.replicateMouseUseMouseButton)
-            {
-                int btn = Properties.Settings.Default.replicateMouseMouseButton;
-                if (btn >= 0 && btn <= 2)
-                {
-                    bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
-                    if (multiGlobal || controller.IsActive)
-                        InstallMulticlickMouseHook(btn);
-                }
-            }
-            else if (Properties.Settings.Default.replicateMouseKeyCode != 0)
-            {
-                bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
-                if (multiGlobal || controller.IsActive)
-                {
-                    TryRegisterGlobalHotKey(1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode, "Instant Multi-Click");
-                }
-            }
-
-            // Zero Power Throw (ID 2)
-            if (Properties.Settings.Default.zeroPowerThrowKeyCode != 0)
-            {
-                bool zeroGlobal = Properties.Settings.Default.zeroPowerThrowHotkeyGlobal;
-                if (zeroGlobal)
-                {
-                    TryRegisterGlobalHotKey(2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode, "Zero Power Throw");
-                }
-                else if (controller.IsActive)
-                {
-                    TryRegisterGlobalHotKey(2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode, "Zero Power Throw");
-                }
-            }
-
-            // Mode lock toggle (ID 3) — always registered when set so it works from game windows
-            if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
-                TryRegisterGlobalHotKey(3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode, "Mode lock toggle");
-            // Note: ID 7 (auto-find), ID 10-25 (layout presets) handled separately
-
-            RegisterCustomModeActivationHotkeys();
-
-            ReportPendingHotkeyFailures();
-        }
-
-        void UnregisterCustomModeActivationHotkeys()
-        {
-            _customModeActivationHotkeyIds.Clear();
-            for (int id = CustomModeActivationHotkeyIdStart; id <= CustomModeActivationHotkeyIdEnd; id++)
-                Win32.UnregisterHotKey(this.Handle, id);
-        }
-
-        void RegisterCustomModeActivationHotkeys()
-        {
-            if (_globalHotkeysSuspended)
-                return;
-            CustomModeFile file = CustomModeStorage.LoadCached();
-            if (file.Modes == null)
-                return;
-            int hotkeyId = CustomModeActivationHotkeyIdStart;
-            foreach (CustomModeDefinition mode in file.Modes)
-            {
-                if (mode.ActivationHotkeyCode == 0)
-                    continue;
-                if (hotkeyId > CustomModeActivationHotkeyIdEnd)
-                    break;
-                bool global = mode.ActivationHotkeyGlobal;
-                if (!global && !controller.IsActive)
-                    continue;
-                bool ok = Win32.RegisterHotKey(this.Handle, hotkeyId, (Win32.KeyModifiers)mode.ActivationHotkeyModifiers, (Keys)mode.ActivationHotkeyCode);
-                if (ok)
-                    _customModeActivationHotkeyIds[hotkeyId] = mode.Id;
-                hotkeyId++;
-            }
-        }
-
-        /// <summary>
-        /// After toggling <see cref="_globalHotkeysSuspended"/>, re-apply hotkey registration so globals, layout presets, and minimize-unconnected follow the new state.
-        /// </summary>
-        private void RefreshGlobalHotkeyRegistration()
-        {
-            // Suspend state changed — force a rebuild for the current (active, suspended) state.
-            RegisterFocusHotkeys(force: true);
-        }
-
-        private void UnregisterHotkey()
-        {
-            Win32.UnregisterHotKey(this.Handle, 0);
-            Win32.UnregisterHotKey(this.Handle, 1);
-            Win32.UnregisterHotKey(this.Handle, 2);
-            Win32.UnregisterHotKey(this.Handle, 3);
-            Win32.UnregisterHotKey(this.Handle, 4);
-            UnregisterCustomModeActivationHotkeys();
-            UninstallMulticlickMouseHook();
-        }
-
-        private void RegisterAutoFindHotkey()
-        {
-            // Register auto-find windows hotkey (ID 7) - NEVER global, only when multicontroller window is active
-            if (Properties.Settings.Default.autoFindWindowsKeyCode != 0 && controller.IsActive)
-            {
-                bool success = Win32.RegisterHotKey(this.Handle, 7, (Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers, (Keys)Properties.Settings.Default.autoFindWindowsKeyCode);
-                if (!success)
-                {
-                    // Hotkey registration failed - might be already registered or invalid combination
-                    // Try unregistering first, then re-registering; surface the failure if the retry also fails (WIN32-04)
-                    Win32.UnregisterHotKey(this.Handle, 7);
-                    if (!TryRegisterGlobalHotKey(7, (Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers, (Keys)Properties.Settings.Default.autoFindWindowsKeyCode, "Auto-find windows"))
-                        ReportPendingHotkeyFailures();
-                }
-            }
-        }
-
-        private void UnregisterAutoFindHotkey()
-        {
-            // Unregister auto-find hotkey (ID 7)
-            Win32.UnregisterHotKey(this.Handle, 7);
-        }
-
-        private const int LayoutPresetHotkeyIdStart = 10;
-        private const int LayoutPresetHotkeyIdEnd = 25;
-        private const int CustomModeActivationHotkeyIdStart = 26;
-        private const int CustomModeActivationHotkeyIdEnd = 57;
-
-        readonly System.Collections.Generic.Dictionary<int, string> _customModeActivationHotkeyIds =
-            new System.Collections.Generic.Dictionary<int, string>();
-
-        private void RegisterLayoutPresetHotkeys()
-        {
-            if (_globalHotkeysSuspended || !controller.IsActive) return;
-            // Idempotent: unregister our preset IDs before re-registering so a second call while they're already
-            // registered (e.g. Activated registers them, then Shown/auto-find calls this again) doesn't fail with
-            // ERROR_HOTKEY_ALREADY_REGISTERED and raise a spurious "not registered" warning. A genuine conflict with
-            // another program still fails here (UnregisterHotKey only frees THIS window's registration), so real
-            // conflicts are still surfaced. Mirrors how RegisterHotkey() self-unregisters IDs 0-4.
-            UnregisterLayoutPresetHotkeys();
-            var file = LayoutPresetStorage.LoadCached();
-            if (file?.Presets == null) return;
-            for (int i = 0; i < file.Presets.Count && i <= LayoutPresetHotkeyIdEnd - LayoutPresetHotkeyIdStart; i++)
-            {
-                var p = file.Presets[i];
-                if (p.HotkeyCode == 0) continue;
-                string presetName = string.IsNullOrEmpty(p.Name) ? "#" + (i + 1) : p.Name;
-                TryRegisterGlobalHotKey(LayoutPresetHotkeyIdStart + i, (Win32.KeyModifiers)p.HotkeyModifiers, (Keys)p.HotkeyCode,
-                    "Layout preset \"" + presetName + "\"");
-            }
-            ReportPendingHotkeyFailures();
-        }
-
-        private void UnregisterLayoutPresetHotkeys()
-        {
-            for (int id = LayoutPresetHotkeyIdStart; id <= LayoutPresetHotkeyIdEnd; id++)
-                Win32.UnregisterHotKey(this.Handle, id);
-        }
-
-        private void RegisterMinimizeUnconnectedHotkey()
-        {
-            // Register minimize unconnected Toontown windows hotkey (ID 9)
-            // When no modifier: RegisterHotKey doesn't work globally for single keys on Windows, so use a low-level keyboard hook instead.
-            // When modifier is set: use RegisterHotKey as normal.
-            int keyCode = Properties.Settings.Default.minimizeUnconnectedKeyCode;
-            int modifiers = Properties.Settings.Default.minimizeUnconnectedKeyModifiers;
-            if (keyCode == 0)
-            {
-                UnregisterMinimizeUnconnectedHotkey();
-                return;
-            }
-            if (_globalHotkeysSuspended)
-            {
-                UnregisterMinimizeUnconnectedHotkey();
-                return;
-            }
-            bool shouldRegister = Properties.Settings.Default.minimizeUnconnectedHotkeyGlobal
-                || controller.IsActive
-                || controller.AllControllersWithWindows.Any(c => c.IsWindowActive);
-            if (!shouldRegister)
-            {
-                UnregisterMinimizeUnconnectedHotkey();
-                return;
-            }
-            bool noModifiers = (modifiers == 0 || modifiers == (int)Win32.KeyModifiers.None);
-            if (noModifiers)
-            {
-                Win32.UnregisterHotKey(this.Handle, 9);
-                InstallMinimizeUnconnectedKeyboardHook(keyCode);
-            }
-            else
-            {
-                UninstallMinimizeUnconnectedKeyboardHook();
-                bool success = Win32.RegisterHotKey(this.Handle, 9, (Win32.KeyModifiers)modifiers, (Keys)keyCode);
-                if (!success)
-                {
-                    // Retry after unregistering; surface the failure if the retry also fails (WIN32-04)
-                    Win32.UnregisterHotKey(this.Handle, 9);
-                    if (!TryRegisterGlobalHotKey(9, (Win32.KeyModifiers)modifiers, (Keys)keyCode, "Minimize unconnected windows"))
-                        ReportPendingHotkeyFailures();
-                }
-            }
-        }
-
-        private void UnregisterMinimizeUnconnectedHotkey()
-        {
-            Win32.UnregisterHotKey(this.Handle, 9);
-            UninstallMinimizeUnconnectedKeyboardHook();
-        }
-
-        private void InstallMinimizeUnconnectedKeyboardHook(int keyCode)
-        {
-            if (_minimizeUnconnectedKeyboardHookHandle != IntPtr.Zero)
-            {
-                if (_minimizeUnconnectedHookKeyCode == keyCode)
-                    return;
-                UninstallMinimizeUnconnectedKeyboardHook();
-            }
-            _minimizeUnconnectedHookForm = this;
-            _minimizeUnconnectedHookKeyCode = keyCode;
-            if (_minimizeUnconnectedKeyboardHookProc == null)
-                _minimizeUnconnectedKeyboardHookProc = MinimizeUnconnectedKeyboardHookProc;
-            _minimizeUnconnectedKeyboardHookHandle = TryInstallLowLevelHook(Win32.WH_KEYBOARD_LL, _minimizeUnconnectedKeyboardHookProc, "Minimize unconnected windows key");
-        }
-
-        private void UninstallMinimizeUnconnectedKeyboardHook()
-        {
-            if (_minimizeUnconnectedKeyboardHookHandle != IntPtr.Zero)
-            {
-                Win32.UnhookWindowsHookEx(_minimizeUnconnectedKeyboardHookHandle);
-                _minimizeUnconnectedKeyboardHookHandle = IntPtr.Zero;
-            }
-            _minimizeUnconnectedHookForm = null;
-            _minimizeUnconnectedHookKeyCode = 0;
-        }
-
-        private static IntPtr MinimizeUnconnectedKeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam)
-        {
-            if (nCode < 0)
-                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
-            int msg = (int)wParam.ToInt64();
-            // WM_KEYDOWN = 0x100, WM_SYSKEYDOWN = 0x104
-            if (msg != 0x100 && msg != 0x104)
-                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
-            if (_minimizeUnconnectedHookForm == null || _minimizeUnconnectedHookKeyCode == 0)
-                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
-            var hookStruct = (Win32.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.KBDLLHOOKSTRUCT));
-            if ((uint)hookStruct.vkCode != _minimizeUnconnectedHookKeyCode)
-                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
-            // No modifiers: Alt, Ctrl, Shift must not be pressed
-            short alt = Win32.GetAsyncKeyState(Keys.Menu);
-            short ctrl = Win32.GetAsyncKeyState(Keys.ControlKey);
-            short shift = Win32.GetAsyncKeyState(Keys.ShiftKey);
-            if ((alt & 0x8000) != 0 || (ctrl & 0x8000) != 0 || (shift & 0x8000) != 0)
-                return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
-            _minimizeUnconnectedHookForm.BeginInvoke(new Action(() =>
-            {
-                if (_minimizeUnconnectedHookForm != null && _minimizeUnconnectedHookForm.controller != null)
-                    _minimizeUnconnectedHookForm.controller.ToggleMinimizeUnconnectedWindows();
-            }));
-            return (IntPtr)1; // Consume the key
-        }
-
-        private void InstallMulticlickMouseHook(int buttonIndex)
-        {
-            if (_multiclickMouseHookHandle != IntPtr.Zero)
-            {
-                if (_multiclickMouseHookButton == buttonIndex)
-                    return;
-                UninstallMulticlickMouseHook();
-            }
-            _multiclickMouseHookForm = this;
-            _multiclickMouseHookButton = buttonIndex;
-            if (_multiclickMouseHookProc == null)
-                _multiclickMouseHookProc = MulticlickMouseHookProc;
-            _multiclickMouseHookHandle = TryInstallLowLevelHook(Win32.WH_MOUSE_LL, _multiclickMouseHookProc, "Instant Multi-Click mouse button");
-        }
-
-        private void UninstallMulticlickMouseHook()
-        {
-            if (_multiclickMouseHookHandle != IntPtr.Zero)
-            {
-                Win32.UnhookWindowsHookEx(_multiclickMouseHookHandle);
-                _multiclickMouseHookHandle = IntPtr.Zero;
-            }
-            _multiclickMouseHookForm = null;
-            _multiclickMouseHookButton = -1;
-        }
-
-        // ── Controlled Multi-Click Mode: keyboard dispatch (single hook) ───────────
-
-        private void RegisterControlledMulticlickHotkeys()
-        {
-            UnregisterControlledMulticlickHotkeys();
-            if (!Properties.Settings.Default.controlledMulticlickEnabled) return;
-
-            // One dispatcher hook covers the activation key (always, when configured) and the multi-click /
-            // regular-click keys (which the proc only acts on while the mode is active). Install it if an
-            // activation key is set, or if we're already in the mode (e.g. a settings reload happened mid-mode)
-            // so the click keys keep working. (PERF-02)
-            if (Properties.Settings.Default.controlledMulticlickActivateKeyCode != 0 || controller.IsControlledMulticlickMode)
-                InstallControlledMcKeyboardHook();
-        }
-
-        private void UnregisterControlledMulticlickHotkeys()
-        {
-            UninstallControlledMcKeyboardHook();
-        }
-
-        /// <summary>Install the single CMC keyboard dispatcher hook (idempotent). PERF-02.</summary>
-        private void InstallControlledMcKeyboardHook()
-        {
-            _controlledMcKeyboardHookForm = this;
-            if (_controlledMcKeyboardHookHandle != IntPtr.Zero)
-                return;
-            if (_controlledMcKeyboardHookProc == null)
-                _controlledMcKeyboardHookProc = ControlledMcKeyboardHookProc;
-            _controlledMcKeyboardHookHandle = TryInstallLowLevelHook(Win32.WH_KEYBOARD_LL, _controlledMcKeyboardHookProc, "Controlled Multi-Click keys");
-        }
-
-        private void UninstallControlledMcKeyboardHook()
-        {
-            if (_controlledMcKeyboardHookHandle != IntPtr.Zero)
-            {
-                Win32.UnhookWindowsHookEx(_controlledMcKeyboardHookHandle);
-                _controlledMcKeyboardHookHandle = IntPtr.Zero;
-            }
-            _controlledMcKeyboardHookForm = null;
-        }
-
-        /// <summary>
-        /// Single LL keyboard hook dispatching every Controlled Multi-Click Mode key. It evaluates the keys in the
-        /// SAME precedence the three former hooks produced via install order (last-installed = first-called):
-        /// regular-click, then multi-click, then activation. The first that matches consumes the key. The click /
-        /// regular-click branches act only while the mode is active and pass through otherwise, exactly as their
-        /// old dedicated hooks did; the activation branch handles toggle/hold and the shared-hold-key release. All
-        /// key codes are read live from Settings. (PERF-02)
-        /// </summary>
-        private static IntPtr ControlledMcKeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam)
-        {
-            if (nCode < 0)
-                return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
-
-            var form = _controlledMcKeyboardHookForm;
-            if (form == null)
-                return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
-
-            int msg = (int)wParam.ToInt64();
-            bool isDown = msg == 0x100 || msg == 0x104;
-            bool isUp   = msg == 0x101 || msg == 0x105;
-            if (!isDown && !isUp)
-                return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
-
-            var hookStruct = (Win32.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.KBDLLHOOKSTRUCT));
-            uint vk = (uint)hookStruct.vkCode;
-
-            var settings = Properties.Settings.Default;
-            bool modeActive = form.controller?.IsControlledMulticlickMode == true;
-
-            // ── Regular-click key (mode active, keyboard-bound) ──
-            if (modeActive
-                && !settings.controlledMulticlickRegularClickUseMouseButton
-                && settings.controlledMulticlickRegularClickKeyCode != 0
-                && vk == (uint)settings.controlledMulticlickRegularClickKeyCode)
-            {
-                bool triggerOnRelease = settings.controlledMulticlickRegularClickTriggerOnRelease;
-                bool shouldFire = triggerOnRelease ? isUp : isDown;
-                if (shouldFire || isUp)
-                {
-                    form.BeginInvoke(new Action(() =>
-                    {
-                        var c = _controlledMcKeyboardHookForm?.controller;
-                        if (c == null) return;
-                        if (shouldFire)
-                            c.TriggerRegularClick();
-                        // If this key is also the hold-activation key, exit CMC mode on release.
-                        if (isUp)
-                        {
-                            bool activateHold = Properties.Settings.Default.controlledMulticlickActivateHold;
-                            uint activateKey  = (uint)Properties.Settings.Default.controlledMulticlickActivateKeyCode;
-                            if (activateHold && activateKey == vk)
-                                c.ExitControlledMulticlickMode();
-                        }
-                    }));
-                }
-                return (IntPtr)1; // consume both down and up
-            }
-
-            // ── Multi-click key (mode active, keyboard-bound) ──
-            if (modeActive
-                && !settings.controlledMulticlickClickUseMouseButton
-                && settings.controlledMulticlickClickKeyCode != 0
-                && vk == (uint)settings.controlledMulticlickClickKeyCode)
-            {
-                bool triggerOnRelease = settings.controlledMulticlickClickTriggerOnRelease;
-                bool shouldFire = triggerOnRelease ? isUp : isDown;
-                if (shouldFire || isUp)
-                {
-                    form.BeginInvoke(new Action(() =>
-                    {
-                        var c = _controlledMcKeyboardHookForm?.controller;
-                        if (c == null) return;
-                        if (shouldFire)
-                            c.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
-                        // If this key is also the hold-activation key, exit CMC mode on release.
-                        if (isUp)
-                        {
-                            bool activateHold = Properties.Settings.Default.controlledMulticlickActivateHold;
-                            uint activateKey  = (uint)Properties.Settings.Default.controlledMulticlickActivateKeyCode;
-                            if (activateHold && activateKey == vk)
-                                c.ExitControlledMulticlickMode();
-                        }
-                    }));
-                }
-                return (IntPtr)1; // consume both down and up
-            }
-
-            // ── Activation key (toggle / hold; non-global gated on focus) ──
-            uint activateKeyCode = (uint)settings.controlledMulticlickActivateKeyCode;
-            if (activateKeyCode != 0 && vk == activateKeyCode)
-            {
-                bool isGlobal = settings.controlledMulticlickActivateGlobal;
-                bool mcActive = form.controller?.IsActive ?? false;
-                bool gameWindowActive = form.controller?.AllControllersWithWindows.Any(c => c.IsWindowActive) ?? false;
-
-                // Non-global: only trigger when MC or a game window is focused
-                if (!isGlobal && !mcActive && !gameWindowActive)
-                    return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
-
-                bool holdMode = settings.controlledMulticlickActivateHold;
-
-                if (isDown)
-                {
-                    // Suppress modifier-modified presses so e.g. Ctrl+key still passes through
-                    short alt   = Win32.GetAsyncKeyState(Keys.Menu);
-                    short ctrl  = Win32.GetAsyncKeyState(Keys.ControlKey);
-                    short shift = Win32.GetAsyncKeyState(Keys.ShiftKey);
-                    if ((alt & 0x8000) != 0 || (ctrl & 0x8000) != 0 || (shift & 0x8000) != 0)
-                        return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
-
-                    form.BeginInvoke(new Action(() =>
-                    {
-                        var c = _controlledMcKeyboardHookForm?.controller;
-                        if (c == null) return;
-                        if (holdMode)
-                        {
-                            if (!c.IsControlledMulticlickMode)
-                                c.EnterControlledMulticlickMode();
-                        }
-                        else
-                        {
-                            // Toggle
-                            if (c.IsControlledMulticlickMode)
-                                c.ExitControlledMulticlickMode();
-                            else
-                                c.EnterControlledMulticlickMode();
-                        }
-                    }));
-                    return (IntPtr)1; // consume
-                }
-
-                if (isUp && holdMode)
-                {
-                    form.BeginInvoke(new Action(() =>
-                    {
-                        var c = _controlledMcKeyboardHookForm?.controller;
-                        if (c == null) return;
-
-                        // If the click key or regular-click key shares this key with trigger-on-release,
-                        // fire the click BEFORE exiting so the action isn't lost.
-                        uint vkUp = activateKeyCode;
-
-                        bool multiClickTor  = Properties.Settings.Default.controlledMulticlickClickTriggerOnRelease;
-                        bool multiClickMouse = Properties.Settings.Default.controlledMulticlickClickUseMouseButton;
-                        uint multiClickKey  = (uint)Properties.Settings.Default.controlledMulticlickClickKeyCode;
-                        if (multiClickTor && !multiClickMouse && multiClickKey == vkUp && c.IsControlledMulticlickMode)
-                            c.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
-
-                        bool regClickTor   = Properties.Settings.Default.controlledMulticlickRegularClickTriggerOnRelease;
-                        bool regClickMouse = Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton;
-                        uint regClickKey   = (uint)Properties.Settings.Default.controlledMulticlickRegularClickKeyCode;
-                        if (regClickTor && !regClickMouse && regClickKey == vkUp && c.IsControlledMulticlickMode)
-                            c.TriggerRegularClick();
-
-                        c.ExitControlledMulticlickMode();
-                    }));
-                    return (IntPtr)1; // consume
-                }
-
-                return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
-            }
-
-            return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
-        }
-
-        // ── Controlled Multi-Click Mode: event handler ─────────────────────────────
-
-        private void Controller_ControlledMulticlickModeChanged(object sender, EventArgs e)
-        {
-            if (controller.IsControlledMulticlickMode)
-            {
-                if (!_multiclickFakeCursorTimer.Enabled)
-                    _multiclickFakeCursorTimer.Start();
-                InstallControlledMcFocusBlockHook();
-                // Ensure the shared keyboard dispatcher is present so the multi-click / regular-click keys work
-                // while the mode is active (it may not be installed if no activation key is configured). (PERF-02)
-                InstallControlledMcKeyboardHook();
-            }
-            else
-            {
-                StopFakeCursors();
-                UninstallControlledMcFocusBlockHook();
-                // Keep the dispatcher installed if an activation key is still configured (needed to re-enter the
-                // mode); otherwise there's nothing left for it to do, so remove it. (PERF-02)
-                if (Properties.Settings.Default.controlledMulticlickActivateKeyCode == 0)
-                    UninstallControlledMcKeyboardHook();
-            }
-            UpdateCaptionColor();
-        }
-
-        private void InstallControlledMcFocusBlockHook()
-        {
-            if (_controlledMcFocusBlockHookHandle != IntPtr.Zero)
-                return;
-            _controlledMcFocusBlockHookForm = this;
-            if (_controlledMcFocusBlockHookProc == null)
-                _controlledMcFocusBlockHookProc = ControlledMcFocusBlockHookProc;
-            _controlledMcFocusBlockHookHandle = TryInstallLowLevelHook(Win32.WH_MOUSE_LL, _controlledMcFocusBlockHookProc, "Controlled Multi-Click focus block");
-        }
-
-        private void UninstallControlledMcFocusBlockHook()
-        {
-            if (_controlledMcFocusBlockHookHandle != IntPtr.Zero)
-            {
-                Win32.UnhookWindowsHookEx(_controlledMcFocusBlockHookHandle);
-                _controlledMcFocusBlockHookHandle = IntPtr.Zero;
-            }
-            _controlledMcFocusBlockHookForm = null;
-        }
-
-        /// <summary>
-        /// Intercepts mouse button events while Controlled Multi-Click Mode is active:
-        ///  - Fires TriggerInstantMultiClick / TriggerRegularClick for configured mouse binds.
-        ///  - Blocks left/right clicks on game windows from stealing focus otherwise.
-        /// </summary>
-        private static IntPtr ControlledMcFocusBlockHookProc(int nCode, IntPtr wParam, IntPtr lParam)
-        {
-            if (nCode < 0)
-                return Win32.CallNextHookEx(_controlledMcFocusBlockHookHandle, nCode, wParam, lParam);
-
-            var form = _controlledMcFocusBlockHookForm;
-            if (form?.controller?.IsControlledMulticlickMode != true)
-                return Win32.CallNextHookEx(_controlledMcFocusBlockHookHandle, nCode, wParam, lParam);
-
-            int msg = (int)wParam.ToInt64();
-            bool isButtonDown =
-                msg == (int)Win32.WM.LBUTTONDOWN ||
-                msg == (int)Win32.WM.RBUTTONDOWN ||
-                msg == (int)Win32.WM.MBUTTONDOWN ||
-                msg == (int)Win32.WM.XBUTTONDOWN;
-            bool isButtonUp =
-                msg == (int)Win32.WM.LBUTTONUP ||
-                msg == (int)Win32.WM.RBUTTONUP ||
-                msg == (int)Win32.WM.MBUTTONUP ||
-                msg == (int)Win32.WM.XBUTTONUP;
-
-            if (!isButtonDown && !isButtonUp)
-                return Win32.CallNextHookEx(_controlledMcFocusBlockHookHandle, nCode, wParam, lParam);
-
-            var hookStruct = (Win32.MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.MSLLHOOKSTRUCT));
-
-            // Resolve logical button index (0=Left,1=Right,2=Middle,3=X1,4=X2)
-            int buttonIndex = -1;
-            if (msg == (int)Win32.WM.LBUTTONDOWN || msg == (int)Win32.WM.LBUTTONUP) buttonIndex = 0;
-            else if (msg == (int)Win32.WM.RBUTTONDOWN || msg == (int)Win32.WM.RBUTTONUP) buttonIndex = 1;
-            else if (msg == (int)Win32.WM.MBUTTONDOWN || msg == (int)Win32.WM.MBUTTONUP) buttonIndex = 2;
-            else if (msg == (int)Win32.WM.XBUTTONDOWN || msg == (int)Win32.WM.XBUTTONUP)
-            {
-                int xBtn = (int)(hookStruct.mouseData >> 16);
-                buttonIndex = (xBtn == 1) ? 3 : 4;
-            }
-
-            // Check multi-click mouse bind
-            bool multiClickUseMouse      = Properties.Settings.Default.controlledMulticlickClickUseMouseButton;
-            int  multiClickButton        = Properties.Settings.Default.controlledMulticlickClickMouseButton;
-            bool multiClickTriggerOnRel  = Properties.Settings.Default.controlledMulticlickClickTriggerOnRelease;
-            if (multiClickUseMouse && buttonIndex == multiClickButton)
-            {
-                bool shouldFire = multiClickTriggerOnRel ? isButtonUp : isButtonDown;
-                if (shouldFire)
-                {
-                    form.BeginInvoke(new Action(() =>
-                    {
-                        _controlledMcFocusBlockHookForm?.controller?.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
-                    }));
-                }
-                return (IntPtr)1; // consume both down and up
-            }
-
-            // Check regular-click mouse bind
-            bool regularClickUseMouse     = Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton;
-            int  regularClickButton       = Properties.Settings.Default.controlledMulticlickRegularClickMouseButton;
-            bool regularClickTriggerOnRel = Properties.Settings.Default.controlledMulticlickRegularClickTriggerOnRelease;
-            if (regularClickUseMouse && buttonIndex == regularClickButton)
-            {
-                bool shouldFire = regularClickTriggerOnRel ? isButtonUp : isButtonDown;
-                if (shouldFire)
-                {
-                    form.BeginInvoke(new Action(() =>
-                    {
-                        _controlledMcFocusBlockHookForm?.controller?.TriggerRegularClick();
-                    }));
-                }
-                return (IntPtr)1; // consume both down and up
-            }
-
-            // Block left/right button down on game windows to prevent unwanted focus changes
-            IntPtr hwndUnderCursor = Win32.WindowFromPoint(hookStruct.pt);
-            bool isGameWindow = form.controller.AllControllersWithWindows
-                .Any(c => c.WindowHandle == hwndUnderCursor);
-            if (isGameWindow && isButtonDown && (buttonIndex == 0 || buttonIndex == 1))
-                return (IntPtr)1; // consume — prevents focus change
-
-            return Win32.CallNextHookEx(_controlledMcFocusBlockHookHandle, nCode, wParam, lParam);
-        }
-
-        /// <summary>
-        /// Stops the fake-cursor timer and hides fake cursors on all controllers.
-        /// Called when exiting Controlled Multi-Click Mode.
-        /// </summary>
-        private void StopFakeCursors()
-        {
-            _multiclickFakeCursorTimer?.Stop();
-            if (controller == null) return;
-            foreach (var c in controller.AllControllersWithWindows)
-                c.ShowFakeCursor = false;
-        }
-
-        /// <summary>
-        /// Shows the fake cursor on every game window except the one the real cursor is over.
-        /// All windows receive the cursor at the SAME local (client-area-relative) position as the
-        /// hovered window — one position is broadcast to all.
-        /// Runs while Controlled Multi-Click Mode is active.
-        /// </summary>
-        private void MulticlickFakeCursorTimer_Tick(object sender, EventArgs e)
-        {
-            if (controller?.IsControlledMulticlickMode != true)
-            {
-                StopFakeCursors();
-                return;
-            }
-            if (controller == null) return;
-
-            Point screenCursor = Control.MousePosition;
-
-            var activeControllers = controller.ActiveControllers
-                .Where(c => c.HasWindow && Win32.GetWindowShowState(c.WindowHandle) != Win32.ShowWindowCommands.ShowMinimized)
-                .ToList();
-
-            // Phase 1: find which active window the real cursor is over and its local position.
-            ToontownController hoveredController = null;
-            Point hoveredLocalPos = Point.Empty;
-            foreach (var c in activeControllers)
-            {
-                Point loc = Win32.GetWindowClientAreaLocation(c.WindowHandle);
-                Size size = c.WindowSize;
-                if (screenCursor.X >= loc.X && screenCursor.X < loc.X + size.Width
-                    && screenCursor.Y >= loc.Y && screenCursor.Y < loc.Y + size.Height)
-                {
-                    hoveredController = c;
-                    hoveredLocalPos = new Point(screenCursor.X - loc.X, screenCursor.Y - loc.Y);
-                    break;
-                }
-            }
-
-            // Phase 2: broadcast that local position to every other active window;
-            //          hide fake cursors on all non-active controllers.
-            // activeControllers were already filtered to non-minimized above, so re-querying the show state here
-            // (a second GetWindowPlacement per active window each 16ms tick) is redundant (PERF-02).
-            var activeSet = new HashSet<ToontownController>(activeControllers);
-            foreach (var c in controller.AllControllersWithWindows)
-            {
-                if (!activeSet.Contains(c) || c == hoveredController)
-                {
-                    c.ShowFakeCursor = false;
-                    continue;
-                }
-
-                if (hoveredController != null)
-                    c.UpdateFakeCursor(true, hoveredLocalPos);
-                else
-                    c.ShowFakeCursor = false; // cursor isn't over any active game window
-            }
-        }
-
-        private static IntPtr MulticlickMouseHookProc(int nCode, IntPtr wParam, IntPtr lParam)
-        {
-            if (nCode < 0)
-                return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
-            if (_multiclickMouseHookForm == null || _multiclickMouseHookButton < 0)
-                return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
-
-            int msg = (int)wParam.ToInt64();
-
-            // Determine if this message is a DOWN or UP for the configured button
-            bool isDown = false, isUp = false;
-            if (_multiclickMouseHookButton == 0)
-            {
-                isDown = msg == (int)Win32.WM.MBUTTONDOWN;
-                isUp   = msg == (int)Win32.WM.MBUTTONUP;
-            }
-            else if (_multiclickMouseHookButton >= 1 &&
-                     (msg == (int)Win32.WM.XBUTTONDOWN || msg == (int)Win32.WM.XBUTTONUP))
-            {
-                var hookStruct = (Win32.MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.MSLLHOOKSTRUCT));
-                int xButton = (int)(hookStruct.mouseData >> 16);
-                bool buttonMatches = (_multiclickMouseHookButton == 1 && xButton == 1)
-                                  || (_multiclickMouseHookButton == 2 && xButton == 2);
-                if (buttonMatches)
-                {
-                    isDown = msg == (int)Win32.WM.XBUTTONDOWN;
-                    isUp   = msg == (int)Win32.WM.XBUTTONUP;
-                }
-            }
-
-            if (isDown)
-            {
-                Keys mods = Control.ModifierKeys;
-                if ((mods & (Keys.Shift | Keys.Control | Keys.Alt)) != Keys.None)
-                    return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
-
-                bool isActive    = _multiclickMouseHookForm?.controller?.IsActive ?? false;
-                bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
-
-                if (!isActive && !multiGlobal)
-                    return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
-
-                var hookForm = _multiclickMouseHookForm;
-                if (hookForm != null)
-                {
-                    hookForm.BeginInvoke(new Action(() =>
-                    {
-                        hookForm.controller?.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.replicateMouseSeparateLR);
-                    }));
-                }
-                return (IntPtr)1;
-            }
-
-            return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
-        }
+        // ── Form lifecycle ──────────────────────────────────────────────────────────
 
         private void MulticontrollerWnd_Load(object sender, EventArgs e)
         {
             controller = Multicontroller.Instance;
 
-            _multiclickFakeCursorTimer = new System.Windows.Forms.Timer { Interval = 16 };
-            _multiclickFakeCursorTimer.Tick += MulticlickFakeCursorTimer_Tick;
+            // The input-capture host owns hotkeys, hooks, watchdog, activation, and fake cursors.
+            inputHost = new InputCaptureHost(this, controller);
+            inputHost.SuspendStateChanged += (s, args) => UpdateSuspendIndicator();
+            inputHost.ModeLockToggled += (s, args) => UpdateModeLockVisuals();
+            inputHost.AdminRightsPromptNeeded += InputHost_AdminRightsPromptNeeded;
 
-            _hookWatchdogTimer = new System.Windows.Forms.Timer { Interval = HookWatchdogIntervalMs };
-            _hookWatchdogTimer.Tick += HookWatchdog_Tick;
-            _hookWatchdogTimer.Start();
-
+            // UI-facing engine events (input-capture events are subscribed inside the host).
             controller.ControlledMulticlickModeChanged += Controller_ControlledMulticlickModeChanged;
             controller.ModeChanged += Controller_ModeChanged;
             controller.GroupsChanged += Controller_GroupsChanged;
             controller.ActiveControllersChanged += Controller_ActiveControllersChanged;
-            controller.ShouldActivate += Controller_ShouldActivate;
-            controller.WindowActivated += Controller_WindowActivated;
-            controller.AllWindowsInactive += Controller_AllWindowsInactive;
             controller.ActiveChanged += Controller_ActiveChanged;
             controller.SettingChanged += Controller_SettingChanged;
-            controller.InputCaptureFailed += Controller_InputCaptureFailed;
 
             // Ensure at least one group exists before accessing it
             if (controller.ControllerGroups.Count == 0)
@@ -1590,7 +339,7 @@ namespace TTMulti.Forms
 
             // Set up the IMessageFilter so we receive all messages for child controls
             Application.AddMessageFilter(this);
-            
+
             // Restore the saved position of the window, making sure that it's not offscreen
             if (Properties.Settings.Default.lastLocation != Point.Empty)
             {
@@ -1619,23 +368,39 @@ namespace TTMulti.Forms
 
             // Multicontroller could have loaded groups
             UpdateWindowStatus();
-            
+
             // Set initial caption color
             UpdateCaptionColor();
-
         }
-        
+
         private void MulticontrollerWnd_Shown(object sender, EventArgs e)
         {
             // When window is first shown, check if it's active and register hotkeys
             if (this.ContainsFocus || Win32.GetForegroundWindow() == this.Handle)
             {
                 controller.IsActive = true;
-                RegisterAutoFindHotkey();
-                RegisterLayoutPresetHotkeys();
-                RegisterMinimizeUnconnectedHotkey();
+                inputHost.OnShellShown();
             }
         }
+
+        private void MainWnd_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Remove the message filter and shut down all input capture before the HWND is destroyed so
+            // mouse/keyboard input is not processed by orphaned low-level hooks.
+            try
+            {
+                Application.RemoveMessageFilter(this);
+            }
+            catch { }
+
+            inputHost?.Dispose();
+
+            WindowWatcher.Instance.Shutdown();
+
+            SaveWindowPosition();
+        }
+
+        // ── Crosshair / status wiring ───────────────────────────────────────────────
 
         private void RightController_WindowHandleChanged(object sender, EventArgs e)
         {
@@ -1657,85 +422,9 @@ namespace TTMulti.Forms
             }
         }
 
-        private void Controller_AllWindowsInactive(object sender, EventArgs e)
-        {
-            RegisterFocusHotkeys();
-        }
-
-        private void Controller_WindowActivated(object sender, EventArgs e)
-        {
-            // Re-register hotkeys when a Toontown window becomes active (only if the active/suspended state changed).
-            RegisterFocusHotkeys();
-        }
-
-        private void MainWnd_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            // Signal the activation thread to stop and stop any queued TryActivate from spawning a new one.
-            // Don't Thread.Abort: it can fire mid-P/Invoke and leave the borrowed input queue attached, and it
-            // doesn't prevent a respawn.  The thread is IsBackground and SafeInvoke fails once we're disposed, so
-            // it exits on its own — and we must not Join here, since it may be blocked in Invoke on this UI thread (CORR-01).
-            _closing = true;
-            _cancelActivation = true;
-
-            ShutdownAllInputCapture();
-
-            _multiclickFakeCursorTimer?.Dispose();
-            _hookWatchdogTimer?.Dispose();
-
-            SaveWindowPosition();
-        }
-
-        /// <summary>
-        /// Remove hooks, hotkeys, and message filter before the main HWND is destroyed so mouse/keyboard
-        /// input is not processed by orphaned WH_MOUSE_LL / WH_KEYBOARD_LL hooks (avoids cursor lag or erratic movement after exit).
-        /// </summary>
-        private void ShutdownAllInputCapture()
-        {
-            // Stop the watchdog first so it can't re-arm a hook we are about to uninstall during teardown.
-            _hookWatchdogTimer?.Stop();
-
-            try
-            {
-                Application.RemoveMessageFilter(this);
-            }
-            catch { }
-
-            StopFakeCursors();
-
-            UnregisterControlledMulticlickHotkeys();
-            UninstallControlledMcFocusBlockHook();
-
-            UninstallMulticlickMouseHook();
-            UninstallMinimizeUnconnectedKeyboardHook();
-
-            UnregisterAutoFindHotkey();
-            UnregisterLayoutPresetHotkeys();
-            UnregisterMinimizeUnconnectedHotkey();
-
-            UnregisterHotkey();
-
-            controller?.ShutdownUninstallSwitchingMouseHook();
-
-            WindowWatcher.Instance.Shutdown();
-        }
-
         private void Controller_GroupsChanged(object sender, EventArgs e)
         {
             this.UpdateWindowStatus();
-            
-            // Re-register hotkeys if multicontroller is active (groups may have been added/removed)
-            if (controller.IsActive || controller.AllControllersWithWindows.Any(c => c.IsWindowActive))
-            {
-                RegisterHotkey();
-            }
-            
-            // Auto-find hotkey only registers when multicontroller window is active
-            if (controller.IsActive)
-            {
-                RegisterAutoFindHotkey();
-                RegisterLayoutPresetHotkeys();
-            }
-            RegisterMinimizeUnconnectedHotkey();
         }
 
         private void Controller_ActiveControllersChanged(object sender, EventArgs e)
@@ -1743,9 +432,9 @@ namespace TTMulti.Forms
             UpdateWindowStatus();
         }
 
-        private void Controller_ShouldActivate(object sender, EventArgs e)
+        private void Controller_ControlledMulticlickModeChanged(object sender, EventArgs e)
         {
-            this.TryActivate();
+            UpdateCaptionColor();
         }
 
         private void Controller_ModeChanged(object sender, EventArgs e)
@@ -1780,26 +469,29 @@ namespace TTMulti.Forms
         private const string BaseWindowTitle = "Toontown Multicontroller";
 
         /// <summary>
-        /// Reflects the global-hotkeys-suspended state in the window title so the toggle has visible feedback and
-        /// the (previously silent) reset when Options closes is announced (UX-08).
+        /// Reflects the global-hotkeys-suspended state in the window title so the toggle has visible feedback
+        /// and the reset when Options closes is announced (UX-08).
         /// </summary>
         private void UpdateSuspendIndicator()
         {
-            this.Text = _globalHotkeysSuspended ? BaseWindowTitle + " — Hotkeys Suspended" : BaseWindowTitle;
+            bool suspended = inputHost?.IsGlobalHotkeysSuspended ?? false;
+            this.Text = suspended ? BaseWindowTitle + " — Hotkeys Suspended" : BaseWindowTitle;
         }
-        
+
         private void Controller_ActiveChanged(object sender, EventArgs e)
         {
             UpdateCaptionColor();
         }
-        
+
         private void Controller_SettingChanged(object sender, EventArgs e)
         {
             UpdateCaptionColor();
             UpdateModeLockVisuals();
             UpdateWindowStatus();
         }
-        
+
+        // ── Caption color ───────────────────────────────────────────────────────────
+
         /// <summary>
         /// Darkens a color by multiplying RGB values by a factor (0.0 to 1.0).
         /// </summary>
@@ -1810,7 +502,7 @@ namespace TTMulti.Forms
             int b = (int)(color.B * factor);
             return Color.FromArgb(color.A, Math.Max(0, Math.Min(255, r)), Math.Max(0, Math.Min(255, g)), Math.Max(0, Math.Min(255, b)));
         }
-        
+
         /// <summary>
         /// Blends two colors by averaging their RGB components.
         /// </summary>
@@ -1821,7 +513,7 @@ namespace TTMulti.Forms
             int b = (color1.B + color2.B) / 2;
             return Color.FromArgb(color1.A, r, g, b);
         }
-        
+
         /// <summary>
         /// Updates the multicontroller window's caption color to match the current mode and sync with toontown windows.
         /// </summary>
@@ -1833,9 +525,9 @@ namespace TTMulti.Forms
                 Win32.SetWindowCaptionColor(this.Handle, null);
                 return;
             }
-            
+
             Color borderColor;
-            
+
             // Check if switching mode is active
             if (controller.IsSwitchingMode)
             {
@@ -1865,11 +557,9 @@ namespace TTMulti.Forms
                         break;
                     case MulticontrollerMode.Focused:
                         // Blend focused and unfocused colors to represent both types of windows
-                        // This creates a middle color since DWM doesn't support split colors
                         borderColor = BlendColors(Colors.FocusedFocused, Colors.FocusedUnfocused);
                         break;
                     default:
-                        // Keep current color or use a default
                         borderColor = Colors.LeftGroup;
                         break;
                 }
@@ -1880,12 +570,13 @@ namespace TTMulti.Forms
                 Win32.SetWindowCaptionColor(this.Handle, null);
                 return;
             }
-            
-            // Darken the border color for caption (make it slightly darker)
-            // Use the same factor as ToontownController for consistency
+
+            // Darken the border color for the caption; same factor as ToontownController for consistency.
             Color captionColor = DarkenColor(borderColor, 0.85f);
             Win32.SetWindowCaptionColor(this.Handle, captionColor);
         }
+
+        // ── Buttons / dialogs ───────────────────────────────────────────────────────
 
         private void optionsBtn_Click(object sender, EventArgs e)
         {
@@ -1948,16 +639,16 @@ namespace TTMulti.Forms
         private void MulticontrollerWnd_Activated(object sender, EventArgs e)
         {
             controller.IsActive = true;
-            RegisterFocusHotkeys();
+            inputHost?.RegisterFocusHotkeys();
         }
 
         private void MulticontrollerWnd_Deactivate(object sender, EventArgs e)
         {
             // Cancel any pending TryActivate loop — the user has deliberately focused another window.
-            _cancelActivation = true;
+            inputHost?.CancelActivation();
             controller.IsActive = false;
 
-            RegisterFocusHotkeys();
+            inputHost?.RegisterFocusHotkeys();
         }
     }
 }
