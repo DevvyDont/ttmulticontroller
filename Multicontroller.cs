@@ -8,6 +8,7 @@ using System.Threading;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using TTMulti.Forms;
+using TTMulti.Controls;
 
 namespace TTMulti
 {
@@ -291,6 +292,9 @@ namespace TTMulti
             {
                 if (currentGroupIndex != value)
                 {
+                    // Release held keys before the active group changes (CORR-05).
+                    ReleaseAllHeldForwardedKeys();
+
                     currentGroupIndex = value;
 
                     ActiveControllersChanged?.Invoke(this, EventArgs.Empty);
@@ -319,6 +323,9 @@ namespace TTMulti
             {
                 if (_currentPairIndex != value)
                 {
+                    // Release held keys before the active pair changes (CORR-05).
+                    ReleaseAllHeldForwardedKeys();
+
                     _currentPairIndex = value;
 
                     ActiveControllersChanged?.Invoke(this, EventArgs.Empty);
@@ -517,6 +524,11 @@ namespace TTMulti
             {
                 if (_currentMode != value)
                 {
+                    // Release any keys currently held down in the games before the routing changes.  Otherwise the
+                    // pending KEYUP is translated/targeted under the NEW mode and never reaches the key that is
+                    // actually held down under the old mode, leaving toons walking forever (CORR-05).
+                    ReleaseAllHeldForwardedKeys();
+
                     _currentMode = value;
 
                     if (value == MulticontrollerMode.Custom)
@@ -1418,11 +1430,15 @@ namespace TTMulti
             }
             else if (keysPressed == (Keys)Properties.Settings.Default.groupModeKeyCode)
             {
-                CurrentMode = MulticontrollerMode.Group;
+                // Only switch on key-down/hotkey (never on key-up), like every other mode key.  Acting on
+                // key-up let a held group key silently revert AllGroup and bypass mode lock (CORR-04).
+                if (msg == Win32.WM.HOTKEY || msg == Win32.WM.KEYDOWN)
+                    CurrentMode = MulticontrollerMode.Group;
             }
             else if (keysPressed == (Keys)Properties.Settings.Default.mirrorModeKeyCode)
             {
-                CurrentMode = MulticontrollerMode.MirrorAll;
+                if (msg == Win32.WM.HOTKEY || msg == Win32.WM.KEYDOWN)
+                    CurrentMode = MulticontrollerMode.MirrorAll;
             }
             else if (keysPressed == (Keys)Properties.Settings.Default.controlAllGroupsKeyCode)
             {
@@ -1745,26 +1761,7 @@ namespace TTMulti
                             IEnumerable<ToontownController> affectedControllers = WhereNotMinimized(ActiveControllers);
                             
                             // Send instant tap of the throw key to all active controllers
-                            affectedControllers.ToList().ForEach(c => {
-                                Keys throwKey = Keys.None;
-                                
-                                // Determine which throw key to use based on controller type
-                                if (c.Type == ControllerType.Left && throwBinding.LeftToonKey != Keys.None)
-                                {
-                                    throwKey = throwBinding.LeftToonKey;
-                                }
-                                else if (c.Type == ControllerType.Right && throwBinding.RightToonKey != Keys.None)
-                                {
-                                    throwKey = throwBinding.RightToonKey;
-                                }
-                                
-                                if (throwKey != Keys.None)
-                                {
-                                    // Send both KEYDOWN and KEYUP immediately without delay for 0% power
-                                    c.PostMessage(Win32.WM.KEYDOWN, (IntPtr)throwKey, IntPtr.Zero);
-                                    c.PostMessage(Win32.WM.KEYUP, (IntPtr)throwKey, IntPtr.Zero);
-                                }
-                            });
+                            affectedControllers.ToList().ForEach(c => PostZeroPowerThrow(c, throwBinding));
                         }
                         else
                         {
@@ -1785,26 +1782,7 @@ namespace TTMulti
                                     
                                     // Send throw to all windows (as per normal behavior); skip minimized
                                     foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
-                                    {
-                                        Keys throwKey = Keys.None;
-                                        
-                                        // Determine which throw key to use based on controller type
-                                        if (controller.Type == ControllerType.Left && throwBinding.LeftToonKey != Keys.None)
-                                        {
-                                            throwKey = throwBinding.LeftToonKey;
-                                        }
-                                        else if (controller.Type == ControllerType.Right && throwBinding.RightToonKey != Keys.None)
-                                        {
-                                            throwKey = throwBinding.RightToonKey;
-                                        }
-                                        
-                                        if (throwKey != Keys.None)
-                                        {
-                                            // Send both KEYDOWN and KEYUP immediately without delay for 0% power
-                                            controller.PostMessage(Win32.WM.KEYDOWN, (IntPtr)throwKey, IntPtr.Zero);
-                                            controller.PostMessage(Win32.WM.KEYUP, (IntPtr)throwKey, IntPtr.Zero);
-                                        }
-                                    }
+                                        PostZeroPowerThrow(controller, throwBinding);
                                 }
                                 else
                                 {
@@ -1814,26 +1792,7 @@ namespace TTMulti
                                     _focusedController = null;
 
                                     foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
-                                    {
-                                        Keys throwKey = Keys.None;
-                                        
-                                        // Determine which throw key to use based on controller type
-                                        if (controller.Type == ControllerType.Left && throwBinding.LeftToonKey != Keys.None)
-                                        {
-                                            throwKey = throwBinding.LeftToonKey;
-                                        }
-                                        else if (controller.Type == ControllerType.Right && throwBinding.RightToonKey != Keys.None)
-                                        {
-                                            throwKey = throwBinding.RightToonKey;
-                                        }
-                                        
-                                        if (throwKey != Keys.None)
-                                        {
-                                            // Send both KEYDOWN and KEYUP immediately without delay for 0% power
-                                            controller.PostMessage(Win32.WM.KEYDOWN, (IntPtr)throwKey, IntPtr.Zero);
-                                            controller.PostMessage(Win32.WM.KEYUP, (IntPtr)throwKey, IntPtr.Zero);
-                                        }
-                                    }
+                                        PostZeroPowerThrow(controller, throwBinding);
                                 }
                             }
                             else
@@ -1844,26 +1803,7 @@ namespace TTMulti
                                 _focusedController = null;
 
                                 foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
-                                {
-                                    Keys throwKey = Keys.None;
-                                    
-                                    // Determine which throw key to use based on controller type
-                                    if (controller.Type == ControllerType.Left && throwBinding.LeftToonKey != Keys.None)
-                                    {
-                                        throwKey = throwBinding.LeftToonKey;
-                                    }
-                                    else if (controller.Type == ControllerType.Right && throwBinding.RightToonKey != Keys.None)
-                                    {
-                                        throwKey = throwBinding.RightToonKey;
-                                    }
-                                    
-                                    if (throwKey != Keys.None)
-                                    {
-                                        // Send both KEYDOWN and KEYUP immediately without delay for 0% power
-                                        controller.PostMessage(Win32.WM.KEYDOWN, (IntPtr)throwKey, IntPtr.Zero);
-                                        controller.PostMessage(Win32.WM.KEYUP, (IntPtr)throwKey, IntPtr.Zero);
-                                    }
-                                }
+                                    PostZeroPowerThrow(controller, throwBinding);
                             }
                         }
                     }
@@ -1974,8 +1914,10 @@ namespace TTMulti
                     CurrentMode = MulticontrollerMode.Group;
                     return false;
                 }
-                CustomModeInputRouter.TryProcess(this, def, msg, wParam, lParam);
-                return true;
+                CustomRouteResult result = CustomModeInputRouter.TryProcess(this, def, msg, wParam, lParam);
+                // Unmapped keys are swallowed in Custom mode (as in Group mode); the only pass-through is a
+                // matched binding that explicitly opts out of consuming its trigger key (ConsumeInput=false).
+                return result != CustomRouteResult.PassThrough;
             }
 
             if (IsActive)
@@ -2110,6 +2052,38 @@ namespace TTMulti
             if (!Properties.Settings.Default.releaseKeysOnWindowFocus) return;
             var inactive = WhereNotMinimized(AllControllersWithWindows).Except(ActiveControllers);
             ReleaseMovementKeysOnControllers(inactive);
+        }
+
+        /// <summary>
+        /// Posts KEYUP for every key each controller currently holds down in its game window.  Called before the
+        /// active routing changes (mode / group / pair) so a key held across the change is released against the
+        /// window that actually has it down, instead of being stranded (CORR-05).
+        /// </summary>
+        private void ReleaseAllHeldForwardedKeys()
+        {
+            foreach (ToontownController c in AllControllersWithWindows)
+                c.ReleaseAllHeldKeys();
+            CustomModeInputRouter.ResetHeldTriggers();
+        }
+
+        /// <summary>
+        /// Posts an instant 0%-power throw (KEYDOWN immediately followed by KEYUP) to a controller using well-formed
+        /// key lParams.  A zero lParam clears the key-up transition bit, which the games misread as a keypress
+        /// (see <see cref="ReleaseMovementKeysOnControllers"/>) — WIN32-03.
+        /// </summary>
+        private void PostZeroPowerThrow(ToontownController controller, KeyMapping throwBinding)
+        {
+            Keys throwKey = Keys.None;
+            if (controller.Type == ControllerType.Left && throwBinding.LeftToonKey != Keys.None)
+                throwKey = throwBinding.LeftToonKey;
+            else if (controller.Type == ControllerType.Right && throwBinding.RightToonKey != Keys.None)
+                throwKey = throwBinding.RightToonKey;
+
+            if (throwKey == Keys.None)
+                return;
+
+            controller.PostMessage(Win32.WM.KEYDOWN, (IntPtr)throwKey, Win32.MakePostedKeyLParam(throwKey, false));
+            controller.PostMessage(Win32.WM.KEYUP, (IntPtr)throwKey, Win32.MakePostedKeyLParam(throwKey, true));
         }
 
         private void Controller_WindowDeactivated(object sender, EventArgs e)

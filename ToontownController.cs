@@ -40,6 +40,9 @@ namespace TTMulti
 
         internal event OverlayMouseEventHandler MouseEvent;
 
+        /// <summary>Keys currently posted DOWN (not yet UP) to the game window, so they can be released on demand.</summary>
+        readonly HashSet<Keys> _heldKeys = new HashSet<Keys>();
+
         IntPtr _windowHandle;
 
         /// <summary>
@@ -253,9 +256,12 @@ namespace TTMulti
                 && Properties.Settings.Default.keepAliveKeyCode != (int)Keys.None
                 && HasWindow)
             {
-                PostMessage(Win32.WM.KEYDOWN, (IntPtr)Properties.Settings.Default.keepAliveKeyCode, IntPtr.Zero);
+                // Well-formed key lParams: a zero lParam clears the key-up transition bit and is misread as a
+                // keypress by in-game chat (see Multicontroller.ReleaseMovementKeysOnControllers) — WIN32-03.
+                Keys keepAliveKey = (Keys)Properties.Settings.Default.keepAliveKeyCode;
+                PostMessage(Win32.WM.KEYDOWN, (IntPtr)keepAliveKey, Win32.MakePostedKeyLParam(keepAliveKey, false));
                 Thread.Sleep(50);
-                PostMessage(Win32.WM.KEYUP, (IntPtr)Properties.Settings.Default.keepAliveKeyCode, IntPtr.Zero);
+                PostMessage(Win32.WM.KEYUP, (IntPtr)keepAliveKey, Win32.MakePostedKeyLParam(keepAliveKey, true));
 
                 keepAliveTimer.Start();
             }
@@ -747,7 +753,39 @@ namespace TTMulti
                         ErrorOccurredPostingMessage = true;
                     }
                 }
+                else
+                {
+                    TrackHeldKey(msg, wParam);
+                }
             }
+        }
+
+        /// <summary>Record/clear a forwarded key's held state so <see cref="ReleaseAllHeldKeys"/> can release it later.</summary>
+        void TrackHeldKey(Win32.WM msg, IntPtr wParam)
+        {
+            Keys key = (Keys)wParam & Keys.KeyCode;
+            if (key == Keys.None)
+                return;
+
+            if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.SYSKEYDOWN)
+                _heldKeys.Add(key);
+            else if (msg == Win32.WM.KEYUP || msg == Win32.WM.SYSKEYUP)
+                _heldKeys.Remove(key);
+        }
+
+        /// <summary>
+        /// Posts KEYUP for every key currently held down in the game window and clears the held set.  Used when the
+        /// routing changes (mode / group / pair) so a key held across the change doesn't stay stuck (CORR-05).
+        /// </summary>
+        public void ReleaseAllHeldKeys()
+        {
+            if (_heldKeys.Count == 0)
+                return;
+
+            foreach (Keys key in _heldKeys.ToArray())
+                PostMessage(Win32.WM.KEYUP, (IntPtr)key, Win32.MakePostedKeyLParam(key, true));
+
+            _heldKeys.Clear();
         }
 
         public void Shutdown()
