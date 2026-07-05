@@ -143,22 +143,19 @@ namespace TTMulti
         {
             get
             {
-                switch (CurrentMode)
+                switch (ModeStrategy.SelectFor(CurrentMode))
                 {
-                    case MulticontrollerMode.Group:
+                    case ActiveControllerSet.CurrentGroup:
                         if (ControllerGroups.Count > 0 && CurrentGroupIndex < ControllerGroups.Count)
                         {
                             return ControllerGroups[CurrentGroupIndex].AllControllers;
                         }
-                        return new ToontownController[] { };
-                    case MulticontrollerMode.AllGroup:
-                    case MulticontrollerMode.MirrorAll:
-                    case MulticontrollerMode.Focused:
-                    case MulticontrollerMode.Custom:
+                        return Array.Empty<ToontownController>();
+                    case ActiveControllerSet.AllControllers:
                         return AllControllers;
+                    default:
+                        return Array.Empty<ToontownController>();
                 }
-
-                return new ToontownController[] { };
             }
         }
 
@@ -169,15 +166,12 @@ namespace TTMulti
         /// </summary>
         internal bool IsActiveController(ToontownController controller)
         {
-            switch (CurrentMode)
+            switch (ModeStrategy.SelectFor(CurrentMode))
             {
-                case MulticontrollerMode.Group:
+                case ActiveControllerSet.CurrentGroup:
                     return ControllerGroups.Count > 0 && CurrentGroupIndex < ControllerGroups.Count
                         && ControllerGroups[CurrentGroupIndex].AllControllers.Contains(controller);
-                case MulticontrollerMode.AllGroup:
-                case MulticontrollerMode.MirrorAll:
-                case MulticontrollerMode.Focused:
-                case MulticontrollerMode.Custom:
+                case ActiveControllerSet.AllControllers:
                     return true; // ActiveControllers == AllControllers in these modes
                 default:
                     return false;
