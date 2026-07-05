@@ -31,11 +31,6 @@ namespace TTMulti
         public event EventHandler ControllerShouldActivate;
 
         /// <summary>
-        /// A mouse event was captured from a controller in this group
-        /// </summary>
-        internal event Forms.OverlayMouseEventHandler MouseEvent;
-
-        /// <summary>
         /// A pair of controllers was added or removed
         /// </summary>
         public event EventHandler PairAddedRemoved;
@@ -74,8 +69,6 @@ namespace TTMulti
             pair.RightController.WindowHandleChanged += Controller_WindowHandleChanged;
             pair.LeftController.ShouldActivate += Controller_ShouldActivate;
             pair.RightController.ShouldActivate += Controller_ShouldActivate;
-            pair.LeftController.MouseEvent += Controller_MouseEvent;
-            pair.RightController.MouseEvent += Controller_MouseEvent;
 
             ControllerPairs.Add(pair);
 
@@ -119,11 +112,6 @@ namespace TTMulti
         private void Controller_ShouldActivate(object sender, EventArgs e)
         {
             ControllerShouldActivate?.Invoke(sender, e);
-        }
-
-        private void Controller_MouseEvent(object sender, System.Windows.Forms.Message m)
-        {
-            MouseEvent?.Invoke(sender, m);
         }
 
         public void Dispose()

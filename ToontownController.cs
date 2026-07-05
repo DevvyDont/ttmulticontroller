@@ -38,8 +38,6 @@ namespace TTMulti
         /// </summary>
         public event EventHandler ShouldActivate;
 
-        internal event OverlayMouseEventHandler MouseEvent;
-
         /// <summary>Keys currently posted DOWN (not yet UP) to the game window, so they can be released on demand.</summary>
         readonly HashSet<Keys> _heldKeys = new HashSet<Keys>();
 

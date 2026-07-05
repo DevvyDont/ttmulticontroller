@@ -1281,7 +1281,6 @@ namespace TTMulti
             group.ControllerWindowDeactivated += Controller_WindowDeactivated;
             group.ControllerWindowHandleChanged += Controller_WindowHandleChanged;
             group.ControllerShouldActivate += Controller_ShouldActivate;
-            group.MouseEvent += Controller_MouseEvent;
 
             ControllerGroups.Add(group);
             
@@ -1309,11 +1308,6 @@ namespace TTMulti
                         break;
                 }
             }
-        }
-
-        private void Controller_MouseEvent(object sender, Message m)
-        {
-            ProcessInput(m.Msg, m.WParam, m.LParam, sender as ToontownController);
         }
 
         internal void RemoveControllerGroup(int index)
