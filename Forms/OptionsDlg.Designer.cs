@@ -907,9 +907,9 @@ namespace TTMulti.Forms
             this.Controls.Add(this.aboutBtn);
             this.Controls.Add(this.cancelBtn);
             this.Controls.Add(this.okBtn);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.Margin = new System.Windows.Forms.Padding(4);
-            this.MaximizeBox = false;
+            this.MaximizeBox = true;
             this.MinimizeBox = false;
             this.Name = "OptionsDlg";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;

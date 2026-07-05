@@ -246,8 +246,11 @@ namespace TTMulti
                     return (CustomModeFile)Serializer.ReadObject(fs);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                // A corrupt/unreadable file is silently replaced with an empty set here; log it so the data loss is
+                // at least diagnosable instead of vanishing without a trace. (CORR-10)
+                System.Diagnostics.Trace.WriteLine("CustomModeStorage.Load failed: " + ex);
                 return new CustomModeFile();
             }
         }
@@ -277,8 +280,9 @@ namespace TTMulti
                 _cachedWriteTimeUtc = writeTime;
                 return file;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Trace.WriteLine("CustomModeStorage.LoadCached failed: " + ex);
                 return new CustomModeFile();
             }
         }
@@ -299,7 +303,12 @@ namespace TTMulti
                 // Invalidate the read cache so LoadCached() re-reads the just-written file.
                 _cachedFile = null;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Save failure means the user's custom-mode edits were lost; surface it to the trace log rather
+                // than swallowing it silently. (CORR-10)
+                System.Diagnostics.Trace.WriteLine("CustomModeStorage.Save failed: " + ex);
+            }
         }
     }
 }

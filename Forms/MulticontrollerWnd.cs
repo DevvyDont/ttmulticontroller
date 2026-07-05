@@ -503,6 +503,21 @@ namespace TTMulti.Forms
             {
                 userPromptedForAdminRights = true;
 
+                // CheckControllerErrors runs at the tail of PreFilterMessage, i.e. inside input dispatch. Showing a
+                // modal dialog here would pump messages mid-keystroke: any key already forwarded as KEYDOWN would
+                // never get its KEYUP delivered while the modal loop runs (stuck key in the games), and low-level
+                // hooks/WM_HOTKEY keep firing behind the box. So release held forwarded keys now, then defer the
+                // prompt onto the message loop with ignoreMessages gating our own filter while it's up. (UX-09)
+                controller.ReleaseAllHeldForwardedKeys();
+                BeginInvoke(new Action(PromptForAdminRights));
+            }
+        }
+
+        private void PromptForAdminRights()
+        {
+            ignoreMessages = true;
+            try
+            {
                 if (MessageBox.Show(
                     "There was an error controlling a Toontown window. You may need to run the multicontroller as administrator.\n\nDo you want to re-launch as administrator?",
                     "Error",
@@ -520,6 +535,10 @@ namespace TTMulti.Forms
                         MessageBox.Show("Failed to re-launch as administrator.", "Error");
                     }
                 }
+            }
+            finally
+            {
+                ignoreMessages = false;
             }
         }
 

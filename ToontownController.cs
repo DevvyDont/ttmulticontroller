@@ -196,6 +196,11 @@ namespace TTMulti
             public IntPtr BorderWindowHandle;
         }
 
+        // Coalesces the background z-order reorder. A single mode/setting/activation change fans out to Refresh()
+        // many times per controller, and each visible-border Refresh would otherwise queue its own DeferWindowPos
+        // batch against the slow Toontown window. 0 = idle, 1 = a reorder is already queued/running. (PERF-05)
+        private int _reorderPending;
+
         // Timer to send keep-alive key presses
         System.Timers.Timer keepAliveTimer = new System.Timers.Timer()
         {
@@ -597,10 +602,12 @@ namespace TTMulti
                     _borderWnd.ShowFakeCursor = false;
             }
 
-            if (showBorderWindow)
+            if (showBorderWindow && Interlocked.CompareExchange(ref _reorderPending, 1, 0) == 0)
             {
                 // Queue utility window reordering on background threads because operations involving a Toontown window
-                // seem to take significantly longer and freeze the UI
+                // seem to take significantly longer and freeze the UI. Only queue when no reorder is already pending;
+                // the proc clears the flag as soon as it starts, so a Refresh arriving after that re-queues and the
+                // latest z-order is still applied — we only drop redundant duplicates from the same burst. (PERF-05)
                 ThreadPool.QueueUserWorkItem(ReorderUtilityWindowsProc, new ReorderUtilityWindowsState
                 {
                     BorderWindowHandle = _borderWnd.Handle
@@ -629,6 +636,10 @@ namespace TTMulti
 
         private void ReorderUtilityWindowsProc(object state)
         {
+            // Clear the coalescing flag first so any Refresh() after this point queues a fresh reorder, guaranteeing
+            // the final z-order is applied even though redundant mid-burst duplicates were dropped. (PERF-05)
+            Interlocked.Exchange(ref _reorderPending, 0);
+
             /*
             * Order the windows in the following z-order:
             * 1 - border window

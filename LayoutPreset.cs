@@ -217,8 +217,11 @@ namespace TTMulti
                     return (LayoutPresetFile)Serializer.ReadObject(fs);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                // A corrupt/unreadable file is silently replaced with an empty set here; log it so the data loss is
+                // at least diagnosable instead of vanishing without a trace. (CORR-10)
+                System.Diagnostics.Trace.WriteLine("LayoutPresetStorage.Load failed: " + ex);
                 return new LayoutPresetFile();
             }
         }
@@ -253,8 +256,9 @@ namespace TTMulti
                 _cachedWriteTimeUtc = writeTime;
                 return file;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Trace.WriteLine("LayoutPresetStorage.LoadCached failed: " + ex);
                 return new LayoutPresetFile();
             }
         }
@@ -274,7 +278,12 @@ namespace TTMulti
                 }
                 _cachedFile = null; // invalidate so LoadCached() re-reads the just-written file
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Save failure means the user's layout presets were lost; surface it to the trace log rather than
+                // swallowing it silently. (CORR-10)
+                System.Diagnostics.Trace.WriteLine("LayoutPresetStorage.Save failed: " + ex);
+            }
         }
     }
 

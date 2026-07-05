@@ -25,6 +25,11 @@ namespace TTMulti.Forms
         {
             InitializeComponent();
             this.Icon = Properties.Resources.icon;
+
+            // The dialog is resizable now (UX-09). Lock today's (DPI-scaled) layout size as the minimum so nothing
+            // can be shrunk out of view, while letting users enlarge the window to see tab content that currently
+            // requires scrolling. The tab control and buttons are already anchored, so growing lays out correctly.
+            this.MinimumSize = this.Size;
         }
 
         [DataContract]

@@ -2122,7 +2122,7 @@ namespace TTMulti
         /// active routing changes (mode / group / pair) so a key held across the change is released against the
         /// window that actually has it down, instead of being stranded (CORR-05).
         /// </summary>
-        private void ReleaseAllHeldForwardedKeys()
+        internal void ReleaseAllHeldForwardedKeys()
         {
             foreach (ToontownController c in AllControllersWithWindows)
                 c.ReleaseAllHeldKeys();
