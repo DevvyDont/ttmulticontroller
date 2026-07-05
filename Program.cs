@@ -70,7 +70,7 @@ namespace TTMulti
                 if (!IsProcessElevated())
                     return;
 
-                string dir = AppDomain.CurrentDomain.BaseDirectory;
+                string dir = AppPaths.ExeDirectory;
                 if (string.IsNullOrEmpty(dir) || !IsDirectoryWritableByStandardUsers(dir))
                     return;
 
@@ -128,7 +128,7 @@ namespace TTMulti
 
         internal static bool TryRunAsAdmin()
         {
-            ProcessStartInfo processInfo = new ProcessStartInfo(System.Reflection.Assembly.GetExecutingAssembly().CodeBase);
+            ProcessStartInfo processInfo = new ProcessStartInfo(AppPaths.ExecutablePath);
             processInfo.Arguments = "--runasadmin";
             processInfo.UseShellExecute = true;
             processInfo.Verb = "runas";

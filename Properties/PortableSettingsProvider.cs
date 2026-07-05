@@ -65,24 +65,7 @@ namespace TTMulti.Properties
             }
         }
 
-        private static string GetExeDirectory()
-        {
-            try
-            {
-                string path = Assembly.GetExecutingAssembly().Location;
-                if (!string.IsNullOrEmpty(path))
-                    return Path.GetDirectoryName(path);
-            }
-            catch { }
-            try
-            {
-                string path = System.Windows.Forms.Application.ExecutablePath;
-                if (!string.IsNullOrEmpty(path))
-                    return Path.GetDirectoryName(path);
-            }
-            catch { }
-            return AppDomain.CurrentDomain.BaseDirectory ?? ".";
-        }
+        private static string GetExeDirectory() => AppPaths.ExeDirectory;
 
         public override SettingsPropertyValueCollection GetPropertyValues(SettingsContext context, SettingsPropertyCollection collection)
         {
