@@ -1938,8 +1938,22 @@ namespace TTMulti.Forms
 
         private void cancelBtn_Click(object sender, EventArgs e)
         {
-            Properties.Settings.Default.Reload();
+            // The in-memory revert happens in OnFormClosing (which also covers the title-bar X / Alt+F4 / Esc).
             DialogResult = DialogResult.Cancel;
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            base.OnFormClosing(e);
+
+            // Most controls are data-bound with DataSourceUpdateMode.OnPropertyChanged, so toggling one mutates
+            // Settings.Default immediately.  Only OK persists (it calls Save); every other way of actually closing
+            // the dialog — the title-bar X, Alt+F4, Esc, or Cancel — must revert those in-memory edits, otherwise a
+            // later Settings.Default.Save() elsewhere would persist changes the user believed they discarded (UX-02).
+            if (!e.Cancel && DialogResult != DialogResult.OK)
+            {
+                Properties.Settings.Default.Reload();
+            }
         }
 
         private void aboutBtn_Click(object sender, EventArgs e)
