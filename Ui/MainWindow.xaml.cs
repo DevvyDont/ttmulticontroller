@@ -7,22 +7,24 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using TTMulti.Forms;
 using TTMulti.Input;
+using TTMulti.Ui.ViewModels;
 using Wpf.Ui.Controls;
 
 namespace TTMulti.Ui
 {
     /// <summary>
-    /// The WPF main window (R6 of the UI rebuild) — a FluentWindow that hosts the SAME
+    /// The WPF main window (R6/R7 of the UI rebuild) — a compact FluentWindow that hosts the SAME
     /// <see cref="InputCaptureHost"/> the WinForms shell uses, feeding it an HWND and UI-thread services
     /// through <see cref="IInputShell"/>. The message plumbing that WinForms did with IMessageFilter /
-    /// WndProc is replicated here with <see cref="ComponentDispatcher.ThreadPreprocessMessage"/> (the
-    /// pre-dispatch filter) and an <see cref="HwndSource"/> hook (the window procedure). Visual content is a
-    /// placeholder at this stage; the real compact UI arrives in R7.
+    /// WndProc is replicated with <see cref="ComponentDispatcher.ThreadPreprocessMessage"/> (the pre-dispatch
+    /// filter) and an <see cref="HwndSource"/> hook (the window procedure). Visible state and interaction are
+    /// driven by <see cref="MainViewModel"/>.
     /// </summary>
     public partial class MainWindow : FluentWindow, IInputShell
     {
         private Multicontroller _controller;
         private InputCaptureHost _inputHost;
+        private MainViewModel _viewModel;
         private HwndSource _hwndSource;
         private IntPtr _hwnd;
 
@@ -125,8 +127,7 @@ namespace TTMulti.Ui
         /// <summary>
         /// The WndProc equivalent: WM_HOTKEY that the preprocess filter let through (pass-through IDs, and
         /// IDs 0/1/2 when ProcessInput didn't consume them) are handled here — identical to the WinForms
-        /// WndProc override. Left unhandled so default window processing still runs (WM_HOTKEY has no default
-        /// behavior, matching the old base.WndProc call).
+        /// WndProc override. Left unhandled so default window processing still runs.
         /// </summary>
         private IntPtr WndProcHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
@@ -164,7 +165,9 @@ namespace TTMulti.Ui
             _hwndSource?.AddHook(WndProcHook);
             ComponentDispatcher.ThreadPreprocessMessage += OnThreadPreprocessMessage;
 
-            // Apply the OS theme + Mica backdrop and keep following live OS theme changes.
+            // Apply the current OS theme to the app resources up front (Watch alone only reacts to later
+            // changes), then keep following live OS light/dark switches + Mica backdrop.
+            Wpf.Ui.Appearance.ApplicationThemeManager.ApplySystemTheme();
             Wpf.Ui.Appearance.SystemThemeWatcher.Watch(this);
 
             InitializeController();
@@ -176,15 +179,9 @@ namespace TTMulti.Ui
             _controller = Multicontroller.Instance;
 
             _inputHost = new InputCaptureHost(this, _controller);
-            _inputHost.SuspendStateChanged += (s, a) => UpdateStatus();
-            _inputHost.ModeLockToggled += (s, a) => UpdateStatus();
+            _inputHost.SuspendStateChanged += (s, a) => OnSuspendStateChanged();
+            _inputHost.ModeLockToggled += (s, a) => _viewModel?.ForceRefresh();
             _inputHost.AdminRightsPromptNeeded += InputHost_AdminRightsPromptNeeded;
-
-            _controller.ModeChanged += Controller_UiChanged;
-            _controller.GroupsChanged += Controller_UiChanged;
-            _controller.ActiveControllersChanged += Controller_UiChanged;
-            _controller.ActiveChanged += Controller_UiChanged;
-            _controller.SettingChanged += Controller_UiChanged;
 
             if (_controller.ControllerGroups.Count == 0)
                 _controller.AddControllerGroup();
@@ -200,15 +197,13 @@ namespace TTMulti.Ui
             _controller.ActiveCustomModeId = Properties.Settings.Default.lastActiveCustomModeId ?? "";
             _controller.EnsureValidActiveCustomModeId();
 
-            UpdateStatus();
-        }
+            _viewModel = new MainViewModel(_controller, Dispatcher);
+            DataContext = _viewModel;
 
-        private void Controller_UiChanged(object sender, EventArgs e)
-        {
-            if (Dispatcher.CheckAccess())
-                UpdateStatus();
-            else
-                Dispatcher.BeginInvoke(new Action(UpdateStatus));
+            leftCrosshair.WindowSelected += (s, handle) => _viewModel.AssignLeftWindow(handle);
+            rightCrosshair.WindowSelected += (s, handle) => _viewModel.AssignRightWindow(handle);
+
+            OnSuspendStateChanged();
         }
 
         private void ReloadOptions()
@@ -219,6 +214,16 @@ namespace TTMulti.Ui
 
             // Reset suspension, allow re-reporting hotkey conflicts, and rebuild all registrations.
             _inputHost.OnSettingsReloaded();
+            _viewModel?.ForceRefresh();
+        }
+
+        /// <summary>Reflect the global-hotkeys-suspended state in the chip and the taskbar title (UX-08).</summary>
+        private void OnSuspendStateChanged()
+        {
+            bool suspended = _inputHost != null && _inputHost.IsGlobalHotkeysSuspended;
+            if (_viewModel != null)
+                _viewModel.IsSuspended = suspended;
+            this.Title = suspended ? "Toontown Multicontroller — Hotkeys Suspended" : "Toontown Multicontroller";
         }
 
         protected override void OnActivated(EventArgs e)
@@ -256,6 +261,7 @@ namespace TTMulti.Ui
             // Shut down all input capture before the HWND is destroyed so no orphaned low-level hook keeps
             // processing system input.
             _inputHost?.Dispose();
+            _viewModel?.Dispose();
 
             WindowWatcher.Instance.Shutdown();
 
@@ -296,46 +302,6 @@ namespace TTMulti.Ui
             }
         }
 
-        // ── Status (placeholder UI) ─────────────────────────────────────────────────
-
-        private void UpdateStatus()
-        {
-            if (_controller == null)
-                return;
-
-            statusText.Text = GetStatusModeSummaryText();
-
-            string detail = _controller.ControllerGroups.Count + (_controller.ControllerGroups.Count == 1 ? " group" : " groups");
-            if (_inputHost != null && _inputHost.IsGlobalHotkeysSuspended)
-                detail += "  ·  Hotkeys suspended";
-            if (_controller.IsModeLockEngaged)
-                detail += "  ·  Mode locked";
-            detailText.Text = detail;
-
-            this.Title = _inputHost != null && _inputHost.IsGlobalHotkeysSuspended
-                ? "Toontown Multicontroller — Hotkeys Suspended"
-                : "Toontown Multicontroller";
-        }
-
-        private string GetStatusModeSummaryText()
-        {
-            int g = _controller.CurrentGroupIndex + 1;
-            switch (_controller.CurrentMode)
-            {
-                case MulticontrollerMode.Group: return "Multi Mode  ·  G" + g;
-                case MulticontrollerMode.MirrorAll: return "Mirror Mode";
-                case MulticontrollerMode.AllGroup: return "All Groups Mode";
-                case MulticontrollerMode.Focused: return "Focused Mode";
-                case MulticontrollerMode.Custom:
-                    var def = _controller.GetActiveCustomModeDefinition();
-                    return def != null && !string.IsNullOrWhiteSpace(def.Name) ? def.Name : "Custom";
-                case MulticontrollerMode.Pair: return "Pair  ·  G" + g;
-                case MulticontrollerMode.MirrorGroup: return "Mirror group  ·  G" + g;
-                case MulticontrollerMode.MirrorIndividual: return "Mirror one";
-                default: return _controller.CurrentMode.ToString();
-            }
-        }
-
         // ── Dialogs (still the WinForms dialogs until R8/R9) ────────────────────────
 
         private void OptionsButton_Click(object sender, RoutedEventArgs e)
@@ -350,7 +316,6 @@ namespace TTMulti.Ui
                 ReloadOptions();
                 _controller.EnsureValidActiveCustomModeId();
             }
-            UpdateStatus();
         }
 
         private void GroupsButton_Click(object sender, RoutedEventArgs e)
@@ -360,7 +325,6 @@ namespace TTMulti.Ui
             new WindowGroupsForm().ShowDialog(new Win32WindowOwner(_hwnd));
             _ignoreMessages = false;
             _controller.ShowAllBorders = false;
-            UpdateStatus();
         }
 
         /// <summary>Lets a WinForms modal dialog use the WPF window as its owner (via HWND).</summary>

@@ -1,0 +1,22 @@
+<UserControl
+    x:Class="TTMulti.Ui.Controls.WindowCrosshair"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Cursor="Hand">
+    <Border
+        x:Name="rootBorder"
+        Width="54"
+        Height="54"
+        Background="{DynamicResource ControlFillColorDefaultBrush}"
+        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+        BorderThickness="1"
+        CornerRadius="10"
+        ToolTip="Drag onto the Toontown window where this toon plays">
+        <Image
+            x:Name="finderImage"
+            Width="32"
+            Height="32"
+            RenderOptions.BitmapScalingMode="HighQuality"
+            Stretch="Uniform" />
+    </Border>
+</UserControl>
