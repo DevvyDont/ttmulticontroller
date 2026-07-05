@@ -888,33 +888,7 @@ namespace TTMulti
 
         internal void UpdateOptions()
         {
-            leftKeys.Clear();
-            rightKeys.Clear();
-
-            var keyBindings = Properties.SerializedSettings.Default.Bindings;
-
-            for (int i = 0; i < keyBindings.Count; i++)
-            {
-                if (!leftKeys.ContainsKey(keyBindings[i].LeftToonKey))
-                {
-                    leftKeys.Add(keyBindings[i].LeftToonKey, new List<Keys>());
-                }
-
-                if (!rightKeys.ContainsKey(keyBindings[i].RightToonKey))
-                {
-                    rightKeys.Add(keyBindings[i].RightToonKey, new List<Keys>());
-                }
-
-                if (keyBindings[i].Key != Keys.None && keyBindings[i].LeftToonKey != Keys.None)
-                {
-                    leftKeys[keyBindings[i].LeftToonKey].Add(keyBindings[i].Key);
-                }
-
-                if (keyBindings[i].Key != Keys.None && keyBindings[i].RightToonKey != Keys.None)
-                {
-                    rightKeys[keyBindings[i].RightToonKey].Add(keyBindings[i].Key);
-                }
-            }
+            KeyRemap.Build(Properties.SerializedSettings.Default.Bindings, out leftKeys, out rightKeys);
         }
 
         /// <summary>
