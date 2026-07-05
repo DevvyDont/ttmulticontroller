@@ -94,51 +94,101 @@ namespace TTMulti.Forms
         // Set to true to cancel a running TryActivate loop (e.g. when the user deliberately focuses another window)
         private volatile bool _cancelActivation = false;
 
+        // Set once the form starts closing so no new activation thread is spawned during teardown.
+        private volatile bool _closing = false;
+
         internal void TryActivate()
         {
+            if (_closing)
+                return;
+
             _cancelActivation = false;
-            if (activationThread == null || activationThread.ThreadState != System.Threading.ThreadState.Running)
+
+            // IsAlive (not ThreadState) is the correct liveness test: the thread is IsBackground, so its
+            // ThreadState always carries the Background flag and never equals Running — the old check let
+            // multiple activation threads run at once and interleave AttachThreadInput/TopMost (CORR-01).
+            if (activationThread == null || !activationThread.IsAlive)
             {
                 activationThread = new Thread(activationThreadFunc) { IsBackground = true };
                 activationThread.Start();
             }
         }
 
+        /// <summary>
+        /// Marshal <paramref name="action"/> to the UI thread, returning false instead of throwing if the form's
+        /// handle is gone.  Prevents a dispose race (form closed between the check and the Invoke) from throwing on
+        /// the background activation thread, which — with no global handler installed — would crash the process (CORR-01).
+        /// </summary>
+        private bool SafeInvoke(Action action)
+        {
+            try
+            {
+                if (IsDisposed || !IsHandleCreated)
+                    return false;
+                Invoke(action);
+                return true;
+            }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        }
+
         private void activationThreadFunc()
         {
-            if (this.IsDisposed || _cancelActivation) return;
-
-            IntPtr hWnd = IntPtr.Zero;
-            Invoke(new Action(() => hWnd = this.Handle));
-
-            if (this.IsDisposed || _cancelActivation) return;
-
-            // Use AttachThreadInput so we can call SetForegroundWindow without Windows
-            // redirecting it to a taskbar flash.  We borrow the current foreground thread's
-            // input queue, steal focus cleanly, then detach.
-            IntPtr foregroundWnd = Win32.GetForegroundWindow();
-            uint foregroundThread = foregroundWnd != IntPtr.Zero
-                ? Win32.GetWindowThreadProcessId(foregroundWnd, out _)
-                : 0;
-            uint ourThread = Win32.GetCurrentThreadId();
-
-            if (foregroundThread != 0 && foregroundThread != ourThread)
-                Win32.AttachThreadInput(foregroundThread, ourThread, true);
-
-            Win32.BringWindowToTop(hWnd);
-            Win32.SetForegroundWindow(hWnd);
-            Invoke(new Action(() =>
+            try
             {
-                if (!this.IsDisposed && !_cancelActivation)
-                {
-                    this.TopMost = true;
-                    this.Activate();
-                    this.TopMost = Properties.Settings.Default.onTopWhenInactive;
-                }
-            }));
+                if (_cancelActivation)
+                    return;
 
-            if (foregroundThread != 0 && foregroundThread != ourThread)
-                Win32.AttachThreadInput(foregroundThread, ourThread, false);
+                IntPtr hWnd = IntPtr.Zero;
+                if (!SafeInvoke(() => hWnd = this.Handle) || _cancelActivation || hWnd == IntPtr.Zero)
+                    return;
+
+                // Use AttachThreadInput so we can call SetForegroundWindow without Windows
+                // redirecting it to a taskbar flash.  We borrow the current foreground thread's
+                // input queue, steal focus cleanly, then detach.
+                IntPtr foregroundWnd = Win32.GetForegroundWindow();
+                uint foregroundThread = foregroundWnd != IntPtr.Zero
+                    ? Win32.GetWindowThreadProcessId(foregroundWnd, out _)
+                    : 0;
+                uint ourThread = Win32.GetCurrentThreadId();
+                bool attached = false;
+
+                try
+                {
+                    if (foregroundThread != 0 && foregroundThread != ourThread)
+                        attached = Win32.AttachThreadInput(foregroundThread, ourThread, true);
+
+                    Win32.BringWindowToTop(hWnd);
+                    Win32.SetForegroundWindow(hWnd);
+
+                    SafeInvoke(() =>
+                    {
+                        if (!this.IsDisposed && !_cancelActivation)
+                        {
+                            this.TopMost = true;
+                            this.Activate();
+                            this.TopMost = Properties.Settings.Default.onTopWhenInactive;
+                        }
+                    });
+                }
+                finally
+                {
+                    // Always detach the input queue we borrowed, even if activation was cancelled or failed.
+                    if (attached)
+                        Win32.AttachThreadInput(foregroundThread, ourThread, false);
+                }
+            }
+            catch
+            {
+                // Best-effort activation.  An unhandled exception on this background thread would crash the whole
+                // process (no AppDomain/thread exception handler is installed), so swallow it (CORR-01).
+            }
         }
 
         /// <summary>
@@ -1531,11 +1581,12 @@ namespace TTMulti.Forms
 
         private void MainWnd_FormClosing(object sender, FormClosingEventArgs e)
         {
-            try
-            {
-                activationThread.Abort();
-            }
-            catch { }
+            // Signal the activation thread to stop and stop any queued TryActivate from spawning a new one.
+            // Don't Thread.Abort: it can fire mid-P/Invoke and leave the borrowed input queue attached, and it
+            // doesn't prevent a respawn.  The thread is IsBackground and SafeInvoke fails once we're disposed, so
+            // it exits on its own — and we must not Join here, since it may be blocked in Invoke on this UI thread (CORR-01).
+            _closing = true;
+            _cancelActivation = true;
 
             ShutdownAllInputCapture();
 
