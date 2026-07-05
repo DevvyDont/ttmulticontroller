@@ -61,23 +61,14 @@ namespace TTMulti.Forms
         private static int _multiclickMouseHookButton = -1; // 0=Middle, 1=XButton1, 2=XButton2
         private static Win32.HookProc _multiclickMouseHookProc = null;
 
-        // Low-level keyboard hook for Controlled Multi-Click Mode activation key
-        private static IntPtr _controlledMcActivateHookHandle = IntPtr.Zero;
-        private static MulticontrollerWnd _controlledMcActivateHookForm = null;
-        private static int _controlledMcActivateHookKeyCode = 0;
-        private static Win32.HookProc _controlledMcActivateHookProc = null;
-
-        // Low-level keyboard hook for Controlled Multi-Click Mode: multi-click key
-        private static IntPtr _controlledMcClickHookHandle = IntPtr.Zero;
-        private static MulticontrollerWnd _controlledMcClickHookForm = null;
-        private static int _controlledMcClickHookKeyCode = 0;
-        private static Win32.HookProc _controlledMcClickHookProc = null;
-
-        // Low-level keyboard hook for Controlled Multi-Click Mode: regular-click key
-        private static IntPtr _controlledMcRegularClickHookHandle = IntPtr.Zero;
-        private static MulticontrollerWnd _controlledMcRegularClickHookForm = null;
-        private static int _controlledMcRegularClickHookKeyCode = 0;
-        private static Win32.HookProc _controlledMcRegularClickHookProc = null;
+        // Single low-level keyboard hook that dispatches ALL Controlled Multi-Click Mode keys — activation,
+        // multi-click and regular-click. This replaces the three separate WH_KEYBOARD_LL hooks that used to be
+        // installed while the mode was active (each serialized every system-wide key event through this app's UI
+        // thread); one dispatcher does the same work with a single round-trip. Key codes are read live from
+        // Settings inside the proc, so no per-key re-install is needed. (PERF-02)
+        private static IntPtr _controlledMcKeyboardHookHandle = IntPtr.Zero;
+        private static MulticontrollerWnd _controlledMcKeyboardHookForm = null;
+        private static Win32.HookProc _controlledMcKeyboardHookProc = null;
 
         // Low-level mouse hook that blocks left-clicks from focusing game windows while in Controlled Multi-Click Mode
         private static IntPtr _controlledMcFocusBlockHookHandle = IntPtr.Zero;
@@ -985,131 +976,161 @@ namespace TTMulti.Forms
             _multiclickMouseHookButton = -1;
         }
 
-        // ── Controlled Multi-Click Mode: Activation Key Hook ──────────────────────
+        // ── Controlled Multi-Click Mode: keyboard dispatch (single hook) ───────────
 
         private void RegisterControlledMulticlickHotkeys()
         {
             UnregisterControlledMulticlickHotkeys();
             if (!Properties.Settings.Default.controlledMulticlickEnabled) return;
 
-            int activateKey = Properties.Settings.Default.controlledMulticlickActivateKeyCode;
-            if (activateKey != 0)
-                InstallControlledMcActivateHook(activateKey);
-
-            // The click / regular-click keyboard hooks only do anything while CMC mode is active (their procs
-            // pass through otherwise), so they are installed only while the mode is active — see
-            // Controller_ControlledMulticlickModeChanged. Re-install here if a settings reload happens mid-mode.
-            if (controller.IsControlledMulticlickMode)
-                InstallControlledMcModeKeyboardHooks();
+            // One dispatcher hook covers the activation key (always, when configured) and the multi-click /
+            // regular-click keys (which the proc only acts on while the mode is active). Install it if an
+            // activation key is set, or if we're already in the mode (e.g. a settings reload happened mid-mode)
+            // so the click keys keep working. (PERF-02)
+            if (Properties.Settings.Default.controlledMulticlickActivateKeyCode != 0 || controller.IsControlledMulticlickMode)
+                InstallControlledMcKeyboardHook();
         }
 
         private void UnregisterControlledMulticlickHotkeys()
         {
-            UninstallControlledMcActivateHook();
-            UninstallControlledMcModeKeyboardHooks();
+            UninstallControlledMcKeyboardHook();
         }
 
-        /// <summary>Install the CMC click / regular-click keyboard hooks (only used while CMC mode is active). PERF-02.</summary>
-        private void InstallControlledMcModeKeyboardHooks()
+        /// <summary>Install the single CMC keyboard dispatcher hook (idempotent). PERF-02.</summary>
+        private void InstallControlledMcKeyboardHook()
         {
-            if (!Properties.Settings.Default.controlledMulticlickEnabled) return;
-
-            if (!Properties.Settings.Default.controlledMulticlickClickUseMouseButton)
-            {
-                int clickKey = Properties.Settings.Default.controlledMulticlickClickKeyCode;
-                if (clickKey != 0)
-                    InstallControlledMcClickHook(clickKey);
-            }
-
-            if (!Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton)
-            {
-                int regularClickKey = Properties.Settings.Default.controlledMulticlickRegularClickKeyCode;
-                if (regularClickKey != 0)
-                    InstallControlledMcRegularClickKeyboardHook(regularClickKey);
-            }
-        }
-
-        private void UninstallControlledMcModeKeyboardHooks()
-        {
-            UninstallControlledMcClickHook();
-            UninstallControlledMcRegularClickKeyboardHook();
-        }
-
-        private void InstallControlledMcActivateHook(int keyCode)
-        {
-            if (_controlledMcActivateHookHandle != IntPtr.Zero)
-            {
-                if (_controlledMcActivateHookKeyCode == keyCode) return;
-                UninstallControlledMcActivateHook();
-            }
-            _controlledMcActivateHookForm = this;
-            _controlledMcActivateHookKeyCode = keyCode;
-            if (_controlledMcActivateHookProc == null)
-                _controlledMcActivateHookProc = ControlledMcActivateHookProc;
+            _controlledMcKeyboardHookForm = this;
+            if (_controlledMcKeyboardHookHandle != IntPtr.Zero)
+                return;
+            if (_controlledMcKeyboardHookProc == null)
+                _controlledMcKeyboardHookProc = ControlledMcKeyboardHookProc;
             IntPtr hModule = Win32.GetModuleHandle(null);
-            _controlledMcActivateHookHandle = Win32.SetWindowsHookEx(Win32.WH_KEYBOARD_LL, _controlledMcActivateHookProc, hModule, 0);
+            _controlledMcKeyboardHookHandle = Win32.SetWindowsHookEx(Win32.WH_KEYBOARD_LL, _controlledMcKeyboardHookProc, hModule, 0);
         }
 
-        private void UninstallControlledMcActivateHook()
+        private void UninstallControlledMcKeyboardHook()
         {
-            if (_controlledMcActivateHookHandle != IntPtr.Zero)
+            if (_controlledMcKeyboardHookHandle != IntPtr.Zero)
             {
-                Win32.UnhookWindowsHookEx(_controlledMcActivateHookHandle);
-                _controlledMcActivateHookHandle = IntPtr.Zero;
+                Win32.UnhookWindowsHookEx(_controlledMcKeyboardHookHandle);
+                _controlledMcKeyboardHookHandle = IntPtr.Zero;
             }
-            _controlledMcActivateHookForm = null;
-            _controlledMcActivateHookKeyCode = 0;
+            _controlledMcKeyboardHookForm = null;
         }
 
         /// <summary>
-        /// LL keyboard hook for the Controlled Multi-Click Mode activation key.
-        /// Toggle mode: KEYDOWN toggles the mode.
-        /// Hold mode: KEYDOWN enters the mode, KEYUP exits the mode.
-        /// The key is consumed so it never reaches games or the MC window.
-        /// Non-global: only activates when MC or a game window is focused.
+        /// Single LL keyboard hook dispatching every Controlled Multi-Click Mode key. It evaluates the keys in the
+        /// SAME precedence the three former hooks produced via install order (last-installed = first-called):
+        /// regular-click, then multi-click, then activation. The first that matches consumes the key. The click /
+        /// regular-click branches act only while the mode is active and pass through otherwise, exactly as their
+        /// old dedicated hooks did; the activation branch handles toggle/hold and the shared-hold-key release. All
+        /// key codes are read live from Settings. (PERF-02)
         /// </summary>
-        private static IntPtr ControlledMcActivateHookProc(int nCode, IntPtr wParam, IntPtr lParam)
+        private static IntPtr ControlledMcKeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode < 0)
-                return Win32.CallNextHookEx(_controlledMcActivateHookHandle, nCode, wParam, lParam);
-            if (_controlledMcActivateHookForm == null || _controlledMcActivateHookKeyCode == 0)
-                return Win32.CallNextHookEx(_controlledMcActivateHookHandle, nCode, wParam, lParam);
+                return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
+
+            var form = _controlledMcKeyboardHookForm;
+            if (form == null)
+                return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
 
             int msg = (int)wParam.ToInt64();
             bool isDown = msg == 0x100 || msg == 0x104;
             bool isUp   = msg == 0x101 || msg == 0x105;
             if (!isDown && !isUp)
-                return Win32.CallNextHookEx(_controlledMcActivateHookHandle, nCode, wParam, lParam);
+                return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
 
             var hookStruct = (Win32.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.KBDLLHOOKSTRUCT));
-            if ((uint)hookStruct.vkCode != _controlledMcActivateHookKeyCode)
-                return Win32.CallNextHookEx(_controlledMcActivateHookHandle, nCode, wParam, lParam);
+            uint vk = (uint)hookStruct.vkCode;
 
-            var form = _controlledMcActivateHookForm;
-            bool isGlobal = Properties.Settings.Default.controlledMulticlickActivateGlobal;
-            bool mcActive = form?.controller?.IsActive ?? false;
-            bool gameWindowActive = form?.controller?.AllControllersWithWindows.Any(c => c.IsWindowActive) ?? false;
+            var settings = Properties.Settings.Default;
+            bool modeActive = form.controller?.IsControlledMulticlickMode == true;
 
-            // Non-global: only trigger when MC or a game window is focused
-            if (!isGlobal && !mcActive && !gameWindowActive)
-                return Win32.CallNextHookEx(_controlledMcActivateHookHandle, nCode, wParam, lParam);
-
-            bool holdMode = Properties.Settings.Default.controlledMulticlickActivateHold;
-
-            if (isDown)
+            // ── Regular-click key (mode active, keyboard-bound) ──
+            if (modeActive
+                && !settings.controlledMulticlickRegularClickUseMouseButton
+                && settings.controlledMulticlickRegularClickKeyCode != 0
+                && vk == (uint)settings.controlledMulticlickRegularClickKeyCode)
             {
-                // Suppress modifier-modified presses so e.g. Ctrl+key still passes through
-                short alt   = Win32.GetAsyncKeyState(Keys.Menu);
-                short ctrl  = Win32.GetAsyncKeyState(Keys.ControlKey);
-                short shift = Win32.GetAsyncKeyState(Keys.ShiftKey);
-                if ((alt & 0x8000) != 0 || (ctrl & 0x8000) != 0 || (shift & 0x8000) != 0)
-                    return Win32.CallNextHookEx(_controlledMcActivateHookHandle, nCode, wParam, lParam);
-
-                if (form != null)
+                bool triggerOnRelease = settings.controlledMulticlickRegularClickTriggerOnRelease;
+                bool shouldFire = triggerOnRelease ? isUp : isDown;
+                if (shouldFire || isUp)
                 {
                     form.BeginInvoke(new Action(() =>
                     {
-                        var c = _controlledMcActivateHookForm?.controller;
+                        var c = _controlledMcKeyboardHookForm?.controller;
+                        if (c == null) return;
+                        if (shouldFire)
+                            c.TriggerRegularClick();
+                        // If this key is also the hold-activation key, exit CMC mode on release.
+                        if (isUp)
+                        {
+                            bool activateHold = Properties.Settings.Default.controlledMulticlickActivateHold;
+                            uint activateKey  = (uint)Properties.Settings.Default.controlledMulticlickActivateKeyCode;
+                            if (activateHold && activateKey == vk)
+                                c.ExitControlledMulticlickMode();
+                        }
+                    }));
+                }
+                return (IntPtr)1; // consume both down and up
+            }
+
+            // ── Multi-click key (mode active, keyboard-bound) ──
+            if (modeActive
+                && !settings.controlledMulticlickClickUseMouseButton
+                && settings.controlledMulticlickClickKeyCode != 0
+                && vk == (uint)settings.controlledMulticlickClickKeyCode)
+            {
+                bool triggerOnRelease = settings.controlledMulticlickClickTriggerOnRelease;
+                bool shouldFire = triggerOnRelease ? isUp : isDown;
+                if (shouldFire || isUp)
+                {
+                    form.BeginInvoke(new Action(() =>
+                    {
+                        var c = _controlledMcKeyboardHookForm?.controller;
+                        if (c == null) return;
+                        if (shouldFire)
+                            c.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
+                        // If this key is also the hold-activation key, exit CMC mode on release.
+                        if (isUp)
+                        {
+                            bool activateHold = Properties.Settings.Default.controlledMulticlickActivateHold;
+                            uint activateKey  = (uint)Properties.Settings.Default.controlledMulticlickActivateKeyCode;
+                            if (activateHold && activateKey == vk)
+                                c.ExitControlledMulticlickMode();
+                        }
+                    }));
+                }
+                return (IntPtr)1; // consume both down and up
+            }
+
+            // ── Activation key (toggle / hold; non-global gated on focus) ──
+            uint activateKeyCode = (uint)settings.controlledMulticlickActivateKeyCode;
+            if (activateKeyCode != 0 && vk == activateKeyCode)
+            {
+                bool isGlobal = settings.controlledMulticlickActivateGlobal;
+                bool mcActive = form.controller?.IsActive ?? false;
+                bool gameWindowActive = form.controller?.AllControllersWithWindows.Any(c => c.IsWindowActive) ?? false;
+
+                // Non-global: only trigger when MC or a game window is focused
+                if (!isGlobal && !mcActive && !gameWindowActive)
+                    return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
+
+                bool holdMode = settings.controlledMulticlickActivateHold;
+
+                if (isDown)
+                {
+                    // Suppress modifier-modified presses so e.g. Ctrl+key still passes through
+                    short alt   = Win32.GetAsyncKeyState(Keys.Menu);
+                    short ctrl  = Win32.GetAsyncKeyState(Keys.ControlKey);
+                    short shift = Win32.GetAsyncKeyState(Keys.ShiftKey);
+                    if ((alt & 0x8000) != 0 || (ctrl & 0x8000) != 0 || (shift & 0x8000) != 0)
+                        return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
+
+                    form.BeginInvoke(new Action(() =>
+                    {
+                        var c = _controlledMcKeyboardHookForm?.controller;
                         if (c == null) return;
                         if (holdMode)
                         {
@@ -1125,193 +1146,41 @@ namespace TTMulti.Forms
                                 c.EnterControlledMulticlickMode();
                         }
                     }));
+                    return (IntPtr)1; // consume
                 }
-                return (IntPtr)1; // consume
-            }
 
-            if (isUp && holdMode)
-            {
-                if (form != null)
+                if (isUp && holdMode)
                 {
                     form.BeginInvoke(new Action(() =>
                     {
-                        var c = _controlledMcActivateHookForm?.controller;
+                        var c = _controlledMcKeyboardHookForm?.controller;
                         if (c == null) return;
 
                         // If the click key or regular-click key shares this key with trigger-on-release,
                         // fire the click BEFORE exiting so the action isn't lost.
-                        uint vk = (uint)_controlledMcActivateHookKeyCode;
+                        uint vkUp = activateKeyCode;
 
                         bool multiClickTor  = Properties.Settings.Default.controlledMulticlickClickTriggerOnRelease;
                         bool multiClickMouse = Properties.Settings.Default.controlledMulticlickClickUseMouseButton;
                         uint multiClickKey  = (uint)Properties.Settings.Default.controlledMulticlickClickKeyCode;
-                        if (multiClickTor && !multiClickMouse && multiClickKey == vk && c.IsControlledMulticlickMode)
+                        if (multiClickTor && !multiClickMouse && multiClickKey == vkUp && c.IsControlledMulticlickMode)
                             c.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
 
                         bool regClickTor   = Properties.Settings.Default.controlledMulticlickRegularClickTriggerOnRelease;
                         bool regClickMouse = Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton;
                         uint regClickKey   = (uint)Properties.Settings.Default.controlledMulticlickRegularClickKeyCode;
-                        if (regClickTor && !regClickMouse && regClickKey == vk && c.IsControlledMulticlickMode)
+                        if (regClickTor && !regClickMouse && regClickKey == vkUp && c.IsControlledMulticlickMode)
                             c.TriggerRegularClick();
 
                         c.ExitControlledMulticlickMode();
                     }));
+                    return (IntPtr)1; // consume
                 }
-                return (IntPtr)1; // consume
+
+                return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
             }
 
-            return Win32.CallNextHookEx(_controlledMcActivateHookHandle, nCode, wParam, lParam);
-        }
-
-        // ── Controlled Multi-Click Mode: Click Key Hook ────────────────────────────
-
-        private void InstallControlledMcClickHook(int keyCode)
-        {
-            if (_controlledMcClickHookHandle != IntPtr.Zero)
-            {
-                if (_controlledMcClickHookKeyCode == keyCode) return;
-                UninstallControlledMcClickHook();
-            }
-            _controlledMcClickHookForm = this;
-            _controlledMcClickHookKeyCode = keyCode;
-            if (_controlledMcClickHookProc == null)
-                _controlledMcClickHookProc = ControlledMcClickHookProc;
-            IntPtr hModule = Win32.GetModuleHandle(null);
-            _controlledMcClickHookHandle = Win32.SetWindowsHookEx(Win32.WH_KEYBOARD_LL, _controlledMcClickHookProc, hModule, 0);
-        }
-
-        private void UninstallControlledMcClickHook()
-        {
-            if (_controlledMcClickHookHandle != IntPtr.Zero)
-            {
-                Win32.UnhookWindowsHookEx(_controlledMcClickHookHandle);
-                _controlledMcClickHookHandle = IntPtr.Zero;
-            }
-            _controlledMcClickHookForm = null;
-            _controlledMcClickHookKeyCode = 0;
-        }
-
-        /// <summary>
-        /// LL keyboard hook for the Controlled Multi-Click Mode click key.
-        /// Only fires when Controlled Multi-Click Mode is active.
-        /// Passes through when the mode is inactive so the key works normally.
-        /// </summary>
-        private static IntPtr ControlledMcClickHookProc(int nCode, IntPtr wParam, IntPtr lParam)
-        {
-            if (nCode < 0)
-                return Win32.CallNextHookEx(_controlledMcClickHookHandle, nCode, wParam, lParam);
-            if (_controlledMcClickHookForm == null || _controlledMcClickHookKeyCode == 0)
-                return Win32.CallNextHookEx(_controlledMcClickHookHandle, nCode, wParam, lParam);
-
-            if (_controlledMcClickHookForm.controller?.IsControlledMulticlickMode != true)
-                return Win32.CallNextHookEx(_controlledMcClickHookHandle, nCode, wParam, lParam);
-
-            int msg = (int)wParam.ToInt64();
-            bool isDown = msg == 0x100 || msg == 0x104;
-            bool isUp   = msg == 0x101 || msg == 0x105;
-            if (!isDown && !isUp)
-                return Win32.CallNextHookEx(_controlledMcClickHookHandle, nCode, wParam, lParam);
-
-            var hookStruct = (Win32.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.KBDLLHOOKSTRUCT));
-            if ((uint)hookStruct.vkCode != _controlledMcClickHookKeyCode)
-                return Win32.CallNextHookEx(_controlledMcClickHookHandle, nCode, wParam, lParam);
-
-            bool triggerOnRelease = Properties.Settings.Default.controlledMulticlickClickTriggerOnRelease;
-            bool shouldFire = triggerOnRelease ? isUp : isDown;
-
-            var form = _controlledMcClickHookForm;
-            if (shouldFire || isUp)
-            {
-                form?.BeginInvoke(new Action(() =>
-                {
-                    var c = _controlledMcClickHookForm?.controller;
-                    if (c == null) return;
-                    if (shouldFire)
-                        c.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
-                    // If this key is also the hold-activation key, exit CMC mode on release.
-                    if (isUp)
-                    {
-                        bool activateHold = Properties.Settings.Default.controlledMulticlickActivateHold;
-                        uint activateKey  = (uint)Properties.Settings.Default.controlledMulticlickActivateKeyCode;
-                        if (activateHold && activateKey == (uint)_controlledMcClickHookKeyCode)
-                            c.ExitControlledMulticlickMode();
-                    }
-                }));
-            }
-            return (IntPtr)1; // consume both down and up
-        }
-
-        // ── Controlled Multi-Click Mode: Regular-Click Keyboard Hook ──────────────
-
-        private void InstallControlledMcRegularClickKeyboardHook(int keyCode)
-        {
-            if (_controlledMcRegularClickHookHandle != IntPtr.Zero)
-            {
-                if (_controlledMcRegularClickHookKeyCode == keyCode) return;
-                UninstallControlledMcRegularClickKeyboardHook();
-            }
-            _controlledMcRegularClickHookForm = this;
-            _controlledMcRegularClickHookKeyCode = keyCode;
-            if (_controlledMcRegularClickHookProc == null)
-                _controlledMcRegularClickHookProc = ControlledMcRegularClickKeyboardHookProc;
-            IntPtr hModule = Win32.GetModuleHandle(null);
-            _controlledMcRegularClickHookHandle = Win32.SetWindowsHookEx(Win32.WH_KEYBOARD_LL, _controlledMcRegularClickHookProc, hModule, 0);
-        }
-
-        private void UninstallControlledMcRegularClickKeyboardHook()
-        {
-            if (_controlledMcRegularClickHookHandle != IntPtr.Zero)
-            {
-                Win32.UnhookWindowsHookEx(_controlledMcRegularClickHookHandle);
-                _controlledMcRegularClickHookHandle = IntPtr.Zero;
-            }
-            _controlledMcRegularClickHookForm = null;
-            _controlledMcRegularClickHookKeyCode = 0;
-        }
-
-        private static IntPtr ControlledMcRegularClickKeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam)
-        {
-            if (nCode < 0)
-                return Win32.CallNextHookEx(_controlledMcRegularClickHookHandle, nCode, wParam, lParam);
-            if (_controlledMcRegularClickHookForm == null || _controlledMcRegularClickHookKeyCode == 0)
-                return Win32.CallNextHookEx(_controlledMcRegularClickHookHandle, nCode, wParam, lParam);
-
-            if (_controlledMcRegularClickHookForm.controller?.IsControlledMulticlickMode != true)
-                return Win32.CallNextHookEx(_controlledMcRegularClickHookHandle, nCode, wParam, lParam);
-
-            int msg = (int)wParam.ToInt64();
-            bool isDown = msg == 0x100 || msg == 0x104;
-            bool isUp   = msg == 0x101 || msg == 0x105;
-            if (!isDown && !isUp)
-                return Win32.CallNextHookEx(_controlledMcRegularClickHookHandle, nCode, wParam, lParam);
-
-            var hookStruct = (Win32.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.KBDLLHOOKSTRUCT));
-            if ((uint)hookStruct.vkCode != _controlledMcRegularClickHookKeyCode)
-                return Win32.CallNextHookEx(_controlledMcRegularClickHookHandle, nCode, wParam, lParam);
-
-            bool triggerOnRelease = Properties.Settings.Default.controlledMulticlickRegularClickTriggerOnRelease;
-            bool shouldFire = triggerOnRelease ? isUp : isDown;
-
-            var form = _controlledMcRegularClickHookForm;
-            if (shouldFire || isUp)
-            {
-                form?.BeginInvoke(new Action(() =>
-                {
-                    var c = _controlledMcRegularClickHookForm?.controller;
-                    if (c == null) return;
-                    if (shouldFire)
-                        c.TriggerRegularClick();
-                    // If this key is also the hold-activation key, exit CMC mode on release.
-                    if (isUp)
-                    {
-                        bool activateHold = Properties.Settings.Default.controlledMulticlickActivateHold;
-                        uint activateKey  = (uint)Properties.Settings.Default.controlledMulticlickActivateKeyCode;
-                        if (activateHold && activateKey == (uint)_controlledMcRegularClickHookKeyCode)
-                            c.ExitControlledMulticlickMode();
-                    }
-                }));
-            }
-            return (IntPtr)1; // consume both down and up
+            return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
         }
 
         // ── Controlled Multi-Click Mode: event handler ─────────────────────────────
@@ -1323,13 +1192,18 @@ namespace TTMulti.Forms
                 if (!_multiclickFakeCursorTimer.Enabled)
                     _multiclickFakeCursorTimer.Start();
                 InstallControlledMcFocusBlockHook();
-                InstallControlledMcModeKeyboardHooks(); // click/regular hooks live only while the mode is active (PERF-02)
+                // Ensure the shared keyboard dispatcher is present so the multi-click / regular-click keys work
+                // while the mode is active (it may not be installed if no activation key is configured). (PERF-02)
+                InstallControlledMcKeyboardHook();
             }
             else
             {
                 StopFakeCursors();
                 UninstallControlledMcFocusBlockHook();
-                UninstallControlledMcModeKeyboardHooks();
+                // Keep the dispatcher installed if an activation key is still configured (needed to re-enter the
+                // mode); otherwise there's nothing left for it to do, so remove it. (PERF-02)
+                if (Properties.Settings.Default.controlledMulticlickActivateKeyCode == 0)
+                    UninstallControlledMcKeyboardHook();
             }
             UpdateCaptionColor();
         }
