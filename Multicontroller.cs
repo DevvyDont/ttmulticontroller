@@ -312,7 +312,7 @@ namespace TTMulti
         {
             get
             {
-                if (_currentPairIndex > AllControllerPairsWithWindows.Count())
+                if (_currentPairIndex >= AllControllerPairsWithWindows.Count())
                 {
                     _currentPairIndex = 0;
                 }
@@ -842,7 +842,6 @@ namespace TTMulti
         private System.Windows.Forms.Timer _switchingModeTimer = null;
         private HashSet<ToontownController> _switchedControllers = new HashSet<ToontownController>();
         private HashSet<ToontownController> _markedForRemoval = new HashSet<ToontownController>();
-        private bool _hadSwapInSwitchingSession = false;
 
         /// <summary>
         /// Per-swap screen bounds (GetWindowRect) captured before HWND assignment is exchanged; applied on Alt release when enabled.
@@ -1000,8 +999,6 @@ namespace TTMulti
 
         private void ExitSwitchingMode()
         {
-            _hadSwapInSwitchingSession = false;
-
             _switchingMode = false;
             _switchingModeTimer.Stop();
             _firstSelectedController = null;
@@ -1248,7 +1245,6 @@ namespace TTMulti
             // Show switched (blue) during switching mode; color clears to normal when Alt is released
             _switchedControllers.Add(controller1);
             _switchedControllers.Add(controller2);
-            _hadSwapInSwitchingSession = true;
 
             // Update border positions after switching.  This runs on the UI thread (via the deferred hook
             // continuation or ProcessMouseInput), so no DoEvents/Sleep pump is needed; WindowWatcher ticks
@@ -1501,7 +1497,6 @@ namespace TTMulti
                         _switchingMode = true;
                         _firstSelectedController = null;
                         _secondSelectedController = null;
-                        _hadSwapInSwitchingSession = false;
                         _markedForRemoval.Clear(); // Clear removal marks when entering switching mode
                         _swapScreenGeometryOps.Clear();
                         _switchingModeTimer.Start();
@@ -1950,11 +1945,14 @@ namespace TTMulti
                     }
                 }
 
-                affectedControllers = WhereNotMinimized(affectedControllers);
-                
+                // Materialize once: WhereNotMinimized runs a GetWindowPlacement per controller, and the branches
+                // below (and the per-key loop) would otherwise re-run it for every mapped key (PERF-10).
+                var affectedList = WhereNotMinimized(affectedControllers).ToList();
+
                 if (CurrentMode == MulticontrollerMode.MirrorAll)
                 {
-                    affectedControllers.ToList().ForEach(c => c.PostMessage(msg, wParam, lParam));
+                    foreach (ToontownController c in affectedList)
+                        c.PostMessage(msg, wParam, lParam);
                 }
                 else if (CurrentMode == MulticontrollerMode.Focused)
                 {
@@ -1962,7 +1960,7 @@ namespace TTMulti
                     bool isDirectionalKey = IsDirectionalKey(keysPressed);
                     bool focusedNotMinimized = _focusedController != null && _focusedController.HasWindow
                         && Win32.GetWindowShowState(_focusedController.WindowHandle) != Win32.ShowWindowCommands.ShowMinimized;
-                    
+
                     if (isDirectionalKey && focusedNotMinimized)
                     {
                         // Directional keys only go to the focused window
@@ -1971,14 +1969,22 @@ namespace TTMulti
                     else if (!isDirectionalKey)
                     {
                         // All non-directional keys go to all windows
-                        affectedControllers.ToList().ForEach(c => c.PostMessage(msg, wParam, lParam));
+                        foreach (ToontownController c in affectedList)
+                            c.PostMessage(msg, wParam, lParam);
                     }
                     // If isDirectionalKey is true but _focusedController is null/invalid/minimized, don't send to anyone
                 }
                 else
                 {
+                    // Group/AllGroup: the physical trigger key is remapped to actualKey, so post an lParam built for
+                    // actualKey's own scan code instead of forwarding the trigger key's lParam (WIN32-05).
+                    bool isKeyUp = msg == Win32.WM.KEYUP || msg == Win32.WM.SYSKEYUP;
                     foreach (Keys actualKey in keysToPress)
-                        affectedControllers.ToList().ForEach(c => c.PostMessage(msg, (IntPtr)actualKey, lParam));
+                    {
+                        IntPtr keyLParam = Win32.MakePostedKeyLParam(actualKey, isKeyUp);
+                        foreach (ToontownController c in affectedList)
+                            c.PostMessage(msg, (IntPtr)actualKey, keyLParam);
+                    }
                 }
 
                 return true;

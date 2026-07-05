@@ -34,7 +34,6 @@ namespace TTMulti.Forms
 
         Multicontroller controller;
 
-        bool hotkeyRegistered = false;
         bool userPromptedForAdminRights = false;
 
         /// <summary>
@@ -366,6 +365,7 @@ namespace TTMulti.Forms
                 {
                     _globalHotkeysSuspended = !_globalHotkeysSuspended;
                     RefreshGlobalHotkeyRegistration();
+                    UpdateSuspendIndicator();
                 }
                 // Layout preset hotkeys (ID 10-25)
                 else if (hotkeyId >= 10 && hotkeyId <= 25)
@@ -512,6 +512,7 @@ namespace TTMulti.Forms
         private void ReloadOptions()
         {
             _globalHotkeysSuspended = false;
+            UpdateSuspendIndicator();
             // Settings just changed — re-evaluate hotkey conflicts and allow warning about them again (UX-01).
             _reportedHotkeyFailures.Clear();
             this.TopMost = Properties.Settings.Default.onTopWhenInactive;
@@ -1745,6 +1746,17 @@ namespace TTMulti.Forms
             bool locked = controller.IsModeLockEngaged;
             multiModeRadio.Enabled = !locked;
             mirrorModeRadio.Enabled = !locked;
+        }
+
+        private const string BaseWindowTitle = "Toontown Multicontroller";
+
+        /// <summary>
+        /// Reflects the global-hotkeys-suspended state in the window title so the toggle has visible feedback and
+        /// the (previously silent) reset when Options closes is announced (UX-08).
+        /// </summary>
+        private void UpdateSuspendIndicator()
+        {
+            this.Text = _globalHotkeysSuspended ? BaseWindowTitle + " — Hotkeys Suspended" : BaseWindowTitle;
         }
         
         private void Controller_ActiveChanged(object sender, EventArgs e)

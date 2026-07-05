@@ -112,6 +112,7 @@
             // WindowGroupsForm
             // 
             this.AcceptButton = this.okBtn;
+            this.CancelButton = this.okBtn; // so Esc closes the form too (UX-09)
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.ClientSize = new System.Drawing.Size(439, 510);

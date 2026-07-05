@@ -65,6 +65,11 @@ namespace TTMulti.Forms
         {
             if (groupsFlowPanel.Controls.Count > 1)
             {
+                int groupNumber = groupsFlowPanel.Controls.Count; // the last group's 1-based number
+                if (MessageBox.Show(this, $"Remove Group {groupNumber}? Its window pairs will be disconnected.",
+                        "Remove Group", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                    return;
+
                 groupsFlowPanel.Controls.RemoveAt(groupsFlowPanel.Controls.Count - 1);
 
                 addGroupBtn.Enabled = groupsFlowPanel.Controls.Count < 10;

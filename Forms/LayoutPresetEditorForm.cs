@@ -46,7 +46,8 @@ namespace TTMulti.Forms
             this.Size = new Size(700, 550);
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.StartPosition = FormStartPosition.CenterParent;
-            this.MinimumSize = new Size(600, 450);
+            // Tall enough that the OK/Cancel row (near y=459) can never be clipped below the client area (UX-05).
+            this.MinimumSize = new Size(620, 540);
 
             int y = 10;
 
@@ -130,6 +131,7 @@ namespace TTMulti.Forms
             {
                 Location = new Point(10, y),
                 Size = new Size(660, 150),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 AllowUserToAddRows = true,
                 AllowUserToDeleteRows = true,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
@@ -145,9 +147,9 @@ namespace TTMulti.Forms
             this.Controls.Add(_slotOverridesGrid);
             y += 160;
 
-            var okBtn = new Button { Text = "OK", Location = new Point(400, y), Size = new Size(85, 28), DialogResult = DialogResult.OK };
+            var okBtn = new Button { Text = "OK", Location = new Point(400, y), Size = new Size(85, 28), DialogResult = DialogResult.OK, Anchor = AnchorStyles.Bottom | AnchorStyles.Right };
             okBtn.Click += OkBtn_Click;
-            var cancelBtn = new Button { Text = "Cancel", Location = new Point(495, y), Size = new Size(85, 28), DialogResult = DialogResult.Cancel };
+            var cancelBtn = new Button { Text = "Cancel", Location = new Point(495, y), Size = new Size(85, 28), DialogResult = DialogResult.Cancel, Anchor = AnchorStyles.Bottom | AnchorStyles.Right };
             this.AcceptButton = okBtn;
             this.CancelButton = cancelBtn;
             this.Controls.Add(okBtn);

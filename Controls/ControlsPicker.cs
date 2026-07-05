@@ -193,8 +193,14 @@ namespace TTMulti.Controls
         private void RemoveBtn_Click(object sender, EventArgs e)
         {
             var position = tableLayoutPanel1.GetPositionFromControl((Control)sender);
+            int index = position.Row - 1;
 
-            RemoveMapping(position.Row - 1);
+            string title = (index >= 0 && index < keyMappings.Count) ? keyMappings[index].Title : "this key mapping";
+            if (MessageBox.Show(this, $"Remove the \"{title}\" key mapping?", "Remove Key Mapping",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+
+            RemoveMapping(index);
         }
     }
 

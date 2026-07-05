@@ -19,7 +19,6 @@ namespace TTMulti.Forms
 {
     public partial class OptionsDlg : Form
     {
-        private bool loaded = false;
 
         public OptionsDlg()
         {
@@ -294,8 +293,6 @@ namespace TTMulti.Forms
             if (tabPage2 != null) tabControl1.TabPages.Add(tabPage2);
 
             ConfigureOtherTabScrolling();
-
-            loaded = true;
         }
 
         private void OptionsDlg_Shown(object sender, EventArgs e)
@@ -558,6 +555,10 @@ namespace TTMulti.Forms
         {
             int index = _layoutPresetsListBox.SelectedIndex;
             if (index < 0) { MessageBox.Show("Select a preset to delete."); return; }
+            string presetName = _layoutPresetsListBox.Items[index]?.ToString() ?? "this preset";
+            if (MessageBox.Show(this, $"Delete layout preset \"{presetName}\"?", "Delete Preset",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
             _layoutPresetFile.Presets.RemoveAt(index);
             _layoutPresetsListBox.Items.RemoveAt(index);
         }
