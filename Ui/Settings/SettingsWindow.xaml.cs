@@ -16,6 +16,7 @@ namespace TTMulti.Ui.Settings
         private readonly SettingsSession _session = new SettingsSession();
 
         private System.Collections.Generic.Dictionary<string, System.Windows.FrameworkElement> _pages;
+        private readonly KeyBindingsEditor _keyBindings = new KeyBindingsEditor();
 
         public SettingsWindow()
         {
@@ -23,14 +24,22 @@ namespace TTMulti.Ui.Settings
             // Every page binds directly to the live settings object (matching the old dialog's data-bindings).
             DataContext = Properties.Settings.Default;
 
+            // The keybindings grid owns non-Settings state (serialized XML), committed inside the transaction.
+            _session.Register(_keyBindings);
+            keyBindingsItems.ItemsSource = _keyBindings.Rows;
+
             // Sub-panels whose controls need read-modify-write over a shared setting get their own DataContext.
             switchKeyPanel.DataContext = new SwitchKeyViewModel();
             autoFindModifiersPanel.DataContext = new ModifierFlagsViewModel(
                 () => Properties.Settings.Default.autoFindWindowsKeyModifiers,
                 v => Properties.Settings.Default.autoFindWindowsKeyModifiers = v);
+            minimizeModifiersPanel.DataContext = new ModifierFlagsViewModel(
+                () => Properties.Settings.Default.minimizeUnconnectedKeyModifiers,
+                v => Properties.Settings.Default.minimizeUnconnectedKeyModifiers = v);
 
             _pages = new System.Collections.Generic.Dictionary<string, System.Windows.FrameworkElement>
             {
+                { "Multi-Mode Keys", pageKeyBindings },
                 { "Controller Modes", pageModes },
                 { "Hotkeys", pageHotkeys },
                 { "Multi-Click", pageMultiClick },
@@ -48,6 +57,14 @@ namespace TTMulti.Ui.Settings
             string selected = (navList.SelectedItem as ListBoxItem)?.Content as string;
             foreach (var kv in _pages)
                 kv.Value.Visibility = kv.Key == selected ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void AddBinding_Click(object sender, RoutedEventArgs e) => _keyBindings.AddNew();
+
+        private void RemoveBinding_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.Tag is KeyMappingRowViewModel row)
+                _keyBindings.Remove(row);
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

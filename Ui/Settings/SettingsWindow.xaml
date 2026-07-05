@@ -64,7 +64,8 @@
                 BorderThickness="0"
                 Background="Transparent"
                 SelectionChanged="NavList_SelectionChanged">
-                <ListBoxItem Content="Controller Modes" IsSelected="True" />
+                <ListBoxItem Content="Multi-Mode Keys" IsSelected="True" />
+                <ListBoxItem Content="Controller Modes" />
                 <ListBoxItem Content="Hotkeys" />
                 <ListBoxItem Content="Multi-Click" />
                 <ListBoxItem Content="Auto-Find" />
@@ -75,8 +76,71 @@
             <!-- Page content -->
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
                 <Grid>
+                    <!-- ── Multi-Mode Keys ───────────────────────────────────────── -->
+                    <StackPanel x:Name="pageKeyBindings" Grid.IsSharedSizeScope="True">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Multi-Mode key bindings" />
+                        <TextBlock
+                            Margin="2,0,0,8"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            FontSize="12"
+                            Text="The physical key each toon presses (left / right) to perform each in-game action." />
+                        <Grid Margin="14,0,50,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="KCol" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="LCol" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="RCol" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Margin="4,0" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="In-game key" />
+                            <TextBlock Grid.Column="2" Margin="4,0" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Left toon" />
+                            <TextBlock Grid.Column="3" Margin="4,0" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Right toon" />
+                        </Grid>
+                        <ItemsControl x:Name="keyBindingsItems">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Card}" Margin="0,0,0,4" Padding="10,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="KCol" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="LCol" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="RCol" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox
+                                                Grid.Column="0"
+                                                Margin="0,0,8,0"
+                                                VerticalAlignment="Center"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                IsReadOnly="{Binding IsReadOnly}"
+                                                Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <ctrl:KeyPickerBox Grid.Column="1" Margin="2,0" KeyCode="{Binding KeyCode, Mode=TwoWay}" />
+                                            <ctrl:KeyPickerBox Grid.Column="2" Margin="2,0" KeyCode="{Binding LeftKeyCode, Mode=TwoWay}" />
+                                            <ctrl:KeyPickerBox Grid.Column="3" Margin="2,0" KeyCode="{Binding RightKeyCode, Mode=TwoWay}" />
+                                            <ui:Button
+                                                Grid.Column="4"
+                                                Margin="4,0,0,0"
+                                                Padding="6"
+                                                Click="RemoveBinding_Click"
+                                                Icon="{ui:SymbolIcon Delete24}"
+                                                Tag="{Binding}"
+                                                ToolTip="Remove this binding"
+                                                Visibility="{Binding IsEditable, Converter={StaticResource BoolToVis}}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ui:Button
+                            Margin="0,8,0,0"
+                            Click="AddBinding_Click"
+                            Content="Add binding"
+                            Icon="{ui:SymbolIcon Add24}" />
+                    </StackPanel>
+
                     <!-- ── Controller Modes ──────────────────────────────────────── -->
-                    <StackPanel x:Name="pageModes">
+                    <StackPanel x:Name="pageModes" Visibility="Collapsed">
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Group (Multi) Mode" />
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
@@ -260,6 +324,48 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Keep-Alive key" />
                                     <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding keepAliveKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Appearance" />
+                        <Border Style="{StaticResource Card}">
+                            <CheckBox Content="Tint the title bar with the current mode colour" IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" />
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Window management" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Minimize unconnected windows key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding minimizeUnconnectedKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <StackPanel x:Name="minimizeModifiersPanel" Margin="0,3" Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource RowLabel}" Margin="0,0,12,0" Text="Modifiers:" />
+                                    <CheckBox Margin="0,0,12,0" Content="Alt" IsChecked="{Binding Alt, Mode=TwoWay}" />
+                                    <CheckBox Margin="0,0,12,0" Content="Ctrl" IsChecked="{Binding Control, Mode=TwoWay}" />
+                                    <CheckBox Content="Shift" IsChecked="{Binding Shift, Mode=TwoWay}" />
+                                </StackPanel>
+                                <CheckBox Margin="0,3" Content="Minimize-unconnected is a global hotkey" IsChecked="{Binding minimizeUnconnectedHotkeyGlobal, Mode=TwoWay}" />
+                                <Grid Margin="0,10,0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mode-lock toggle key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding modeLockToggleKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Suspend global hotkeys toggle key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding suspendGlobalHotkeysToggleKeyCode, Mode=TwoWay}" />
                                 </Grid>
                             </StackPanel>
                         </Border>
