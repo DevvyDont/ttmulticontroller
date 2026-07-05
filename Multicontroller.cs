@@ -1158,14 +1158,19 @@ namespace TTMulti
             if (!Win32.GetCursorPos(out cursorPos))
                 return null;
 
-            // Find which controller's window the cursor is over
+            return GetControllerAtPoint(cursorPos);
+        }
+
+        /// <summary>Find which controller's game window contains the given screen point (null if none).</summary>
+        private ToontownController GetControllerAtPoint(Point screenPoint)
+        {
             foreach (var controller in AllControllersWithWindows)
             {
                 Point clientAreaLocation = Win32.GetWindowClientAreaLocation(controller.WindowHandle);
                 Size clientAreaSize = controller.WindowSize;
 
-                if (cursorPos.X >= clientAreaLocation.X && cursorPos.X < clientAreaLocation.X + clientAreaSize.Width &&
-                    cursorPos.Y >= clientAreaLocation.Y && cursorPos.Y < clientAreaLocation.Y + clientAreaSize.Height)
+                if (screenPoint.X >= clientAreaLocation.X && screenPoint.X < clientAreaLocation.X + clientAreaSize.Width &&
+                    screenPoint.Y >= clientAreaLocation.Y && screenPoint.Y < clientAreaLocation.Y + clientAreaSize.Height)
                 {
                     return controller;
                 }
@@ -1247,9 +1252,9 @@ namespace TTMulti
             _switchedControllers.Add(controller2);
             _hadSwapInSwitchingSession = true;
 
-            // Update border positions after switching
-            System.Windows.Forms.Application.DoEvents();
-            System.Threading.Thread.Sleep(10);
+            // Update border positions after switching.  This runs on the UI thread (via the deferred hook
+            // continuation or ProcessMouseInput), so no DoEvents/Sleep pump is needed; WindowWatcher ticks
+            // refine the positions afterward.  Pumping here re-entered the low-level hook (CORR-02 / WIN32-01).
             controller1.UpdateBorderPosition();
             controller2.UpdateBorderPosition();
         }
@@ -2477,6 +2482,48 @@ namespace TTMulti
         }
         
         /// <summary>
+        /// Handle a switching-mode selection click on the UI thread.  Deferred out of the low-level mouse hook
+        /// callback (CORR-02 / WIN32-01).  Re-checks switching mode because Alt may have been released between the
+        /// click and this continuation running.
+        /// </summary>
+        private void HandleSwitchingModeClick(Point clickPoint)
+        {
+            if (!_switchingMode)
+                return;
+
+            var controllerUnderCursor = GetControllerAtPoint(clickPoint);
+            if (controllerUnderCursor == null)
+                return;
+
+            // If clicking on a window marked for removal, unmark it first
+            if (_markedForRemoval.Contains(controllerUnderCursor))
+                _markedForRemoval.Remove(controllerUnderCursor);
+
+            if (_firstSelectedController == null)
+            {
+                // Select first window
+                _firstSelectedController = controllerUnderCursor;
+            }
+            else if (_secondSelectedController == null && controllerUnderCursor != _firstSelectedController)
+            {
+                // Select second window and switch
+                _secondSelectedController = controllerUnderCursor;
+                SwitchWindows(_firstSelectedController, _secondSelectedController);
+
+                // Reset selection state but keep switching mode active (Alt is still held)
+                _firstSelectedController = null;
+                _secondSelectedController = null;
+            }
+            else if (controllerUnderCursor == _firstSelectedController)
+            {
+                // Clicking the same window again deselects it
+                _firstSelectedController = null;
+            }
+
+            UpdateSwitchingModeDisplay();
+        }
+
+        /// <summary>
         /// Low-level mouse hook procedure - blocks clicks during switching mode
         /// </summary>
         private static IntPtr MouseHookProc(int nCode, IntPtr wParam, IntPtr lParam)
@@ -2498,61 +2545,27 @@ namespace TTMulti
                                             (msg == (int)Win32.WM.RBUTTONDOWN && switchKeyCode == 2) ||
                                             (msg == (int)Win32.WM.MBUTTONDOWN && switchKeyCode == 4);
                 
-                if (msg == (int)Win32.WM.LBUTTONDOWN || 
-                    msg == (int)Win32.WM.RBUTTONDOWN || 
+                if (msg == (int)Win32.WM.LBUTTONDOWN ||
+                    msg == (int)Win32.WM.RBUTTONDOWN ||
                     msg == (int)Win32.WM.MBUTTONDOWN)
                 {
                     // Process matching mouse button clicks for selection/switching
                     if (isMatchingMouseButton)
                     {
-                        // Get mouse position from hook structure
+                        // Capture the click point and defer all selection/switch work to the UI thread.  The
+                        // work touches WinForms and does DWM/border/window-swap operations; running it inside this
+                        // low-level mouse hook callback stalled system-wide mouse input and re-entered the hook via
+                        // DoEvents (CORR-02 / WIN32-01).  BeginInvoke posts it to run after this callback returns.
                         Win32.MSLLHOOKSTRUCT hookStruct = (Win32.MSLLHOOKSTRUCT)System.Runtime.InteropServices.Marshal.PtrToStructure(
                             lParam, typeof(Win32.MSLLHOOKSTRUCT));
-                        
-                        // Manually process the click for selection/switching
-                        // We need to call ProcessMouseInput, but we need to convert the hook message to a window message
-                        // For now, we'll handle it directly here
-                        var controllerUnderCursor = _hookInstance.GetControllerUnderCursor();
-                        if (controllerUnderCursor != null)
-                        {
-                            // If clicking on a window marked for removal, unmark it first
-                            if (_hookInstance._markedForRemoval.Contains(controllerUnderCursor))
-                            {
-                                _hookInstance._markedForRemoval.Remove(controllerUnderCursor);
-                            }
-                            
-                            if (_hookInstance._firstSelectedController == null)
-                            {
-                                // Select first window
-                                _hookInstance._firstSelectedController = controllerUnderCursor;
-                                _hookInstance.UpdateSwitchingModeDisplay();
-                            }
-                            else if (_hookInstance._secondSelectedController == null && 
-                                     controllerUnderCursor != _hookInstance._firstSelectedController)
-                            {
-                                // Select second window and switch
-                                _hookInstance._secondSelectedController = controllerUnderCursor;
-                                _hookInstance.SwitchWindows(_hookInstance._firstSelectedController, _hookInstance._secondSelectedController);
-                                
-                                // Reset selection state but keep switching mode active (Alt is still held)
-                                _hookInstance._firstSelectedController = null;
-                                _hookInstance._secondSelectedController = null;
-                                _hookInstance.UpdateSwitchingModeDisplay();
-                            }
-                            else if (controllerUnderCursor == _hookInstance._firstSelectedController)
-                            {
-                                // Clicking the same window again deselects it
-                                _hookInstance._firstSelectedController = null;
-                                _hookInstance.UpdateSwitchingModeDisplay();
-                            }
-                            else
-                            {
-                                // Just update display if we unmarked a removal
-                                _hookInstance.UpdateSwitchingModeDisplay();
-                            }
-                        }
+                        Point clickPoint = hookStruct.pt;
+
+                        Multicontroller instance = _hookInstance;
+                        var sync = WindowWatcher.Instance.SynchronizingObject;
+                        if (instance != null && sync != null)
+                            sync.BeginInvoke(new Action(() => instance.HandleSwitchingModeClick(clickPoint)), null);
                     }
-                    
+
                     // Block the click from reaching the game window
                     return (IntPtr)1; // Return non-zero to block the message
                 }
