@@ -512,6 +512,8 @@ namespace TTMulti.Forms
         private void ReloadOptions()
         {
             _globalHotkeysSuspended = false;
+            // Settings just changed — re-evaluate hotkey conflicts and allow warning about them again (UX-01).
+            _reportedHotkeyFailures.Clear();
             this.TopMost = Properties.Settings.Default.onTopWhenInactive;
             panel1.Visible = !Properties.Settings.Default.compactUI;
             controller.UpdateOptions();
@@ -562,8 +564,66 @@ namespace TTMulti.Forms
             mirrorModeRadio.Invalidate();
         }
 
+        // Global hotkey registration failures already shown to the user this settings-session, so each dead
+        // hotkey is reported at most once (cleared in ReloadOptions when settings change) — UX-01.
+        readonly System.Collections.Generic.HashSet<string> _reportedHotkeyFailures = new System.Collections.Generic.HashSet<string>();
+        // Failures accumulated during the current RegisterHotkey() pass, before they are reported.
+        readonly System.Collections.Generic.List<string> _pendingHotkeyFailures = new System.Collections.Generic.List<string>();
+
+        /// <summary>
+        /// Registers a global hotkey and records a readable failure if RegisterHotKey returns false, so a dead
+        /// hotkey (owned by another program, or assigned to two features so the second registration fails) is
+        /// surfaced instead of silently doing nothing when pressed (UX-01).
+        /// </summary>
+        private bool TryRegisterGlobalHotKey(int id, Win32.KeyModifiers modifiers, Keys key, string featureName)
+        {
+            bool ok = Win32.RegisterHotKey(this.Handle, id, modifiers, key);
+            if (!ok)
+                _pendingHotkeyFailures.Add(featureName + ": " + DescribeHotkey(modifiers, key));
+            return ok;
+        }
+
+        private static string DescribeHotkey(Win32.KeyModifiers modifiers, Keys key)
+        {
+            string prefix = "";
+            if ((modifiers & Win32.KeyModifiers.Control) != 0) prefix += "Ctrl+";
+            if ((modifiers & Win32.KeyModifiers.Alt) != 0) prefix += "Alt+";
+            if ((modifiers & Win32.KeyModifiers.Shift) != 0) prefix += "Shift+";
+            if ((modifiers & Win32.KeyModifiers.Windows) != 0) prefix += "Win+";
+            return prefix + (key & Keys.KeyCode).ToString();
+        }
+
+        /// <summary>
+        /// Shows a single consolidated warning for any global hotkeys that failed to register this pass and have
+        /// not already been reported.  Deferred via BeginInvoke so the modal dialog never opens from inside an
+        /// activation/registration event (avoids reentrancy) — UX-01.
+        /// </summary>
+        private void ReportPendingHotkeyFailures()
+        {
+            if (_pendingHotkeyFailures.Count == 0)
+                return;
+
+            var newFailures = _pendingHotkeyFailures.Where(f => _reportedHotkeyFailures.Add(f)).ToList();
+            _pendingHotkeyFailures.Clear();
+
+            if (newFailures.Count == 0 || IsDisposed || !IsHandleCreated)
+                return;
+
+            string message = "These global hotkeys could not be registered — another program may already be using "
+                + "them, or two features are assigned the same key:\n\n  "
+                + string.Join("\n  ", newFailures)
+                + "\n\nOpen Options and pick different keys to fix this.";
+
+            BeginInvoke(new Action(() =>
+            {
+                if (!IsDisposed)
+                    MessageBox.Show(this, message, "Hotkey Not Registered", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }));
+        }
+
         private void RegisterHotkey()
         {
+            _pendingHotkeyFailures.Clear();
             UninstallMulticlickMouseHook();
             Win32.UnregisterHotKey(this.Handle, 0);
             Win32.UnregisterHotKey(this.Handle, 1);
@@ -574,20 +634,23 @@ namespace TTMulti.Forms
 
             // Suspend-global toggle (ID 4) — always registered when configured, including while suspended, so the user can turn globals back on.
             if (Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode != 0)
-                Win32.RegisterHotKey(this.Handle, 4, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode);
+                TryRegisterGlobalHotKey(4, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode, "Suspend global hotkeys toggle");
 
             if (_globalHotkeysSuspended)
+            {
+                ReportPendingHotkeyFailures();
                 return;
+            }
 
             // Mode/Activate (ID 0)
             bool modeGlobal = Properties.Settings.Default.modeHotkeyGlobal;
             if (modeGlobal)
             {
-                Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
+                TryRegisterGlobalHotKey(0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode, "Mode / Activate");
             }
             else if (controller.IsActive)
             {
-                Win32.RegisterHotKey(this.Handle, 0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode);
+                TryRegisterGlobalHotKey(0, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeKeyCode, "Mode / Activate");
             }
 
             // Instant Multi-Click (ID 1) - keyboard hotkey or mouse hook (RegisterHotKey does not support mouse buttons)
@@ -606,7 +669,7 @@ namespace TTMulti.Forms
                 bool multiGlobal = Properties.Settings.Default.replicateMouseHotkeyGlobal;
                 if (multiGlobal || controller.IsActive)
                 {
-                    Win32.RegisterHotKey(this.Handle, 1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode);
+                    TryRegisterGlobalHotKey(1, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.replicateMouseKeyCode, "Instant Multi-Click");
                 }
             }
 
@@ -616,20 +679,22 @@ namespace TTMulti.Forms
                 bool zeroGlobal = Properties.Settings.Default.zeroPowerThrowHotkeyGlobal;
                 if (zeroGlobal)
                 {
-                    Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
+                    TryRegisterGlobalHotKey(2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode, "Zero Power Throw");
                 }
                 else if (controller.IsActive)
                 {
-                    Win32.RegisterHotKey(this.Handle, 2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode);
+                    TryRegisterGlobalHotKey(2, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.zeroPowerThrowKeyCode, "Zero Power Throw");
                 }
             }
 
             // Mode lock toggle (ID 3) — always registered when set so it works from game windows
             if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
-                Win32.RegisterHotKey(this.Handle, 3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode);
+                TryRegisterGlobalHotKey(3, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode, "Mode lock toggle");
             // Note: ID 7 (auto-find), ID 10-25 (layout presets) handled separately
 
             RegisterCustomModeActivationHotkeys();
+
+            ReportPendingHotkeyFailures();
         }
 
         void UnregisterCustomModeActivationHotkeys()
