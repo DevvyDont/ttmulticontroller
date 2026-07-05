@@ -80,7 +80,8 @@ namespace TTMulti.Forms
                             ? release.HtmlUrl
                             : Properties.Settings.Default.homepageUrl;
 
-                        try { Process.Start(target); }
+                        // UseShellExecute is required to launch a URL: it defaults to false on modern .NET.
+                        try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
                         catch { /* No browser / blocked; nothing useful to do. */ }
                     }
                 }
