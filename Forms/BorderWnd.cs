@@ -29,6 +29,8 @@ namespace TTMulti.Forms
             get => _borderColor;
             set
             {
+                if (_borderColor == value)
+                    return;
                 _borderColor = value;
                 this.Invalidate();
             }
@@ -44,6 +46,8 @@ namespace TTMulti.Forms
             get => _borderWidth;
             set
             {
+                if (_borderWidth == value)
+                    return;
                 _borderWidth = value;
                 this.Invalidate();
             }

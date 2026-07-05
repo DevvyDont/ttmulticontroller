@@ -78,6 +78,7 @@ namespace TTMulti
                     }
                     
                     _windowHandle = value;
+                    _captionColorApplied = false; // new window: force caption color re-apply (PERF-05 guard)
 
                     if (_windowHandle != IntPtr.Zero)
                     {
@@ -375,12 +376,26 @@ namespace TTMulti
             return Color.FromArgb(color.A, Math.Max(0, Math.Min(255, r)), Math.Max(0, Math.Min(255, g)), Math.Max(0, Math.Min(255, b)));
         }
 
+        // Guards redundant cross-process DWM caption-color updates during refresh storms (PERF-05).
+        // Reset whenever WindowHandle changes so a new window always gets its caption color re-applied.
+        private bool _captionColorApplied;
+        private Color? _appliedCaptionColor;
+
+        private void ApplyCaptionColor(Color? color)
+        {
+            if (_captionColorApplied && _appliedCaptionColor == color)
+                return;
+            Win32.SetWindowCaptionColor(WindowHandle, color);
+            _captionColorApplied = true;
+            _appliedCaptionColor = color;
+        }
+
         /// <summary>
         /// Refresh settings of the controller and its utility windows
         /// </summary>
         internal void Refresh()
         {
-            bool isActiveController = multicontroller.ActiveControllers.Contains(this);
+            bool isActiveController = multicontroller.IsActiveController(this);
 
             bool showBorderWindow = HasWindow && (
                 (multicontroller.IsActive && (isActiveController || multicontroller.ShowAllBorders || multicontroller.IsSwitchingMode))
@@ -496,7 +511,7 @@ namespace TTMulti
                     
                     // Darken the border color for caption (make it slightly darker)
                     Color captionColor = DarkenColor(borderColor, 0.75f);
-                    Win32.SetWindowCaptionColor(WindowHandle, captionColor);
+                    ApplyCaptionColor(captionColor);
 
                     // Don't clear fake cursors while trigger-release is active or in controlled MC mode
                     if (!IsTriggerReleaseCursorActive && !multicontroller.IsControlledMulticlickMode)
@@ -505,7 +520,7 @@ namespace TTMulti
                 else
                 {
                     // No border shown - reset caption color to default
-                    Win32.SetWindowCaptionColor(WindowHandle, null);
+                    ApplyCaptionColor(null);
                 }
             }
             else if (showBorderWindow)

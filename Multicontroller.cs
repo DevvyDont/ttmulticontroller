@@ -157,6 +157,28 @@ namespace TTMulti
         }
 
         /// <summary>
+        /// Whether a controller is in the active set. Mirrors <see cref="ActiveControllers"/> but avoids rebuilding
+        /// and linearly scanning the whole all-controllers set on every controller's Refresh (the O(N^2) refresh
+        /// storm): non-Group modes are O(1), Group mode only scans the active group (PERF-05).
+        /// </summary>
+        internal bool IsActiveController(ToontownController controller)
+        {
+            switch (CurrentMode)
+            {
+                case MulticontrollerMode.Group:
+                    return ControllerGroups.Count > 0 && CurrentGroupIndex < ControllerGroups.Count
+                        && ControllerGroups[CurrentGroupIndex].AllControllers.Contains(controller);
+                case MulticontrollerMode.AllGroup:
+                case MulticontrollerMode.MirrorAll:
+                case MulticontrollerMode.Focused:
+                case MulticontrollerMode.Custom:
+                    return true; // ActiveControllers == AllControllers in these modes
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
         /// Returns only controllers that have a window and are not minimized (so input can be sent to them).
         /// </summary>
         private static IEnumerable<ToontownController> WhereNotMinimized(IEnumerable<ToontownController> controllers)
