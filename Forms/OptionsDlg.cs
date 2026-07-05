@@ -163,7 +163,7 @@ namespace TTMulti.Forms
         /// Turns the homepage URL (https://github.com/owner/repo) into the "latest release" API endpoint. Returns
         /// null if the homepage isn't a recognizable GitHub repo URL, so a misconfigured setting fails quietly.
         /// </summary>
-        private static string BuildReleasesApiUrl(string homepageUrl)
+        internal static string BuildReleasesApiUrl(string homepageUrl)
         {
             if (string.IsNullOrWhiteSpace(homepageUrl))
                 return null;
@@ -180,7 +180,7 @@ namespace TTMulti.Forms
             return "https://api.github.com/repos/" + ownerRepo + "/releases/latest";
         }
 
-        private static bool IsNewerVersion(string latestTag, string current)
+        internal static bool IsNewerVersion(string latestTag, string current)
         {
             Version latest = ParseVersion(latestTag);
             Version installed = ParseVersion(current);
@@ -192,7 +192,7 @@ namespace TTMulti.Forms
             return !string.Equals((latestTag ?? "").Trim(), (current ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
-        private static Version ParseVersion(string text)
+        internal static Version ParseVersion(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return null;

@@ -268,7 +268,7 @@ namespace TTMulti
             {
                 if (c.HasWindow)
                 {
-                    IntPtr clickLParam = (IntPtr)((relativeY << 16) | (relativeX & 0xFFFF));
+                    IntPtr clickLParam = Win32.MakeMouseLParam(relativeX, relativeY);
                     c.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
                     c.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
                 }
@@ -292,7 +292,7 @@ namespace TTMulti
                 {
                     int relativeX = cursorPos.X - clientAreaLocation.X;
                     int relativeY = cursorPos.Y - clientAreaLocation.Y;
-                    IntPtr clickLParam = (IntPtr)((relativeY << 16) | (relativeX & 0xFFFF));
+                    IntPtr clickLParam = Win32.MakeMouseLParam(relativeX, relativeY);
                     c.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
                     c.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
                     break;
@@ -776,7 +776,7 @@ namespace TTMulti
                 relX = Math.Max(0, sz.Width / 2);
                 relY = Math.Max(0, sz.Height / 2);
             }
-            IntPtr clickLParam = (IntPtr)((relY << 16) | (relX & 0xFFFF));
+            IntPtr clickLParam = Win32.MakeMouseLParam(relX, relY);
             target.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
             target.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
         }
@@ -940,21 +940,31 @@ namespace TTMulti
         /// </summary>
         private bool IsDirectionalKey(Keys key)
         {
-            var keyBindings = Properties.SerializedSettings.Default.Bindings;
-            
-            // Check if this key maps to any directional movement action
-            foreach (var binding in keyBindings)
+            return IsDirectionalKey(Properties.SerializedSettings.Default.Bindings, key);
+        }
+
+        /// <summary>
+        /// Pure core of <see cref="IsDirectionalKey(Keys)"/>: true when <paramref name="key"/> is bound to a
+        /// directional movement action (Forward/Left/Backward/Right) in <paramref name="bindings"/>. Takes the
+        /// binding list as a parameter so it is independent of settings and characterization-testable.
+        /// </summary>
+        internal static bool IsDirectionalKey(IEnumerable<Controls.KeyMapping> bindings, Keys key)
+        {
+            if (bindings == null)
+                return false;
+
+            foreach (var binding in bindings)
             {
                 if (binding.Key == key)
                 {
-                    string title = binding.Title.ToLower();
+                    string title = binding.Title?.ToLower();
                     if (title == "forward" || title == "left" || title == "backward" || title == "right")
                     {
                         return true;
                     }
                 }
             }
-            
+
             return false;
         }
 

@@ -27,6 +27,9 @@ jobs:
       - name: Build
         run: dotnet build TTMulti.csproj -c Release --no-restore /v:m /nologo
 
+      - name: Test
+        run: dotnet test tests/TTMulti.Tests/TTMulti.Tests.csproj -c Release /v:m /nologo
+
       # Smoke-publish the portable single-file exe so any single-file/self-contained regression
       # (trimming, RID, resource loading) is caught on every push/PR, not only at release time.
       - name: Publish single-file
