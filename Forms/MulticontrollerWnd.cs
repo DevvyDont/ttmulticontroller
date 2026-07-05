@@ -317,7 +317,7 @@ namespace TTMulti.Forms
                 case Win32.WM.HOTKEY:
                     // Let these hotkeys pass through to WndProc (see WndProc). Others are handled via ProcessInput.
                     // Custom mode activation uses IDs CustomModeActivationHotkeyIdStart..End — must not go through ProcessInput alone.
-                    int hotkeyId = m.WParam.ToInt32();
+                    int hotkeyId = (int)m.WParam.ToInt64();
                     if (hotkeyId == 3 || hotkeyId == 4 || hotkeyId == 7 || hotkeyId == 9 || (hotkeyId >= 10 && hotkeyId <= 25)
                         || (hotkeyId >= CustomModeActivationHotkeyIdStart && hotkeyId <= CustomModeActivationHotkeyIdEnd))
                     {
@@ -340,7 +340,7 @@ namespace TTMulti.Forms
         {
             if (m.Msg == (int)Win32.WM.HOTKEY)
             {
-                int hotkeyId = m.WParam.ToInt32();
+                int hotkeyId = (int)m.WParam.ToInt64();
                 
                 // Check if this is auto-find windows hotkey (ID 7)
                 if (hotkeyId == 7)
@@ -887,7 +887,7 @@ namespace TTMulti.Forms
         {
             if (nCode < 0)
                 return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
-            int msg = wParam.ToInt32();
+            int msg = (int)wParam.ToInt64();
             // WM_KEYDOWN = 0x100, WM_SYSKEYDOWN = 0x104
             if (msg != 0x100 && msg != 0x104)
                 return Win32.CallNextHookEx(_minimizeUnconnectedKeyboardHookHandle, nCode, wParam, lParam);
@@ -1012,7 +1012,7 @@ namespace TTMulti.Forms
             if (_controlledMcActivateHookForm == null || _controlledMcActivateHookKeyCode == 0)
                 return Win32.CallNextHookEx(_controlledMcActivateHookHandle, nCode, wParam, lParam);
 
-            int msg = wParam.ToInt32();
+            int msg = (int)wParam.ToInt64();
             bool isDown = msg == 0x100 || msg == 0x104;
             bool isUp   = msg == 0x101 || msg == 0x105;
             if (!isDown && !isUp)
@@ -1143,7 +1143,7 @@ namespace TTMulti.Forms
             if (_controlledMcClickHookForm.controller?.IsControlledMulticlickMode != true)
                 return Win32.CallNextHookEx(_controlledMcClickHookHandle, nCode, wParam, lParam);
 
-            int msg = wParam.ToInt32();
+            int msg = (int)wParam.ToInt64();
             bool isDown = msg == 0x100 || msg == 0x104;
             bool isUp   = msg == 0x101 || msg == 0x105;
             if (!isDown && !isUp)
@@ -1216,7 +1216,7 @@ namespace TTMulti.Forms
             if (_controlledMcRegularClickHookForm.controller?.IsControlledMulticlickMode != true)
                 return Win32.CallNextHookEx(_controlledMcRegularClickHookHandle, nCode, wParam, lParam);
 
-            int msg = wParam.ToInt32();
+            int msg = (int)wParam.ToInt64();
             bool isDown = msg == 0x100 || msg == 0x104;
             bool isUp   = msg == 0x101 || msg == 0x105;
             if (!isDown && !isUp)
@@ -1304,7 +1304,7 @@ namespace TTMulti.Forms
             if (form?.controller?.IsControlledMulticlickMode != true)
                 return Win32.CallNextHookEx(_controlledMcFocusBlockHookHandle, nCode, wParam, lParam);
 
-            int msg = wParam.ToInt32();
+            int msg = (int)wParam.ToInt64();
             bool isButtonDown =
                 msg == (int)Win32.WM.LBUTTONDOWN ||
                 msg == (int)Win32.WM.RBUTTONDOWN ||
@@ -1451,7 +1451,7 @@ namespace TTMulti.Forms
             if (_multiclickMouseHookForm == null || _multiclickMouseHookButton < 0)
                 return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
 
-            int msg = wParam.ToInt32();
+            int msg = (int)wParam.ToInt64();
 
             // Determine if this message is a DOWN or UP for the configured button
             bool isDown = false, isUp = false;

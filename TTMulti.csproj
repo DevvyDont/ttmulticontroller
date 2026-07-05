@@ -5,7 +5,10 @@
     <TargetFramework>net481</TargetFramework>
     <RootNamespace>TTMulti</RootNamespace>
     <AssemblyName>ToontownMulticontroller</AssemblyName>
-    <PlatformTarget>x86</PlatformTarget>
+    <!-- AnyCPU (runs 64-bit on a 64-bit OS). The forced x86 was unjustified; all interop is IntPtr-based and
+         PostMessage/LL-hooks work cross-bitness. Revert to x86 here if a real-game issue ever appears (BUILD-07). -->
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
     <!-- Keep the hand-written Properties/AssemblyInfo.cs instead of SDK auto-generated attributes. -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ApplicationIcon>Resources\icon.ico</ApplicationIcon>

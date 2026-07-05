@@ -1335,7 +1335,7 @@ namespace TTMulti
                     break;
                 case Win32.WM.HOTKEY:
                     isKeyboardInput = true;
-                    keysPressed = (Keys)(lParam.ToInt32() >> 16);
+                    keysPressed = (Keys)(int)(lParam.ToInt64() >> 16);
                     break;
                 case Win32.WM.MOUSEMOVE:
                 case Win32.WM.LBUTTONDOWN:
@@ -1902,7 +1902,7 @@ namespace TTMulti
 
             Keys keysPressed = (Keys)wParam;
             if (msg == Win32.WM.HOTKEY)
-                keysPressed = (Keys)(lParam.ToInt32() >> 16);
+                keysPressed = (Keys)(int)(lParam.ToInt64() >> 16);
 
             if (CurrentMode == MulticontrollerMode.Custom && IsActive)
             {
@@ -2562,7 +2562,7 @@ namespace TTMulti
             // Check if switching mode is active
             if (_hookInstance != null && _hookInstance._switchingMode)
             {
-                int msg = wParam.ToInt32();
+                int msg = (int)wParam.ToInt64();
                 
                 // Block mouse clicks (left, right, middle button down)
                 int switchKeyCode = Properties.Settings.Default.switchingModeSwitchKeyCode;

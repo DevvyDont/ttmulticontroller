@@ -102,7 +102,7 @@ namespace TTMulti
         {
             Keys keysPressed = (Keys)wParam;
             if (msg == Win32.WM.HOTKEY)
-                keysPressed = (Keys)(lParam.ToInt32() >> 16);
+                keysPressed = (Keys)(int)(lParam.ToInt64() >> 16);
 
             bool isDown = msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY || msg == Win32.WM.SYSKEYDOWN;
             bool isUp = msg == Win32.WM.KEYUP || msg == Win32.WM.SYSKEYUP;

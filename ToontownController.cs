@@ -724,7 +724,7 @@ namespace TTMulti
                 case Win32.WM.KEYUP:
                 case Win32.WM.SYSKEYDOWN:
                 case Win32.WM.SYSKEYUP:
-                    int vk = wParam.ToInt32() & 0xFFFF;
+                    int vk = (int)wParam.ToInt64() & 0xFFFF;
                     return vk == (int)Keys.LWin || vk == (int)Keys.RWin;
                 default:
                     return false;

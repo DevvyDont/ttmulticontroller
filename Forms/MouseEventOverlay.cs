@@ -68,9 +68,11 @@ namespace TTMulti.Forms
                     MouseEvent?.Invoke(this, m);
                     break;
                 case Win32.WM.MOUSEMOVE:
-                    // Optimization: check that the mouse has actually moved before forwarding event
-                    short x = (short)m.LParam,
-                        y = (short)(m.LParam.ToInt32() >> 16);
+                    // Optimization: check that the mouse has actually moved before forwarding event.
+                    // Extract via ToInt64 so it is correct/overflow-safe under x64 as well as x86.
+                    long lp = m.LParam.ToInt64();
+                    short x = (short)(lp & 0xFFFF),
+                        y = (short)((lp >> 16) & 0xFFFF);
 
                     if (x != lastX || y != lastY)
                     {
