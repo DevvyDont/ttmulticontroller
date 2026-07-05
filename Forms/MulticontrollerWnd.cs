@@ -863,6 +863,12 @@ namespace TTMulti.Forms
         private void RegisterLayoutPresetHotkeys()
         {
             if (_globalHotkeysSuspended || !controller.IsActive) return;
+            // Idempotent: unregister our preset IDs before re-registering so a second call while they're already
+            // registered (e.g. Activated registers them, then Shown/auto-find calls this again) doesn't fail with
+            // ERROR_HOTKEY_ALREADY_REGISTERED and raise a spurious "not registered" warning. A genuine conflict with
+            // another program still fails here (UnregisterHotKey only frees THIS window's registration), so real
+            // conflicts are still surfaced. Mirrors how RegisterHotkey() self-unregisters IDs 0-4.
+            UnregisterLayoutPresetHotkeys();
             var file = LayoutPresetStorage.LoadCached();
             if (file?.Presets == null) return;
             for (int i = 0; i < file.Presets.Count && i <= LayoutPresetHotkeyIdEnd - LayoutPresetHotkeyIdStart; i++)
