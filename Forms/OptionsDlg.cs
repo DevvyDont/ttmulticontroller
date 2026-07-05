@@ -11,6 +11,7 @@ using System.Runtime.Serialization.Json;
 using System.Threading.Tasks;
 using TTMulti.Controls;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Diagnostics;
 using System.Reflection;
@@ -98,6 +99,17 @@ namespace TTMulti.Forms
             }
         }
 
+        // A single shared HttpClient (the recommended pattern — one instance avoids socket exhaustion). The
+        // User-Agent is required by the GitHub API and is the same for every request, so it lives here.
+        private static readonly System.Net.Http.HttpClient UpdateHttpClient = CreateUpdateHttpClient();
+
+        private static System.Net.Http.HttpClient CreateUpdateHttpClient()
+        {
+            var client = new System.Net.Http.HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("ToontownMulticontroller");
+            return client;
+        }
+
         private static async Task<GitHubRelease> FetchLatestReleaseAsync()
         {
             string apiUrl = BuildReleasesApiUrl(Properties.Settings.Default.homepageUrl);
@@ -106,35 +118,24 @@ namespace TTMulti.Forms
 
             try
             {
-                // ServicePointManager/WebRequest/HttpWebRequest are obsolete (SYSLIB0014) on modern .NET but still
-                // functional; the HttpClient rewrite lands in a follow-up (fix/update-check-httpclient) to keep this
-                // retarget mechanical.
-#pragma warning disable SYSLIB0014
-                // GitHub's API requires TLS 1.2+ and a User-Agent; enable Tls12 without clobbering existing flags.
-                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(apiUrl);
-#pragma warning restore SYSLIB0014
-                request.UserAgent = "ToontownMulticontroller";
-                request.Accept = "application/vnd.github+json";
-
-                Task<WebResponse> responseTask = request.GetResponseAsync();
-                if (await Task.WhenAny(responseTask, Task.Delay(8000)) != responseTask)
+                // GitHub's API requires a User-Agent and returns JSON; an 8s timeout keeps a hung request from
+                // blocking the check. HttpClient handles TLS 1.2+ itself, so no ServicePointManager tweak is needed.
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8)))
+                using (var request = new HttpRequestMessage(HttpMethod.Get, apiUrl))
                 {
-                    request.Abort();
-                    return null;
-                }
-
-                using (HttpWebResponse response = (HttpWebResponse)await responseTask)
-                using (StreamReader sr = new StreamReader(response.GetResponseStream()))
-                {
-                    string json = await sr.ReadToEndAsync();
-                    return ParseRelease(json);
+                    request.Headers.Accept.ParseAdd("application/vnd.github+json");
+                    using (var response = await UpdateHttpClient.SendAsync(request, cts.Token))
+                    {
+                        if (!response.IsSuccessStatusCode)
+                            return null;
+                        string json = await response.Content.ReadAsStringAsync();
+                        return ParseRelease(json);
+                    }
                 }
             }
             catch
             {
-                // No network, 404, DNS failure, aborted-on-timeout, malformed response — treat as "can't check".
+                // No network, 404, DNS failure, timeout (TaskCanceledException), malformed response — "can't check".
                 return null;
             }
         }
