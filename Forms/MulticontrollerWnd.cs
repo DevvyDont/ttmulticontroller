@@ -78,6 +78,16 @@ namespace TTMulti.Forms
         // Timer that updates fake-cursor positions on all game windows while in Controlled Multi-Click Mode
         private System.Windows.Forms.Timer _multiclickFakeCursorTimer;
 
+        // Watchdog for low-level hooks. Windows silently unhooks a WH_*_LL hook whose callback exceeds
+        // LowLevelHooksTimeout, with no notification, leaving the feature dead mid-session. This timer periodically
+        // re-arms the hooks we believe are installed. It runs on the UI thread (a WinForms Timer), which is the
+        // thread the hooks are installed on and must be re-installed on.
+        private System.Windows.Forms.Timer _hookWatchdogTimer;
+        private const int HookWatchdogIntervalMs = 15000;
+        // Last system-wide input tick seen by the watchdog. A hook can only be dropped when it is invoked, i.e.
+        // when input occurs, so we skip re-arming whenever no input happened since the previous tick.
+        private uint _lastWatchdogInputTick;
+
         internal MulticontrollerWnd()
         {
             InitializeComponent();
@@ -670,6 +680,57 @@ namespace TTMulti.Forms
         {
             _pendingHotkeyFailures.Add(description);
             ReportPendingHotkeyFailures();
+        }
+
+        /// <summary>
+        /// Watchdog tick: re-arm the low-level hooks we believe are installed, but only when input has occurred
+        /// since the previous tick. A WH_*_LL hook is only ever silently dropped by Windows at the moment its
+        /// callback runs and exceeds LowLevelHooksTimeout, so with no input there is nothing to heal — skipping
+        /// keeps healthy hooks from being needlessly torn down and reinstalled while the machine is idle.
+        /// </summary>
+        private void HookWatchdog_Tick(object sender, EventArgs e)
+        {
+            uint inputTick = GetLastSystemInputTick();
+            if (inputTick == _lastWatchdogInputTick)
+                return;
+            _lastWatchdogInputTick = inputTick;
+            RearmInstalledLowLevelHooks();
+        }
+
+        private static uint GetLastSystemInputTick()
+        {
+            var lii = new Win32.LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf(typeof(Win32.LASTINPUTINFO)) };
+            return Win32.GetLastInputInfo(ref lii) ? lii.dwTime : 0;
+        }
+
+        /// <summary>
+        /// Re-arms every low-level hook whose handle is non-zero (i.e. that we believe is installed). Unhook then
+        /// reinstall: a no-op-then-fresh-install if Windows already dropped it, an atomic swap if it is healthy.
+        /// The sub-millisecond gap between unhook and reinstall is why this only runs at a coarse interval.
+        /// </summary>
+        private void RearmInstalledLowLevelHooks()
+        {
+            RearmLowLevelHook(ref _minimizeUnconnectedKeyboardHookHandle, _minimizeUnconnectedKeyboardHookProc, Win32.WH_KEYBOARD_LL, "Minimize unconnected windows key");
+            RearmLowLevelHook(ref _multiclickMouseHookHandle, _multiclickMouseHookProc, Win32.WH_MOUSE_LL, "Instant Multi-Click mouse button");
+            RearmLowLevelHook(ref _controlledMcKeyboardHookHandle, _controlledMcKeyboardHookProc, Win32.WH_KEYBOARD_LL, "Controlled Multi-Click keys");
+            RearmLowLevelHook(ref _controlledMcFocusBlockHookHandle, _controlledMcFocusBlockHookProc, Win32.WH_MOUSE_LL, "Controlled Multi-Click focus block");
+            controller?.RearmSwitchingMouseHookIfInstalled();
+        }
+
+        private void RearmLowLevelHook(ref IntPtr handle, Win32.HookProc proc, int hookType, string featureName)
+        {
+            if (handle == IntPtr.Zero || proc == null)
+                return;
+            Win32.UnhookWindowsHookEx(handle);
+            handle = Win32.SetWindowsHookEx(hookType, proc, Win32.GetModuleHandle(null), 0);
+            System.Diagnostics.Trace.WriteLine("Hook watchdog: re-armed " + featureName + " (handle=" + handle + ")");
+            if (handle == IntPtr.Zero)
+            {
+                int err = Marshal.GetLastWin32Error();
+                System.Diagnostics.Trace.WriteLine("Hook watchdog: re-arm FAILED for " + featureName + " (Win32 error " + err + ")");
+                _pendingHotkeyFailures.Add(featureName + " (input hook re-arm, Win32 error " + err + ")");
+                ReportPendingHotkeyFailures();
+            }
         }
 
         /// <summary>
@@ -1487,6 +1548,10 @@ namespace TTMulti.Forms
             _multiclickFakeCursorTimer = new System.Windows.Forms.Timer { Interval = 16 };
             _multiclickFakeCursorTimer.Tick += MulticlickFakeCursorTimer_Tick;
 
+            _hookWatchdogTimer = new System.Windows.Forms.Timer { Interval = HookWatchdogIntervalMs };
+            _hookWatchdogTimer.Tick += HookWatchdog_Tick;
+            _hookWatchdogTimer.Start();
+
             controller.ControlledMulticlickModeChanged += Controller_ControlledMulticlickModeChanged;
             controller.ModeChanged += Controller_ModeChanged;
             controller.GroupsChanged += Controller_GroupsChanged;
@@ -1615,6 +1680,7 @@ namespace TTMulti.Forms
             ShutdownAllInputCapture();
 
             _multiclickFakeCursorTimer?.Dispose();
+            _hookWatchdogTimer?.Dispose();
 
             SaveWindowPosition();
         }
@@ -1625,6 +1691,9 @@ namespace TTMulti.Forms
         /// </summary>
         private void ShutdownAllInputCapture()
         {
+            // Stop the watchdog first so it can't re-arm a hook we are about to uninstall during teardown.
+            _hookWatchdogTimer?.Stop();
+
             try
             {
                 Application.RemoveMessageFilter(this);
