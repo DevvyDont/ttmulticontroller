@@ -43,11 +43,16 @@ namespace TTMulti
             // Force save once at startup so user.config is created next to the exe when missing (portable settings).
             Properties.Settings.Default.Save();
 
+            // Dual-shell period (R6–R9): the new WPF UI runs behind --newui; the WinForms UI stays the
+            // default. Computed before the elevation relaunch so the flag can be forwarded and the shell
+            // choice survives being restarted as administrator.
+            bool useNewUi = args.Any(a => string.Equals(a, "--newui", StringComparison.OrdinalIgnoreCase));
+
             if (Properties.Settings.Default.runAsAdministrator)
             {
                 if (args.Length == 0 || args[0] != "--runasadmin")
                 {
-                    if (TryRunAsAdmin())
+                    if (TryRunAsAdmin(useNewUi))
                     {
                         return;
                     }
@@ -56,11 +61,40 @@ namespace TTMulti
 
             WarnIfElevatedFromUserWritableLocation();
 
+            if (useNewUi)
+                RunWpfShell();
+            else
+                RunWinFormsShell();
+        }
+
+        private static void RunWinFormsShell()
+        {
             MulticontrollerWnd mainWindow = new MulticontrollerWnd();
 
             WindowWatcher.Instance.SynchronizingObject = mainWindow;
 
             Application.Run(mainWindow);
+        }
+
+        private static void RunWpfShell()
+        {
+            var app = new System.Windows.Application
+            {
+                ShutdownMode = System.Windows.ShutdownMode.OnMainWindowClose
+            };
+
+            // WPF-UI Fluent 2 resources, merged in code because there is no App.xaml — Program.Main stays
+            // the entry point (elevation relaunch + portable-settings startup live here).
+            app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ThemesDictionary());
+            app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ControlsDictionary());
+
+            // The engine marshals onto the UI thread through this adapter (the WinForms shell passes the main
+            // form directly). Assign it before any controller activity, matching the WinForms path.
+            WindowWatcher.Instance.SynchronizingObject =
+                new Threading.DispatcherSynchronizeInvoke(System.Windows.Threading.Dispatcher.CurrentDispatcher);
+
+            var mainWindow = new Ui.MainWindow();
+            app.Run(mainWindow);
         }
 
         /// <summary>
@@ -133,10 +167,11 @@ namespace TTMulti
             return false;
         }
 
-        internal static bool TryRunAsAdmin()
+        internal static bool TryRunAsAdmin(bool includeNewUi = false)
         {
             ProcessStartInfo processInfo = new ProcessStartInfo(AppPaths.ExecutablePath);
-            processInfo.Arguments = "--runasadmin";
+            // Preserve the active shell across the elevated relaunch (dual-shell period).
+            processInfo.Arguments = includeNewUi ? "--runasadmin --newui" : "--runasadmin";
             processInfo.UseShellExecute = true;
             processInfo.Verb = "runas";
 

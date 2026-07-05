@@ -1,0 +1,61 @@
+<ui:FluentWindow
+    x:Class="TTMulti.Ui.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="Toontown Multicontroller"
+    Width="320"
+    Height="200"
+    MinWidth="300"
+    MinHeight="180"
+    ResizeMode="CanMinimize"
+    WindowStartupLocation="Manual"
+    ExtendsContentIntoTitleBar="True"
+    WindowBackdropType="Mica">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar
+            Grid.Row="0"
+            Title="Toontown Multicontroller"
+            ShowMaximize="False" />
+
+        <StackPanel
+            Grid.Row="1"
+            Margin="16,8,16,16"
+            VerticalAlignment="Center">
+            <TextBlock
+                x:Name="statusText"
+                HorizontalAlignment="Center"
+                FontSize="14"
+                FontWeight="SemiBold"
+                Text="WPF shell (R6)" />
+            <TextBlock
+                x:Name="detailText"
+                Margin="0,2,0,0"
+                HorizontalAlignment="Center"
+                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                FontSize="12"
+                Text="Input engine active" />
+
+            <StackPanel
+                Orientation="Horizontal"
+                HorizontalAlignment="Center"
+                Margin="0,16,0,0">
+                <ui:Button
+                    x:Name="groupsButton"
+                    Content="Window Groups"
+                    Margin="0,0,8,0"
+                    Click="GroupsButton_Click" />
+                <ui:Button
+                    x:Name="optionsButton"
+                    Appearance="Primary"
+                    Content="Options"
+                    Click="OptionsButton_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>
