@@ -186,24 +186,7 @@ namespace TTMulti
         private static readonly DataContractJsonSerializer Serializer = new DataContractJsonSerializer(typeof(LayoutPresetFile),
             new DataContractJsonSerializerSettings { UseSimpleDictionaryFormat = true });
 
-        private static string GetFilePath()
-        {
-            try
-            {
-                string path = Assembly.GetExecutingAssembly().Location;
-                if (!string.IsNullOrEmpty(path))
-                    return Path.Combine(Path.GetDirectoryName(path), FileName);
-            }
-            catch { }
-            try
-            {
-                string path = System.Windows.Forms.Application.ExecutablePath;
-                if (!string.IsNullOrEmpty(path))
-                    return Path.Combine(Path.GetDirectoryName(path), FileName);
-            }
-            catch { }
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? ".", FileName);
-        }
+        private static string GetFilePath() => AppPaths.InExeDirectory(FileName);
 
         public static LayoutPresetFile Load()
         {

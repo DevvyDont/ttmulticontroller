@@ -209,24 +209,7 @@ namespace TTMulti
         private static readonly DataContractJsonSerializer Serializer = new DataContractJsonSerializer(typeof(CustomModeFile),
             new DataContractJsonSerializerSettings { UseSimpleDictionaryFormat = true });
 
-        private static string GetFilePath()
-        {
-            try
-            {
-                string path = Assembly.GetExecutingAssembly().Location;
-                if (!string.IsNullOrEmpty(path))
-                    return Path.Combine(Path.GetDirectoryName(path), FileName);
-            }
-            catch { }
-            try
-            {
-                string path = Application.ExecutablePath;
-                if (!string.IsNullOrEmpty(path))
-                    return Path.Combine(Path.GetDirectoryName(path), FileName);
-            }
-            catch { }
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? ".", FileName);
-        }
+        private static string GetFilePath() => AppPaths.InExeDirectory(FileName);
 
         // Cache for LoadCached(), keyed by file path + last-write time.  Read-only hot paths share this instance;
         // editors call Load() for their own mutable copy. PERF-03 / CORR-08.
