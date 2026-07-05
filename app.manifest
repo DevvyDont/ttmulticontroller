@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- STAGED groundwork (BUILD-03). This manifest is authored and tracked in the project but is NOT yet embedded:
-     the current ClickOnce + WPF (Microsoft.WinFx.targets) build pipeline overrides the native Win32 manifest, so
-     setting <ApplicationManifest> here does not embed it. Wiring + embedding it is part of the SDK-style / ClickOnce
-     modernization (Stage 1). Until then, DPI awareness comes from the SetProcessDPIAware() call in Program.cs. -->
+<!-- Embedded as the native Win32 manifest by the SDK-style build (via <ApplicationManifest> in TTMulti.csproj).
+     Declares system-DPI awareness, supportedOS, and longPathAware. Per-Monitor V2 is staged below but not enabled
+     (still gated on mixed-DPI testing — BUILD-03 / WIN32-06). -->
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <assemblyIdentity version="1.0.0.0" name="ToontownMulticontroller.app" />
 

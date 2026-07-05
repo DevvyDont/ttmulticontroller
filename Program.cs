@@ -19,13 +19,8 @@ namespace TTMulti
         [STAThread]
         static void Main(string[] args)
         {
-            // System-DPI awareness. app.manifest carries the intended DPI/supportedOS/longPath declarations, but
-            // the current ClickOnce + WPF (Microsoft.WinFx.targets) build pipeline does not embed a custom Win32
-            // manifest, so this runtime call remains the active DPI mechanism. Once the build is modernized to
-            // embed app.manifest (and Per-Monitor V2 is enabled there), remove this. (BUILD-03)
-            if (Environment.OSVersion.Version.Major >= 6)
-                SetProcessDPIAware();
-
+            // DPI awareness (system-DPI) is now declared in app.manifest, which the SDK build embeds as the native
+            // Win32 manifest — so it applies before the first window is created. (BUILD-03)
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
@@ -76,8 +71,5 @@ namespace TTMulti
                 return false;
             }
         }
-
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        private static extern bool SetProcessDPIAware();
     }
 }

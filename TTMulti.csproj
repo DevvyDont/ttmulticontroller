@@ -1,323 +1,69 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{6420AEA4-282A-4ACF-8355-C97210826C60}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <TargetFramework>net481</TargetFramework>
     <RootNamespace>TTMulti</RootNamespace>
     <AssemblyName>ToontownMulticontroller</AssemblyName>
-    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <IsWebBootstrapper>true</IsWebBootstrapper>
-    <TargetFrameworkProfile />
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Web</InstallFrom>
-    <UpdateEnabled>true</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <InstallUrl>https://danfresneda.com/tt/multicontroller/</InstallUrl>
-    <UpdateUrl>https://danfresneda.com/tt/multicontroller/</UpdateUrl>
-    <SupportUrl>https://danfresneda.com/tt/multicontroller</SupportUrl>
-    <TargetCulture>en-US</TargetCulture>
-    <ProductName>Toontown Multicontroller</ProductName>
-    <PublisherName>DF Software</PublisherName>
-    <MinimumRequiredVersion>1.0.1.0</MinimumRequiredVersion>
-    <WebPage>publish.html</WebPage>
-    <OpenBrowserOnPublish>false</OpenBrowserOnPublish>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.2.1.0</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <PublishWizardCompleted>true</PublishWizardCompleted>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>x86</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignManifests>false</SignManifests>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ManifestCertificateThumbprint>78F92D615A816121BBCE499C234115707909D0ED</ManifestCertificateThumbprint>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ManifestKeyFile>TTMulti_TemporaryKey.pfx</ManifestKeyFile>
-  </PropertyGroup>
-  <PropertyGroup>
-    <GenerateManifests>true</GenerateManifests>
-  </PropertyGroup>
-  <PropertyGroup>
+    <!-- Keep the hand-written Properties/AssemblyInfo.cs instead of SDK auto-generated attributes. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
+    <!-- With the WPF (WinFx) and ClickOnce manifest pipelines gone, this now embeds as the native Win32 manifest. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <!-- Keep the flat bin\Debug\ output layout (not bin\Debug\net481\) that the old project and tooling expect. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- WinForms .resx are named from their adjacent .cs class (matches the old DependentUpon behavior). -->
+    <EmbeddedResourceUseDependentUponConvention>true</EmbeddedResourceUseDependentUponConvention>
+    <!-- The resx files embed binary resources (cursors/bitmaps via ResXFileRef). The modern build (dotnet/newer
+         msbuild) requires the preserialized-resource path + System.Resources.Extensions to read them. -->
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Design-Time Debug|AnyCPU'">
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignAssembly>false</SignAssembly>
-  </PropertyGroup>
+
+  <!-- Framework assemblies actually used. The unused WPF stack (WindowsBase, PresentationCore,
+       PresentationFramework, WindowsFormsIntegration, System.Xaml) is intentionally dropped. -->
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
-    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Xaml" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="WindowsBase" />
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="WindowsFormsIntegration" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="Colors.cs" />
-    <Compile Include="ControllerGroup.cs" />
-    <Compile Include="ControllerPair.cs" />
-    <Compile Include="LayoutPreset.cs" />
-    <Compile Include="CustomMode.cs" />
-    <Compile Include="CustomModeInputRouter.cs" />
-    <Compile Include="Events\WindowClientAreaLocationChangedEventArgs.cs" />
-    <Compile Include="Events\WindowClientAreaSizeChangedEventArgs.cs" />
-    <Compile Include="Events\WindowClosedEventArgs.cs" />
-    <Compile Include="Events\WindowShowStateChangedEventArgs.cs" />
-    <Compile Include="Properties\Settings.Designer.cs">
+    <PackageReference Include="System.Resources.Extensions" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Settings + Resources: keep the designer generators and dependency metadata (files themselves are globbed). -->
+  <ItemGroup>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Update="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="WindowWatcher.cs" />
-    <Compile Include="Controls\ControlsPicker.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\ControlsPicker.Designer.cs">
-      <DependentUpon>ControlsPicker.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\ControllerPairView.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\ControllerPairView.Designer.cs">
-      <DependentUpon>ControllerPairView.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\ControllerGroupView.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\ControllerGroupView.Designer.cs">
-      <DependentUpon>ControllerGroupView.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Events\WindowActivatedEventArgs.cs" />
-    <Compile Include="Forms\AboutWnd.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\AboutWnd.Designer.cs">
-      <DependentUpon>AboutWnd.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\AddKeyMappingDlg.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\AddKeyMappingDlg.Designer.cs">
-      <DependentUpon>AddKeyMappingDlg.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\BorderWnd.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\BorderWnd.Designer.cs">
-      <DependentUpon>BorderWnd.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\KeyPicker.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\KeyPicker.Designer.cs">
-      <DependentUpon>KeyPicker.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\MouseEventOverlay.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\MouseEventOverlay.Designer.cs">
-      <DependentUpon>MouseEventOverlay.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\MulticontrollerWnd.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\MulticontrollerWnd.Designer.cs">
-      <DependentUpon>MulticontrollerWnd.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Multicontroller.cs" />
-    <Compile Include="Forms\OptionsDlg.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\LayoutPresetEditorForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\LayoutOverlayForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\MonitorPickerForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\OptionsDlg.Designer.cs">
-      <DependentUpon>OptionsDlg.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\OptionsDlg.CustomModes.cs">
-      <DependentUpon>OptionsDlg.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\OptionsDlg.CustomModeColors.cs">
-      <DependentUpon>OptionsDlg.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Controls\SelectWindowCrosshair.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\SelectWindowCrosshair.Designer.cs">
-      <DependentUpon>SelectWindowCrosshair.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\WindowGroupsForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\WindowGroupsForm.Designer.cs">
-      <DependentUpon>WindowGroupsForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Properties\Resources.Designer.cs">
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Update="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Properties\SerializedSettings.cs" />
-    <Compile Include="Properties\PortableSettingsProvider.cs" />
-    <Compile Include="Properties\Settings.Portable.cs" />
-    <Compile Include="ToontownController.cs" />
-    <Compile Include="Win32.cs" />
-    <EmbeddedResource Include="Controls\ControlsPicker.resx">
-      <DependentUpon>ControlsPicker.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\ControllerPairView.resx">
-      <DependentUpon>ControllerPairView.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\ControllerGroupView.resx">
-      <DependentUpon>ControllerGroupView.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\AboutWnd.resx">
-      <DependentUpon>AboutWnd.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\AddKeyMappingDlg.resx">
-      <DependentUpon>AddKeyMappingDlg.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\BorderWnd.resx">
-      <DependentUpon>BorderWnd.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\KeyPicker.resx">
-      <DependentUpon>KeyPicker.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\MouseEventOverlay.resx">
-      <DependentUpon>MouseEventOverlay.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\MulticontrollerWnd.resx">
-      <DependentUpon>MulticontrollerWnd.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\OptionsDlg.resx">
-      <DependentUpon>OptionsDlg.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <SubType>Designer</SubType>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\SelectWindowCrosshair.resx">
-      <DependentUpon>SelectWindowCrosshair.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\WindowGroupsForm.resx">
-      <DependentUpon>WindowGroupsForm.cs</DependentUpon>
-    </EmbeddedResource>
-    <None Include="app.config" />
-    <None Include="app.manifest" />
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <SubType>Designer</SubType>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <None Include="TTMulti_TemporaryKey.pfx" />
   </ItemGroup>
-  <ItemGroup>
-    <BootstrapperPackage Include=".NETFramework,Version=v4.0">
-      <Visible>False</Visible>
-      <ProductName>Microsoft .NET Framework 4 %28x86 and x64%29</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Windows.Installer.4.5">
-      <Visible>False</Visible>
-      <ProductName>Windows Installer 4.5</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\findere.bmp" />
-    <None Include="Resources\finderf.bmp" />
-    <None Include="Resources\icon.ico" />
-    <Resource Include="Resources\icon.png" />
-    <None Include="Resources\searchw.cur" />
-    <None Include="Resources\toonmono.cur" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Properties\DataSources\" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\icon.bmp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\dupcursor.bmp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\dupcursorx.bmp" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>
