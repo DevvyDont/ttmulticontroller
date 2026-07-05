@@ -552,8 +552,6 @@ namespace TTMulti
         
         bool zeroPowerThrowKeyPressed = false;
 
-        int lastMoveX, lastMoveY;
-        
         // Track the focused window when entering Focused mode via Zero Power Throw
         private ToontownController _focusedController = null;
         
@@ -597,7 +595,7 @@ namespace TTMulti
 
         internal void EnsureValidActiveCustomModeId()
         {
-            CustomModeFile file = CustomModeStorage.Load();
+            CustomModeFile file = CustomModeStorage.LoadCached();
             if (file.Modes == null || file.Modes.Count == 0)
             {
                 _activeCustomModeId = "";
@@ -609,7 +607,7 @@ namespace TTMulti
 
         internal CustomModeDefinition GetActiveCustomModeDefinition()
         {
-            CustomModeFile file = CustomModeStorage.Load();
+            CustomModeFile file = CustomModeStorage.LoadCached();
             if (file.Modes == null || string.IsNullOrEmpty(_activeCustomModeId))
                 return null;
             return file.Modes.FirstOrDefault(m => string.Equals(m.Id, _activeCustomModeId, StringComparison.Ordinal));
@@ -637,7 +635,7 @@ namespace TTMulti
         {
             if (string.IsNullOrEmpty(modeId))
                 return;
-            CustomModeFile file = CustomModeStorage.Load();
+            CustomModeFile file = CustomModeStorage.LoadCached();
             if (file.Modes == null || !file.Modes.Any(m => string.Equals(m.Id, modeId, StringComparison.Ordinal)))
                 return;
 
@@ -679,7 +677,7 @@ namespace TTMulti
                 list.Add(new ModeHotkeyCycleEntry(MulticontrollerMode.AllGroup, null));
             if (Properties.Settings.Default.customModeCycleWithModeHotkey)
             {
-                CustomModeFile cf = CustomModeStorage.Load();
+                CustomModeFile cf = CustomModeStorage.LoadCached();
                 if (cf.Modes != null)
                 {
                     foreach (CustomModeDefinition m in cf.Modes.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))

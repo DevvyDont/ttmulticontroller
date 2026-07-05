@@ -15,19 +15,30 @@ namespace TTMulti.Properties
 
         XmlSerializer keyMappingSerializer = new XmlSerializer(typeof(List<KeyMapping>));
 
+        // Cache the deserialized bindings keyed by the raw setting string, so the per-keystroke read path does not
+        // run a full XmlSerializer.Deserialize on every access (PERF-06).  Re-parses whenever the underlying
+        // keyBindings string changes, including an external Settings.Reload, so it never returns stale data.
+        List<KeyMapping> _cachedBindings;
+        string _cachedBindingsSource;
+
         public List<KeyMapping> Bindings
         {
             get
             {
-                using (StringReader sr = new StringReader(Properties.Settings.Default.keyBindings))
+                string source = Properties.Settings.Default.keyBindings;
+                if (_cachedBindings != null && source == _cachedBindingsSource)
+                    return _cachedBindings;
+
+                List<KeyMapping> result;
+                using (StringReader sr = new StringReader(source ?? string.Empty))
                 {
                     try
                     {
-                        return keyMappingSerializer.Deserialize(sr) as List<KeyMapping>;
+                        result = keyMappingSerializer.Deserialize(sr) as List<KeyMapping>;
                     }
                     catch
                     {
-                        return new List<KeyMapping>()
+                        result = new List<KeyMapping>()
                         {
                             new KeyMapping("Forward", Keys.Up, (Keys)Properties.Settings.Default.leftForwardKeyCode, (Keys)Properties.Settings.Default.rightForwardKeyCode, true),
                             new KeyMapping("Left", Keys.Left, (Keys)Properties.Settings.Default.leftLeftKeyCode, (Keys)Properties.Settings.Default.rightLeftKeyCode, true),
@@ -39,6 +50,10 @@ namespace TTMulti.Properties
                         };
                     }
                 }
+
+                _cachedBindings = result;
+                _cachedBindingsSource = source;
+                return result;
             }
             set
             {
@@ -47,6 +62,9 @@ namespace TTMulti.Properties
                     keyMappingSerializer.Serialize(sw, value);
                     Properties.Settings.Default.keyBindings = sw.ToString();
                 }
+                // Invalidate so the next read reflects the value just written.
+                _cachedBindings = null;
+                _cachedBindingsSource = null;
             }
         }
     }

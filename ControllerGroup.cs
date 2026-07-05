@@ -55,10 +55,8 @@ namespace TTMulti
             AddPair();
         }
 
-        ~ControllerGroup()
-        {
-            Dispose();
-        }
+        // No finalizer: cleanup (closing the border/overlay WinForms windows and unsubscribing events) must run on
+        // the UI thread via an explicit Dispose(), never on the GC finalizer thread where it can crash (CORR-11).
 
         /// <summary>
         /// Add a new ControllerPair at the end of the list

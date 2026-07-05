@@ -228,6 +228,12 @@ namespace TTMulti
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? ".", FileName);
         }
 
+        // Cache for LoadCached(), keyed by file path + last-write time.  Read-only hot paths share this instance;
+        // editors call Load() for their own mutable copy. PERF-03 / CORR-08.
+        private static CustomModeFile _cachedFile;
+        private static string _cachedPath;
+        private static DateTime _cachedWriteTimeUtc;
+
         public static CustomModeFile Load()
         {
             string path = GetFilePath();
@@ -239,6 +245,37 @@ namespace TTMulti
                 {
                     return (CustomModeFile)Serializer.ReadObject(fs);
                 }
+            }
+            catch
+            {
+                return new CustomModeFile();
+            }
+        }
+
+        /// <summary>
+        /// Cached variant of <see cref="Load"/> for hot read paths (per-keystroke Custom-mode routing and border
+        /// refresh).  Re-reads only when the file's last-write time changes.  Returns a SHARED instance, so callers
+        /// must treat it as read-only; editors that mutate should use <see cref="Load"/>. PERF-03 / CORR-08.
+        /// </summary>
+        public static CustomModeFile LoadCached()
+        {
+            string path = GetFilePath();
+            if (!File.Exists(path))
+            {
+                _cachedFile = null;
+                return new CustomModeFile();
+            }
+            try
+            {
+                DateTime writeTime = File.GetLastWriteTimeUtc(path);
+                if (_cachedFile != null && _cachedPath == path && _cachedWriteTimeUtc == writeTime)
+                    return _cachedFile;
+
+                CustomModeFile file = Load();
+                _cachedFile = file;
+                _cachedPath = path;
+                _cachedWriteTimeUtc = writeTime;
+                return file;
             }
             catch
             {
@@ -259,6 +296,8 @@ namespace TTMulti
                 {
                     Serializer.WriteObject(fs, data);
                 }
+                // Invalidate the read cache so LoadCached() re-reads the just-written file.
+                _cachedFile = null;
             }
             catch { }
         }
