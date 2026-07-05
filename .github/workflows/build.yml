@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, update/new-version ]
   pull_request:
 
 concurrency:
@@ -11,22 +11,30 @@ concurrency:
 
 jobs:
   build:
-    name: Build (Release, AnyCPU)
+    name: Build & publish (Release, win-x64 single-file)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      # VS MSBuild carries the .NET Framework 4.8.1 targeting pack + the SDK-style project resolver,
-      # which is the most reliable way to build this net481 SDK-style project on a hosted runner.
-      - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
 
-      - name: Restore & build
-        run: msbuild TTMulti.csproj /t:Restore,Build /p:Configuration=Release /v:m /nologo
+      - name: Restore
+        run: dotnet restore TTMulti.csproj
 
-      - name: Upload build output
+      - name: Build
+        run: dotnet build TTMulti.csproj -c Release --no-restore /v:m /nologo
+
+      # Smoke-publish the portable single-file exe so any single-file/self-contained regression
+      # (trimming, RID, resource loading) is caught on every push/PR, not only at release time.
+      - name: Publish single-file
+        run: dotnet publish TTMulti.csproj -p:PublishProfile=win-x64 /v:m /nologo
+
+      - name: Upload single-file exe
         uses: actions/upload-artifact@v4
         with:
-          name: ToontownMulticontroller
-          path: bin/Release/
+          name: ToontownMulticontroller-win-x64
+          path: bin/Release/win-x64/publish/ToontownMulticontroller.exe
           if-no-files-found: error
