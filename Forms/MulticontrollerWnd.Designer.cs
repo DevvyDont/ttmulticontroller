@@ -59,7 +59,7 @@ namespace TTMulti.Forms
             this.mirrorModeRadio.Name = "mirrorModeRadio";
             this.mirrorModeRadio.Size = new System.Drawing.Size(130, 34);
             this.mirrorModeRadio.TabIndex = 3;
-            this.mirrorModeRadio.Text = "Mirror Mode";
+            this.mirrorModeRadio.Text = "Mirro&r Mode";
             this.mirrorModeRadio.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.toolTip1.SetToolTip(this.mirrorModeRadio, "Control all toons at the same time");
             this.mirrorModeRadio.UseVisualStyleBackColor = true;
@@ -79,7 +79,7 @@ namespace TTMulti.Forms
             this.multiModeRadio.Size = new System.Drawing.Size(130, 34);
             this.multiModeRadio.TabIndex = 6;
             this.multiModeRadio.TabStop = true;
-            this.multiModeRadio.Text = "Multi-Mode";
+            this.multiModeRadio.Text = "&Multi-Mode";
             this.multiModeRadio.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.toolTip1.SetToolTip(this.multiModeRadio, "Control left and right toon independently");
             this.multiModeRadio.UseVisualStyleBackColor = true;
@@ -104,7 +104,7 @@ namespace TTMulti.Forms
             this.optionsBtn.Name = "optionsBtn";
             this.optionsBtn.Size = new System.Drawing.Size(152, 25);
             this.optionsBtn.TabIndex = 8;
-            this.optionsBtn.Text = "Options";
+            this.optionsBtn.Text = "&Options";
             this.optionsBtn.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             this.optionsBtn.UseVisualStyleBackColor = true;
             this.optionsBtn.Click += new System.EventHandler(this.optionsBtn_Click);
@@ -119,7 +119,7 @@ namespace TTMulti.Forms
             this.windowGroupsBtn.Name = "windowGroupsBtn";
             this.windowGroupsBtn.Size = new System.Drawing.Size(152, 25);
             this.windowGroupsBtn.TabIndex = 12;
-            this.windowGroupsBtn.Text = "Window Groups";
+            this.windowGroupsBtn.Text = "&Window Groups";
             this.windowGroupsBtn.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             this.windowGroupsBtn.UseVisualStyleBackColor = true;
             this.windowGroupsBtn.Click += new System.EventHandler(this.windowGroupsBtn_Click);

@@ -1192,6 +1192,18 @@ namespace TTMulti.Forms
 
             yPos += spacing;
             AddCustomModeBorderColorsSection(colorsGroupBox, ref yPos);
+            // The color swatches convey their value only through BackColor and have blank Text; name them so
+            // assistive technology can identify each one (UX-06).
+            mirrorModeBorderColorButton.AccessibleName = "Mirror mode border color";
+            multiModeLeftBorderColorButton.AccessibleName = "Multi-mode left toon border color";
+            multiModeRightBorderColorButton.AccessibleName = "Multi-mode right toon border color";
+            switchingModeColorButton.AccessibleName = "Switching mode color";
+            switchingSelectedColorButton.AccessibleName = "Switching selected color";
+            switchingSwitchedColorButton.AccessibleName = "Switching switched color";
+            switchingRemovedColorButton.AccessibleName = "Switching marked-for-removal color";
+            focusedModeFocusedColorButton.AccessibleName = "Focused mode focused window color";
+            focusedModeUnfocusedColorButton.AccessibleName = "Focused mode unfocused window color";
+
             colorsGroupBox.Size = new Size(720, Math.Max(480, yPos + 20));
             colorsTabPage.Enter += ColorsTabPage_Enter;
         }

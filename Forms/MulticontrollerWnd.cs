@@ -91,6 +91,13 @@ namespace TTMulti.Forms
         {
             InitializeComponent();
             this.Icon = Properties.Resources.icon;
+
+            // The crosshairs are custom-painted controls with no text, so give them accessible names/roles for
+            // assistive technology and screen readers (UX-06).
+            leftToonCrosshair.AccessibleName = "Left toon window";
+            leftToonCrosshair.AccessibleDescription = "Drag the crosshair onto a Toontown window to control it as the left toon.";
+            rightToonCrosshair.AccessibleName = "Right toon window";
+            rightToonCrosshair.AccessibleDescription = "Drag the crosshair onto a Toontown window to control it as the right toon.";
         }
 
         /// <summary>
@@ -271,7 +278,12 @@ namespace TTMulti.Forms
                 case Keys.Down:
                 case Keys.Left:
                 case Keys.Right:
-                    return true;
+                    // Intercept these for game control ONLY while actively controlling connected windows.
+                    // Otherwise (e.g. no game windows attached yet) let them navigate the UI so keyboard users
+                    // aren't locked out of the main window's controls (UX-06). Mnemonics still work either way.
+                    if (controller.IsActive && controller.AllControllersWithWindows.Any())
+                        return true;
+                    return base.ProcessCmdKey(ref msg, keyData);
                 case Keys.Alt:
                     // Forward Alt key to ProcessInput for switching mode handling
                     // Don't consume it here - let ProcessInput decide
