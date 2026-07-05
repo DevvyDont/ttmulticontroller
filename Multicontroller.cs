@@ -1947,6 +1947,13 @@ namespace TTMulti
                 return true; // Consume all input in switching mode
             }
 
+            // When no game windows are connected there is nothing to forward to, so don't consume keystrokes —
+            // let them navigate the main window and trigger Alt mnemonics. Otherwise the MC window swallows every
+            // key while focused, which traps keyboard users and blocks mnemonics like Alt+O (UX-06). This runs
+            // before ProcessCmdKey (the message filter is earlier in the pipeline), so it's the effective gate.
+            if (!AllControllersWithWindows.Any())
+                return false;
+
             Keys keysPressed = (Keys)wParam;
             if (msg == Win32.WM.HOTKEY)
                 keysPressed = (Keys)(int)(lParam.ToInt64() >> 16);
