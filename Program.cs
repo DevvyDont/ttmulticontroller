@@ -8,6 +8,8 @@ using TTMulti.Forms;
 using TTMulti.Controls;
 using System.Xml.Serialization;
 using System.IO;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace TTMulti
 {
@@ -45,11 +47,83 @@ namespace TTMulti
                 }
             }
 
+            WarnIfElevatedFromUserWritableLocation();
+
             MulticontrollerWnd mainWindow = new MulticontrollerWnd();
 
             WindowWatcher.Instance.SynchronizingObject = mainWindow;
 
             Application.Run(mainWindow);
+        }
+
+        /// <summary>
+        /// Defense-in-depth: when running elevated, this process reads user.config / custom-modes.json /
+        /// layout-presets.json from the exe directory. If that directory is writable by standard (non-admin) users
+        /// — as it is for a portable install under the user profile — a non-administrator could tamper with that
+        /// config to influence this elevated process (which installs system-wide keyboard/mouse hooks). Warn so the
+        /// user can move the app to a protected location like Program Files. (SEC-01)
+        /// </summary>
+        private static void WarnIfElevatedFromUserWritableLocation()
+        {
+            try
+            {
+                if (!IsProcessElevated())
+                    return;
+
+                string dir = AppDomain.CurrentDomain.BaseDirectory;
+                if (string.IsNullOrEmpty(dir) || !IsDirectoryWritableByStandardUsers(dir))
+                    return;
+
+                MessageBox.Show(
+                    "This app is running as administrator from a folder that standard (non-administrator) users can " +
+                    "modify:\n\n" + dir + "\n\n" +
+                    "Its configuration files (user.config, custom-modes.json, layout-presets.json) are read by this " +
+                    "elevated process, so a non-administrator could alter them to influence it. For better security, " +
+                    "install the app to a protected location such as Program Files.",
+                    "Running elevated from a writable location",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch
+            {
+                // Best-effort security notice; never block or crash startup over it.
+            }
+        }
+
+        private static bool IsProcessElevated()
+        {
+            try
+            {
+                using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+                    return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsDirectoryWritableByStandardUsers(string dir)
+        {
+            var nonAdminSids = new[]
+            {
+                new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null),      // BUILTIN\Users
+                new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null), // Authenticated Users
+                new SecurityIdentifier(WellKnownSidType.WorldSid, null),            // Everyone
+            };
+            const FileSystemRights writeRights = FileSystemRights.WriteData | FileSystemRights.CreateFiles
+                | FileSystemRights.AppendData | FileSystemRights.Modify | FileSystemRights.FullControl;
+
+            DirectorySecurity security = new DirectoryInfo(dir).GetAccessControl();
+            foreach (FileSystemAccessRule rule in security.GetAccessRules(true, true, typeof(SecurityIdentifier)))
+            {
+                if (rule.AccessControlType != AccessControlType.Allow)
+                    continue;
+                if ((rule.FileSystemRights & writeRights) == 0)
+                    continue;
+                if (rule.IdentityReference is SecurityIdentifier sid && nonAdminSids.Any(s => s.Equals(sid)))
+                    return true;
+            }
+            return false;
         }
 
         internal static bool TryRunAsAdmin()
