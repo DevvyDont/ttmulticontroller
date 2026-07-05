@@ -598,8 +598,30 @@ namespace TTMulti.Forms
         {
             bool ok = Win32.RegisterHotKey(this.Handle, id, modifiers, key);
             if (!ok)
+            {
+                int err = Marshal.GetLastWin32Error();
+                System.Diagnostics.Trace.WriteLine("RegisterHotKey failed for \"" + featureName + "\" (" + DescribeHotkey(modifiers, key) + "): Win32 error " + err);
                 _pendingHotkeyFailures.Add(featureName + ": " + DescribeHotkey(modifiers, key));
+            }
             return ok;
+        }
+
+        /// <summary>
+        /// Installs a low-level hook, surfacing a readable failure if SetWindowsHookEx returns null so the
+        /// affected feature does not silently stop working (WIN32-04). Failures are reported through the same
+        /// consolidated warning as failed hotkey registrations.
+        /// </summary>
+        private IntPtr TryInstallLowLevelHook(int hookType, Win32.HookProc proc, string featureName)
+        {
+            IntPtr handle = Win32.SetWindowsHookEx(hookType, proc, Win32.GetModuleHandle(null), 0);
+            if (handle == IntPtr.Zero)
+            {
+                int err = Marshal.GetLastWin32Error();
+                System.Diagnostics.Trace.WriteLine("SetWindowsHookEx failed for \"" + featureName + "\": Win32 error " + err);
+                _pendingHotkeyFailures.Add(featureName + " (input hook, Win32 error " + err + ")");
+                ReportPendingHotkeyFailures();
+            }
+            return handle;
         }
 
         private static string DescribeHotkey(Win32.KeyModifiers modifiers, Keys key)
@@ -628,8 +650,8 @@ namespace TTMulti.Forms
             if (newFailures.Count == 0 || IsDisposed || !IsHandleCreated)
                 return;
 
-            string message = "These global hotkeys could not be registered — another program may already be using "
-                + "them, or two features are assigned the same key:\n\n  "
+            string message = "These global hotkeys or input hooks could not be registered — another program may "
+                + "already be using them, or two features are assigned the same key:\n\n  "
                 + string.Join("\n  ", newFailures)
                 + "\n\nOpen Options and pick different keys to fix this.";
 
@@ -638,6 +660,16 @@ namespace TTMulti.Forms
                 if (!IsDisposed)
                     MessageBox.Show(this, message, "Hotkey Not Registered", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }));
+        }
+
+        /// <summary>
+        /// Surfaces a hook-install failure raised by the controller (switching-mode mouse hook) through the same
+        /// consolidated warning as failed hotkey registrations (WIN32-04).
+        /// </summary>
+        private void Controller_InputCaptureFailed(object sender, string description)
+        {
+            _pendingHotkeyFailures.Add(description);
+            ReportPendingHotkeyFailures();
         }
 
         /// <summary>
@@ -806,9 +838,10 @@ namespace TTMulti.Forms
                 if (!success)
                 {
                     // Hotkey registration failed - might be already registered or invalid combination
-                    // Try unregistering first, then re-registering
+                    // Try unregistering first, then re-registering; surface the failure if the retry also fails (WIN32-04)
                     Win32.UnregisterHotKey(this.Handle, 7);
-                    Win32.RegisterHotKey(this.Handle, 7, (Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers, (Keys)Properties.Settings.Default.autoFindWindowsKeyCode);
+                    if (!TryRegisterGlobalHotKey(7, (Win32.KeyModifiers)Properties.Settings.Default.autoFindWindowsKeyModifiers, (Keys)Properties.Settings.Default.autoFindWindowsKeyCode, "Auto-find windows"))
+                        ReportPendingHotkeyFailures();
                 }
             }
         }
@@ -836,8 +869,11 @@ namespace TTMulti.Forms
             {
                 var p = file.Presets[i];
                 if (p.HotkeyCode == 0) continue;
-                Win32.RegisterHotKey(this.Handle, LayoutPresetHotkeyIdStart + i, (Win32.KeyModifiers)p.HotkeyModifiers, (Keys)p.HotkeyCode);
+                string presetName = string.IsNullOrEmpty(p.Name) ? "#" + (i + 1) : p.Name;
+                TryRegisterGlobalHotKey(LayoutPresetHotkeyIdStart + i, (Win32.KeyModifiers)p.HotkeyModifiers, (Keys)p.HotkeyCode,
+                    "Layout preset \"" + presetName + "\"");
             }
+            ReportPendingHotkeyFailures();
         }
 
         private void UnregisterLayoutPresetHotkeys()
@@ -883,8 +919,10 @@ namespace TTMulti.Forms
                 bool success = Win32.RegisterHotKey(this.Handle, 9, (Win32.KeyModifiers)modifiers, (Keys)keyCode);
                 if (!success)
                 {
+                    // Retry after unregistering; surface the failure if the retry also fails (WIN32-04)
                     Win32.UnregisterHotKey(this.Handle, 9);
-                    Win32.RegisterHotKey(this.Handle, 9, (Win32.KeyModifiers)modifiers, (Keys)keyCode);
+                    if (!TryRegisterGlobalHotKey(9, (Win32.KeyModifiers)modifiers, (Keys)keyCode, "Minimize unconnected windows"))
+                        ReportPendingHotkeyFailures();
                 }
             }
         }
@@ -907,8 +945,7 @@ namespace TTMulti.Forms
             _minimizeUnconnectedHookKeyCode = keyCode;
             if (_minimizeUnconnectedKeyboardHookProc == null)
                 _minimizeUnconnectedKeyboardHookProc = MinimizeUnconnectedKeyboardHookProc;
-            IntPtr hModule = Win32.GetModuleHandle(null);
-            _minimizeUnconnectedKeyboardHookHandle = Win32.SetWindowsHookEx(Win32.WH_KEYBOARD_LL, _minimizeUnconnectedKeyboardHookProc, hModule, 0);
+            _minimizeUnconnectedKeyboardHookHandle = TryInstallLowLevelHook(Win32.WH_KEYBOARD_LL, _minimizeUnconnectedKeyboardHookProc, "Minimize unconnected windows key");
         }
 
         private void UninstallMinimizeUnconnectedKeyboardHook()
@@ -961,8 +998,7 @@ namespace TTMulti.Forms
             _multiclickMouseHookButton = buttonIndex;
             if (_multiclickMouseHookProc == null)
                 _multiclickMouseHookProc = MulticlickMouseHookProc;
-            IntPtr hModule = Win32.GetModuleHandle(null);
-            _multiclickMouseHookHandle = Win32.SetWindowsHookEx(Win32.WH_MOUSE_LL, _multiclickMouseHookProc, hModule, 0);
+            _multiclickMouseHookHandle = TryInstallLowLevelHook(Win32.WH_MOUSE_LL, _multiclickMouseHookProc, "Instant Multi-Click mouse button");
         }
 
         private void UninstallMulticlickMouseHook()
@@ -1004,8 +1040,7 @@ namespace TTMulti.Forms
                 return;
             if (_controlledMcKeyboardHookProc == null)
                 _controlledMcKeyboardHookProc = ControlledMcKeyboardHookProc;
-            IntPtr hModule = Win32.GetModuleHandle(null);
-            _controlledMcKeyboardHookHandle = Win32.SetWindowsHookEx(Win32.WH_KEYBOARD_LL, _controlledMcKeyboardHookProc, hModule, 0);
+            _controlledMcKeyboardHookHandle = TryInstallLowLevelHook(Win32.WH_KEYBOARD_LL, _controlledMcKeyboardHookProc, "Controlled Multi-Click keys");
         }
 
         private void UninstallControlledMcKeyboardHook()
@@ -1215,8 +1250,7 @@ namespace TTMulti.Forms
             _controlledMcFocusBlockHookForm = this;
             if (_controlledMcFocusBlockHookProc == null)
                 _controlledMcFocusBlockHookProc = ControlledMcFocusBlockHookProc;
-            IntPtr hModule = Win32.GetModuleHandle(null);
-            _controlledMcFocusBlockHookHandle = Win32.SetWindowsHookEx(Win32.WH_MOUSE_LL, _controlledMcFocusBlockHookProc, hModule, 0);
+            _controlledMcFocusBlockHookHandle = TryInstallLowLevelHook(Win32.WH_MOUSE_LL, _controlledMcFocusBlockHookProc, "Controlled Multi-Click focus block");
         }
 
         private void UninstallControlledMcFocusBlockHook()
@@ -1456,6 +1490,7 @@ namespace TTMulti.Forms
             controller.AllWindowsInactive += Controller_AllWindowsInactive;
             controller.ActiveChanged += Controller_ActiveChanged;
             controller.SettingChanged += Controller_SettingChanged;
+            controller.InputCaptureFailed += Controller_InputCaptureFailed;
 
             // Ensure at least one group exists before accessing it
             if (controller.ControllerGroups.Count == 0)
