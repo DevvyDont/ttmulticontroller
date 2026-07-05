@@ -2511,7 +2511,7 @@ namespace TTMulti
         private static void SetWindowLayoutAttributes(IntPtr hWnd)
         {
             Win32.SetWindowAttribute(hWnd, Win32.WindowAttributeTypes.RoundedEdges, Win32.WindowAttributeValues.DWMWCP_DONOTROUND);
-            Win32.SetWindowAttribute(hWnd, Win32.WindowAttributeTypes.DropShadow, Win32.WindowAttributeValues.DWMWA_NCRENDERING_POLICY);
+            Win32.SetWindowAttribute(hWnd, Win32.WindowAttributeTypes.NcRenderingPolicy, Win32.WindowAttributeValues.DWMNCRP_ENABLED);
             Win32.SetWindowAttribute(hWnd, Win32.WindowAttributeTypes.WindowBorderColor, 0x000000);
         }
 
