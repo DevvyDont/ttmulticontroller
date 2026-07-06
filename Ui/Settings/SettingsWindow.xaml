@@ -396,6 +396,9 @@
                                           ToolTip="On: movement keys held across a group/pair/mode switch (or when you click a game window to focus it) are released, so toons on the windows you left stop moving. Off (default): those keys stay held — the toons keep moving until you switch back and release the key."
                                           IsChecked="{Binding releaseKeysOnWindowFocus, Mode=TwoWay}" />
                                 <CheckBox Margin="0,3" Content="Keep window on top when inactive" IsChecked="{Binding onTopWhenInactive, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Express group focus"
+                                          ToolTip="When on, pressing a number key while the multicontroller is focused instantly jumps to Multi mode AND that group, no matter the current mode — e.g. pressing 2 in Mirror mode switches straight to Multi mode, Group 2 (one keypress instead of switching modes and then the group). Heads up: this means you can no longer type numbers while the multicontroller is focused (e.g. in Mirror mode) — they always switch groups instead. Numbers still work normally when a Toontown window is focused."
+                                          IsChecked="{Binding expressGroupFocus, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
 

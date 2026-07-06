@@ -70,6 +70,18 @@ namespace TTMulti.Properties {
                 this["compactUI"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool expressGroupFocus {
+            get {
+                return ((bool)(this["expressGroupFocus"]));
+            }
+            set {
+                this["expressGroupFocus"] = value;
+            }
+        }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]

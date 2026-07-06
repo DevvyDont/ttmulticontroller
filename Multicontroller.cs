@@ -805,12 +805,12 @@ namespace TTMulti
                 && (msg == Win32.WM.HOTKEY || msg == Win32.WM.KEYDOWN))
                 return true;
 
-            if (CurrentMode == MulticontrollerMode.Group
-                && !_switchingMode
-                && ControllerGroups.Count > 1
+            if (!_switchingMode
                 && (keysPressed >= Keys.D0 && keysPressed <= Keys.D9
                     || keysPressed >= Keys.NumPad0 && keysPressed <= Keys.NumPad9)
-                && isMetaDown)
+                && isMetaDown
+                && (Properties.Settings.Default.expressGroupFocus
+                    || (CurrentMode == MulticontrollerMode.Group && ControllerGroups.Count > 1)))
                 return true;
 
             return false;
@@ -1718,13 +1718,15 @@ namespace TTMulti
                     return true;
                 }
             }
-            else if (CurrentMode == MulticontrollerMode.Group
-                && !_switchingMode  // Don't handle group switching when in switching mode
-                && ControllerGroups.Count > 1
+            else if (!_switchingMode  // Don't handle group switching when in switching mode
                 && (keysPressed >= Keys.D0 && keysPressed <= Keys.D9
-                    || keysPressed >= Keys.NumPad0 && keysPressed <= Keys.NumPad9))
+                    || keysPressed >= Keys.NumPad0 && keysPressed <= Keys.NumPad9)
+                && (Properties.Settings.Default.expressGroupFocus
+                    || (CurrentMode == MulticontrollerMode.Group && ControllerGroups.Count > 1)))
             {
-                // Change groups while in group mode
+                // A number key selects a group. Normally this only works while already in Group mode; with
+                // Express Group Focus on, it fires from any mode and jumps straight into Group (Multi) mode
+                // first — one keypress both switches to Multi and selects the group.
                 int index;
 
                 if (keysPressed >= Keys.D0 && keysPressed <= Keys.D9)
@@ -1740,6 +1742,8 @@ namespace TTMulti
 
                 if (ControllerGroups.Count > index)
                 {
+                    if (CurrentMode != MulticontrollerMode.Group)
+                        CurrentMode = MulticontrollerMode.Group;
                     CurrentGroupIndex = index;
                 }
             }
