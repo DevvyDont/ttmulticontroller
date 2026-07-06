@@ -37,6 +37,14 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
+
+        <!-- Explanatory paragraph that sits directly under a SectionHeader. -->
+        <Style x:Key="SectionDesc" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="2,0,8,8" />
+        </Style>
     </ui:FluentWindow.Resources>
 
     <Grid>
@@ -65,15 +73,15 @@
                 BorderThickness="0"
                 Background="Transparent"
                 SelectionChanged="NavList_SelectionChanged">
-                <ListBoxItem Content="Multi-Mode Keys" IsSelected="True" />
+                <ListBoxItem Content="General" IsSelected="True" />
+                <ListBoxItem Content="Appearance" />
+                <ListBoxItem Content="Multi-Mode Keys" />
                 <ListBoxItem Content="Controller Modes" />
                 <ListBoxItem Content="Custom Modes" />
                 <ListBoxItem Content="Hotkeys" />
                 <ListBoxItem Content="Multi-Click" />
                 <ListBoxItem Content="Auto-Find" />
                 <ListBoxItem Content="Layout Presets" />
-                <ListBoxItem Content="Colors" />
-                <ListBoxItem Content="General" />
             </ListBox>
 
             <!-- Page content -->
@@ -244,50 +252,6 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Instant Multi-Click" />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <CheckBox x:Name="multiUseMouseChk" Margin="0,3" Content="Trigger with a mouse button" IsChecked="{Binding replicateMouseUseMouseButton, Mode=TwoWay}" />
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Trigger key" />
-                                    <ctrl:KeyPickerBox Grid.Column="1"
-                                        IsEnabled="{Binding replicateMouseUseMouseButton, Converter={StaticResource InverseBool}}"
-                                        KeyCode="{Binding replicateMouseKeyCode, Mode=TwoWay}" />
-                                </Grid>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
-                                    <ComboBox Grid.Column="1" MinWidth="180"
-                                        IsEnabled="{Binding replicateMouseUseMouseButton}"
-                                        SelectedIndex="{Binding replicateMouseMouseButton, Mode=TwoWay}">
-                                        <ComboBoxItem Content="Middle (wheel click)" />
-                                        <ComboBoxItem Content="Mouse 4" />
-                                        <ComboBoxItem Content="Mouse 5" />
-                                    </ComboBox>
-                                </Grid>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Click order" />
-                                    <ComboBox Grid.Column="1" MinWidth="240" SelectedIndex="{Binding multiclickOrder, Mode=TwoWay}">
-                                        <ComboBoxItem Content="Controller order (group, pair, L/R)" />
-                                        <ComboBoxItem Content="Window order (by position)" />
-                                    </ComboBox>
-                                </Grid>
-                                <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding replicateMouseHotkeyGlobal, Mode=TwoWay}" />
-                                <CheckBox Margin="0,3" Content="Separate left / right clicks" IsChecked="{Binding replicateMouseSeparateLR, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Border>
-
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Zero Power Throw" />
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
@@ -302,52 +266,6 @@
                                 <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding zeroPowerThrowHotkeyGlobal, Mode=TwoWay}" />
                                 <CheckBox Margin="0,3" Content="Enable focus mode" IsChecked="{Binding zeroPowerThrowEnableFocusMode, Mode=TwoWay}" />
                             </StackPanel>
-                        </Border>
-                    </StackPanel>
-
-                    <!-- ── General ────────────────────────────────────────────────── -->
-                    <StackPanel x:Name="pageGeneral" Visibility="Collapsed">
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Window" />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <CheckBox Margin="0,3" Content="Keep window on top when inactive" IsChecked="{Binding onTopWhenInactive, Mode=TwoWay}" />
-                                <CheckBox Margin="0,3" Content="Compact UI" IsChecked="{Binding compactUI, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Input" />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <CheckBox Margin="0,3" Content="Release held keys when switching groups or focusing a game window"
-                                          ToolTip="On: movement keys held across a group/pair/mode switch (or when you click a game window to focus it) are released, so toons on the windows you left stop moving. Off (default): those keys stay held — the toons keep moving until you switch back and release the key."
-                                          IsChecked="{Binding releaseKeysOnWindowFocus, Mode=TwoWay}" />
-                                <CheckBox x:Name="keepAliveChk" Margin="0,3" Content="Enable Keep-Alive" IsChecked="{Binding disableKeepAlive, Converter={StaticResource InverseBool}, Mode=TwoWay}" />
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Keep-Alive key" />
-                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding keepAliveKeyCode, Mode=TwoWay}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="About" />
-                        <Border Style="{StaticResource Card}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Style="{StaticResource RowLabel}" Text="Version, homepage, and update check" />
-                                <ui:Button Grid.Column="1" Content="About" Icon="{ui:SymbolIcon Info24}" Click="About_Click" />
-                            </Grid>
-                        </Border>
-
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Appearance" />
-                        <Border Style="{StaticResource Card}">
-                            <CheckBox Content="Tint the title bar with the current mode colour" IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" />
                         </Border>
 
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Window management" />
@@ -388,13 +306,59 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- ── Multi-Click (Controlled Multi-Click Mode) ──────────────── -->
-                    <StackPanel x:Name="pageMultiClick" Visibility="Collapsed">
+                    <!-- ── General ────────────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageGeneral" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Behavior" />
                         <Border Style="{StaticResource Card}">
-                            <CheckBox Content="Enable Controlled Multi-Click Mode" IsChecked="{Binding controlledMulticlickEnabled, Mode=TwoWay}" />
+                            <StackPanel>
+                                <CheckBox Margin="0,3" Content="Release held keys when switching groups or focusing a game window"
+                                          ToolTip="On: movement keys held across a group/pair/mode switch (or when you click a game window to focus it) are released, so toons on the windows you left stop moving. Off (default): those keys stay held — the toons keep moving until you switch back and release the key."
+                                          IsChecked="{Binding releaseKeysOnWindowFocus, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Keep window on top when inactive" IsChecked="{Binding onTopWhenInactive, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Keep Alive" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox x:Name="keepAliveChk" Margin="0,3" Content="Enable Keep-Alive" IsChecked="{Binding disableKeepAlive, Converter={StaticResource InverseBool}, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Keep-Alive key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding keepAliveKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="About" />
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource RowLabel}" Text="Version, homepage, and update check" />
+                                <ui:Button Grid.Column="1" Content="About" Icon="{ui:SymbolIcon Info24}" Click="About_Click" />
+                            </Grid>
+                        </Border>
+
+                    </StackPanel>
+
+                    <!-- ── Multi-Click (Precise Click Mode + Instant Multi-Click) ──── -->
+                    <StackPanel x:Name="pageMultiClick" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Precise Click Mode" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Switch this mode on with a hotkey, then click normally — your left and right clicks are mirrored to every game window at the same spot, with no window stealing focus. A marker shows where each click will land, and your real clicks are held back from the games so nothing gets misclicked. Defaults: left mouse mirrors a left click, right mouse mirrors a right click. Use a Passthrough bind to click only the window you're pointing at instead." />
+                        <Border Style="{StaticResource Card}">
+                            <CheckBox Content="Enable Precise Click Mode" IsChecked="{Binding controlledMulticlickEnabled, Mode=TwoWay}" />
                         </Border>
 
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Activation" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="The key or button that switches the mode on. Hold keeps it active only while the key is held down; Toggle turns it on with one press and off with the next. Turn on 'Global hotkey' to let it work even while a game window (rather than this app) is focused." />
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
                                 <Grid Margin="0,3">
@@ -413,9 +377,77 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Regular Click" />
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Mirror clicks" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="While in the mode, these send your click to every game window at the cursor's spot. Left defaults to the left mouse button, right to the right mouse button — switch either to a keyboard key if you prefer." />
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
+                                <TextBlock Style="{StaticResource RowLabel}" FontWeight="SemiBold" Margin="0,2,0,2" Text="Left click" />
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickMirrorLeftUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding controlledMulticlickMirrorLeftUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickMirrorLeftMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Left click" />
+                                        <ComboBoxItem Content="Right click" />
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding controlledMulticlickMirrorLeftUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickMirrorLeftKeyCode, Mode=TwoWay}" />
+                                </Grid>
+
+                                <TextBlock Style="{StaticResource RowLabel}" FontWeight="SemiBold" Margin="0,10,0,2" Text="Right click" />
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickMirrorRightUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding controlledMulticlickMirrorRightUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickMirrorRightMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Left click" />
+                                        <ComboBoxItem Content="Right click" />
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding controlledMulticlickMirrorRightUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickMirrorRightKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Passthrough (single window)" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Optional. Sends a click to only the window your cursor is over, without stealing its focus — for clicking one toon while in the mode. Unbound by default; set a key or a spare mouse button (not one already used for mirroring). 'Trigger on release' fires when you let go instead of on press." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource RowLabel}" FontWeight="SemiBold" Margin="0,2,0,2" Text="Left click" />
                                 <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickRegularClickUseMouseButton, Mode=TwoWay}" />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
@@ -444,13 +476,9 @@
                                         KeyCode="{Binding controlledMulticlickRegularClickKeyCode, Mode=TwoWay}" />
                                 </Grid>
                                 <CheckBox Margin="0,3" Content="Trigger on release" IsChecked="{Binding controlledMulticlickRegularClickTriggerOnRelease, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Border>
 
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Multi-Click" />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickClickUseMouseButton, Mode=TwoWay}" />
+                                <TextBlock Style="{StaticResource RowLabel}" FontWeight="SemiBold" Margin="0,10,0,2" Text="Right click" />
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickRegularClickRightUseMouseButton, Mode=TwoWay}" />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -458,8 +486,8 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
                                     <ComboBox Grid.Column="1" MinWidth="180"
-                                        IsEnabled="{Binding controlledMulticlickClickUseMouseButton}"
-                                        SelectedIndex="{Binding controlledMulticlickClickMouseButton, Mode=TwoWay}">
+                                        IsEnabled="{Binding controlledMulticlickRegularClickRightUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickRegularClickRightMouseButton, Mode=TwoWay}">
                                         <ComboBoxItem Content="Left click" />
                                         <ComboBoxItem Content="Right click" />
                                         <ComboBoxItem Content="Middle (wheel click)" />
@@ -474,11 +502,56 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
                                     <ctrl:KeyPickerBox Grid.Column="1"
-                                        IsEnabled="{Binding controlledMulticlickClickUseMouseButton, Converter={StaticResource InverseBool}}"
-                                        KeyCode="{Binding controlledMulticlickClickKeyCode, Mode=TwoWay}" />
+                                        IsEnabled="{Binding controlledMulticlickRegularClickRightUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickRegularClickRightKeyCode, Mode=TwoWay}" />
                                 </Grid>
-                                <CheckBox Margin="0,3" Content="Trigger on release" IsChecked="{Binding controlledMulticlickClickTriggerOnRelease, Mode=TwoWay}" />
-                                <CheckBox Margin="0,3" Content="Separate left / right clicks" IsChecked="{Binding controlledMulticlickClickSeparateLR, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Trigger on release" IsChecked="{Binding controlledMulticlickRegularClickRightTriggerOnRelease, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Instant Multi-Click" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="A single hotkey that instantly clicks every game window at once. Point your mouse anywhere over one game window, press the trigger, and all active windows get a left-click at that same spot. If nothing is active yet, it turns on and drops into Mirror-All so every toon responds. 'Click order' sets the order the clicks are sent; 'Separate left / right clicks' limits it to windows on the same side as the one you're pointing at in a group or pair mode." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox x:Name="multiUseMouseChk" Margin="0,3" Content="Trigger with a mouse button" IsChecked="{Binding replicateMouseUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Trigger key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding replicateMouseUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding replicateMouseKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding replicateMouseUseMouseButton}"
+                                        SelectedIndex="{Binding replicateMouseMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Click order" />
+                                    <ComboBox Grid.Column="1" MinWidth="240" SelectedIndex="{Binding multiclickOrder, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Controller order (group, pair, L/R)" />
+                                        <ComboBoxItem Content="Window order (by position)" />
+                                    </ComboBox>
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding replicateMouseHotkeyGlobal, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Separate left / right clicks" IsChecked="{Binding replicateMouseSeparateLR, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -557,8 +630,16 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- ── Colors ─────────────────────────────────────────────────── -->
-                    <StackPanel x:Name="pageColors" Visibility="Collapsed">
+                    <!-- ── Appearance ─────────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageAppearance" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Interface" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox Margin="0,3" Content="Compact UI" IsChecked="{Binding compactUI, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Tint the title bar with the current mode colour" IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Border colours" />
                         <Border Style="{StaticResource Card}">
                             <StackPanel>

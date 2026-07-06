@@ -467,8 +467,8 @@ namespace TTMulti.Input
         {
             RearmLowLevelHook(ref _minimizeUnconnectedKeyboardHookHandle, _minimizeUnconnectedKeyboardHookProc, Win32.WH_KEYBOARD_LL, "Minimize unconnected windows key");
             RearmLowLevelHook(ref _multiclickMouseHookHandle, _multiclickMouseHookProc, Win32.WH_MOUSE_LL, "Instant Multi-Click mouse button");
-            RearmLowLevelHook(ref _controlledMcKeyboardHookHandle, _controlledMcKeyboardHookProc, Win32.WH_KEYBOARD_LL, "Controlled Multi-Click keys");
-            RearmLowLevelHook(ref _controlledMcFocusBlockHookHandle, _controlledMcFocusBlockHookProc, Win32.WH_MOUSE_LL, "Controlled Multi-Click focus block");
+            RearmLowLevelHook(ref _controlledMcKeyboardHookHandle, _controlledMcKeyboardHookProc, Win32.WH_KEYBOARD_LL, "Precise Click keys");
+            RearmLowLevelHook(ref _controlledMcFocusBlockHookHandle, _controlledMcFocusBlockHookProc, Win32.WH_MOUSE_LL, "Precise Click focus block");
             _controller?.RearmSwitchingMouseHookIfInstalled();
         }
 
@@ -880,7 +880,7 @@ namespace TTMulti.Input
             return Win32.CallNextHookEx(_multiclickMouseHookHandle, nCode, wParam, lParam);
         }
 
-        // ── Controlled Multi-Click Mode: keyboard dispatch (single hook, PERF-02) ──
+        // ── Precise Click Mode: keyboard dispatch (single hook, PERF-02) ──
 
         private static IntPtr _controlledMcKeyboardHookHandle = IntPtr.Zero;
         private static InputCaptureHost _controlledMcKeyboardHookHost = null;
@@ -911,7 +911,7 @@ namespace TTMulti.Input
                 return;
             if (_controlledMcKeyboardHookProc == null)
                 _controlledMcKeyboardHookProc = ControlledMcKeyboardHookProc;
-            _controlledMcKeyboardHookHandle = TryInstallLowLevelHook(Win32.WH_KEYBOARD_LL, _controlledMcKeyboardHookProc, "Controlled Multi-Click keys");
+            _controlledMcKeyboardHookHandle = TryInstallLowLevelHook(Win32.WH_KEYBOARD_LL, _controlledMcKeyboardHookProc, "Precise Click keys");
         }
 
         private void UninstallControlledMcKeyboardHook()
@@ -925,7 +925,7 @@ namespace TTMulti.Input
         }
 
         /// <summary>
-        /// Single LL keyboard hook dispatching every Controlled Multi-Click Mode key, in the precedence
+        /// Single LL keyboard hook dispatching every Precise Click Mode key, in the precedence
         /// regular-click → multi-click → activation; the first that matches consumes the key (PERF-02).
         /// </summary>
         private static IntPtr ControlledMcKeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam)
@@ -949,13 +949,14 @@ namespace TTMulti.Input
             var settings = Properties.Settings.Default;
             bool modeActive = host._controller?.IsControlledMulticlickMode == true;
 
-            // ── Regular-click key (mode active, keyboard-bound) ──
-            if (modeActive
-                && !settings.controlledMulticlickRegularClickUseMouseButton
-                && settings.controlledMulticlickRegularClickKeyCode != 0
-                && vk == (uint)settings.controlledMulticlickRegularClickKeyCode)
+            // ── Mirror / passthrough click keys (mode active, keyboard-bound) ──
+            // Returns true (and we consume) when this key matches its bind.  Mirror clicks fire on press
+            // only; passthrough clicks honour their own trigger-on-release setting.  If a click key doubles
+            // as the hold-activation key, exit the mode on its release so the mode still ends.
+            bool TryHandleClickKey(bool useMouse, int keyCode, bool triggerOnRelease, Action<Multicontroller> action)
             {
-                bool triggerOnRelease = settings.controlledMulticlickRegularClickTriggerOnRelease;
+                if (!modeActive || useMouse || keyCode == 0 || vk != (uint)keyCode)
+                    return false;
                 bool shouldFire = triggerOnRelease ? isUp : isDown;
                 if (shouldFire || isUp)
                 {
@@ -964,8 +965,7 @@ namespace TTMulti.Input
                         var c = _controlledMcKeyboardHookHost?._controller;
                         if (c == null) return;
                         if (shouldFire)
-                            c.TriggerRegularClick();
-                        // If this key is also the hold-activation key, exit CMC mode on release.
+                            action(c);
                         if (isUp)
                         {
                             bool activateHold = Properties.Settings.Default.controlledMulticlickActivateHold;
@@ -975,37 +975,25 @@ namespace TTMulti.Input
                         }
                     });
                 }
-                return (IntPtr)1; // consume both down and up
+                return true;
             }
 
-            // ── Multi-click key (mode active, keyboard-bound) ──
-            if (modeActive
-                && !settings.controlledMulticlickClickUseMouseButton
-                && settings.controlledMulticlickClickKeyCode != 0
-                && vk == (uint)settings.controlledMulticlickClickKeyCode)
-            {
-                bool triggerOnRelease = settings.controlledMulticlickClickTriggerOnRelease;
-                bool shouldFire = triggerOnRelease ? isUp : isDown;
-                if (shouldFire || isUp)
-                {
-                    host._shell.BeginInvoke(() =>
-                    {
-                        var c = _controlledMcKeyboardHookHost?._controller;
-                        if (c == null) return;
-                        if (shouldFire)
-                            c.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
-                        // If this key is also the hold-activation key, exit CMC mode on release.
-                        if (isUp)
-                        {
-                            bool activateHold = Properties.Settings.Default.controlledMulticlickActivateHold;
-                            uint activateKey  = (uint)Properties.Settings.Default.controlledMulticlickActivateKeyCode;
-                            if (activateHold && activateKey == vk)
-                                c.ExitControlledMulticlickMode();
-                        }
-                    });
-                }
-                return (IntPtr)1; // consume both down and up
-            }
+            if (TryHandleClickKey(settings.controlledMulticlickMirrorLeftUseMouseButton,
+                    settings.controlledMulticlickMirrorLeftKeyCode, false,
+                    c => c.TriggerInstantMultiClick(separateLR: false, rightButton: false)))
+                return (IntPtr)1;
+            if (TryHandleClickKey(settings.controlledMulticlickMirrorRightUseMouseButton,
+                    settings.controlledMulticlickMirrorRightKeyCode, false,
+                    c => c.TriggerInstantMultiClick(separateLR: false, rightButton: true)))
+                return (IntPtr)1;
+            if (TryHandleClickKey(settings.controlledMulticlickRegularClickUseMouseButton,
+                    settings.controlledMulticlickRegularClickKeyCode, settings.controlledMulticlickRegularClickTriggerOnRelease,
+                    c => c.TriggerRegularClick(false)))
+                return (IntPtr)1;
+            if (TryHandleClickKey(settings.controlledMulticlickRegularClickRightUseMouseButton,
+                    settings.controlledMulticlickRegularClickRightKeyCode, settings.controlledMulticlickRegularClickRightTriggerOnRelease,
+                    c => c.TriggerRegularClick(true)))
+                return (IntPtr)1;
 
             // ── Activation key (toggle / hold; non-global gated on focus) ──
             uint activateKeyCode = (uint)settings.controlledMulticlickActivateKeyCode;
@@ -1058,22 +1046,8 @@ namespace TTMulti.Input
                         var c = _controlledMcKeyboardHookHost?._controller;
                         if (c == null) return;
 
-                        // If the click key or regular-click key shares this key with trigger-on-release,
-                        // fire the click BEFORE exiting so the action isn't lost.
-                        uint vkUp = activateKeyCode;
-
-                        bool multiClickTor  = Properties.Settings.Default.controlledMulticlickClickTriggerOnRelease;
-                        bool multiClickMouse = Properties.Settings.Default.controlledMulticlickClickUseMouseButton;
-                        uint multiClickKey  = (uint)Properties.Settings.Default.controlledMulticlickClickKeyCode;
-                        if (multiClickTor && !multiClickMouse && multiClickKey == vkUp && c.IsControlledMulticlickMode)
-                            c.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
-
-                        bool regClickTor   = Properties.Settings.Default.controlledMulticlickRegularClickTriggerOnRelease;
-                        bool regClickMouse = Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton;
-                        uint regClickKey   = (uint)Properties.Settings.Default.controlledMulticlickRegularClickKeyCode;
-                        if (regClickTor && !regClickMouse && regClickKey == vkUp && c.IsControlledMulticlickMode)
-                            c.TriggerRegularClick();
-
+                        // A click key that doubles as the activation key is handled (and its click fired)
+                        // by the click-key blocks above before we ever reach here, so just end the mode.
                         c.ExitControlledMulticlickMode();
                     });
                     return (IntPtr)1; // consume
@@ -1085,7 +1059,7 @@ namespace TTMulti.Input
             return Win32.CallNextHookEx(_controlledMcKeyboardHookHandle, nCode, wParam, lParam);
         }
 
-        // ── Controlled Multi-Click Mode: focus-block mouse hook + fake cursors ─────
+        // ── Precise Click Mode: focus-block mouse hook + fake cursors ─────
 
         private static IntPtr _controlledMcFocusBlockHookHandle = IntPtr.Zero;
         private static InputCaptureHost _controlledMcFocusBlockHookHost = null;
@@ -1122,7 +1096,7 @@ namespace TTMulti.Input
             _controlledMcFocusBlockHookHost = this;
             if (_controlledMcFocusBlockHookProc == null)
                 _controlledMcFocusBlockHookProc = ControlledMcFocusBlockHookProc;
-            _controlledMcFocusBlockHookHandle = TryInstallLowLevelHook(Win32.WH_MOUSE_LL, _controlledMcFocusBlockHookProc, "Controlled Multi-Click focus block");
+            _controlledMcFocusBlockHookHandle = TryInstallLowLevelHook(Win32.WH_MOUSE_LL, _controlledMcFocusBlockHookProc, "Precise Click focus block");
         }
 
         private void UninstallControlledMcFocusBlockHook()
@@ -1172,39 +1146,32 @@ namespace TTMulti.Input
                 buttonIndex = (xBtn == 1) ? 3 : 4;
             }
 
-            // Check multi-click mouse bind
-            bool multiClickUseMouse      = Properties.Settings.Default.controlledMulticlickClickUseMouseButton;
-            int  multiClickButton        = Properties.Settings.Default.controlledMulticlickClickMouseButton;
-            bool multiClickTriggerOnRel  = Properties.Settings.Default.controlledMulticlickClickTriggerOnRelease;
-            if (multiClickUseMouse && buttonIndex == multiClickButton)
+            // ── Mirror / passthrough click mouse binds ──
+            // Mirror clicks send that button to every window (fire on press); passthrough clicks send it to
+            // only the hovered window and honour their own trigger-on-release setting.  Consumes the matched
+            // button (down and up) so the real click never reaches the game and steals focus.
+            var s = Properties.Settings.Default;
+            bool TryClickButton(bool useMouse, int button, bool triggerOnRelease, bool rightButton, bool mirror)
             {
-                bool shouldFire = multiClickTriggerOnRel ? isButtonUp : isButtonDown;
+                if (!useMouse || buttonIndex != button) return false;
+                bool shouldFire = triggerOnRelease ? isButtonUp : isButtonDown;
                 if (shouldFire)
                 {
                     host._shell.BeginInvoke(() =>
                     {
-                        _controlledMcFocusBlockHookHost?._controller?.TriggerInstantMultiClick(separateLR: Properties.Settings.Default.controlledMulticlickClickSeparateLR);
+                        var c = _controlledMcFocusBlockHookHost?._controller;
+                        if (c == null) return;
+                        if (mirror) c.TriggerInstantMultiClick(separateLR: false, rightButton: rightButton);
+                        else c.TriggerRegularClick(rightButton);
                     });
                 }
-                return (IntPtr)1; // consume both down and up
+                return true;
             }
 
-            // Check regular-click mouse bind
-            bool regularClickUseMouse     = Properties.Settings.Default.controlledMulticlickRegularClickUseMouseButton;
-            int  regularClickButton       = Properties.Settings.Default.controlledMulticlickRegularClickMouseButton;
-            bool regularClickTriggerOnRel = Properties.Settings.Default.controlledMulticlickRegularClickTriggerOnRelease;
-            if (regularClickUseMouse && buttonIndex == regularClickButton)
-            {
-                bool shouldFire = regularClickTriggerOnRel ? isButtonUp : isButtonDown;
-                if (shouldFire)
-                {
-                    host._shell.BeginInvoke(() =>
-                    {
-                        _controlledMcFocusBlockHookHost?._controller?.TriggerRegularClick();
-                    });
-                }
-                return (IntPtr)1; // consume both down and up
-            }
+            if (TryClickButton(s.controlledMulticlickMirrorLeftUseMouseButton,        s.controlledMulticlickMirrorLeftMouseButton,        false,                                                            false, true))  return (IntPtr)1;
+            if (TryClickButton(s.controlledMulticlickMirrorRightUseMouseButton,       s.controlledMulticlickMirrorRightMouseButton,       false,                                                            true,  true))  return (IntPtr)1;
+            if (TryClickButton(s.controlledMulticlickRegularClickUseMouseButton,      s.controlledMulticlickRegularClickMouseButton,      s.controlledMulticlickRegularClickTriggerOnRelease,      false, false)) return (IntPtr)1;
+            if (TryClickButton(s.controlledMulticlickRegularClickRightUseMouseButton, s.controlledMulticlickRegularClickRightMouseButton, s.controlledMulticlickRegularClickRightTriggerOnRelease, true,  false)) return (IntPtr)1;
 
             // Block left/right button down on game windows to prevent unwanted focus changes
             IntPtr hwndUnderCursor = Win32.WindowFromPoint(hookStruct.pt);
@@ -1226,7 +1193,7 @@ namespace TTMulti.Input
 
         /// <summary>
         /// Shows the fake cursor on every game window except the one the real cursor is over, broadcasting
-        /// the hovered window's local position to all. Runs while Controlled Multi-Click Mode is active.
+        /// the hovered window's local position to all. Runs while Precise Click Mode is active.
         /// </summary>
         private void FakeCursorTick()
         {

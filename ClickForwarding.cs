@@ -34,5 +34,22 @@ namespace TTMulti
             controller.PostMessage(Win32.WM.LBUTTONDOWN, (IntPtr)Win32.MK_LBUTTON, clickLParam);
             controller.PostMessage(Win32.WM.LBUTTONUP, IntPtr.Zero, clickLParam);
         }
+
+        /// <summary>Posts a synthesized right click (down then up) at a client-relative point to one window.</summary>
+        internal static void PostRightClick(ToontownController controller, int relativeX, int relativeY)
+        {
+            IntPtr clickLParam = Win32.MakeMouseLParam(relativeX, relativeY);
+            controller.PostMessage(Win32.WM.RBUTTONDOWN, (IntPtr)Win32.MK_RBUTTON, clickLParam);
+            controller.PostMessage(Win32.WM.RBUTTONUP, IntPtr.Zero, clickLParam);
+        }
+
+        /// <summary>Posts a synthesized left or right click (down then up) at a client-relative point to one window.</summary>
+        internal static void PostClick(ToontownController controller, int relativeX, int relativeY, bool rightButton)
+        {
+            if (rightButton)
+                PostRightClick(controller, relativeX, relativeY);
+            else
+                PostLeftClick(controller, relativeX, relativeY);
+        }
     }
 }

@@ -111,7 +111,7 @@ namespace TTMulti
         public event EventHandler SettingChanged;
 
         /// <summary>
-        /// Controlled Multi-Click Mode was entered or exited
+        /// Precise Click Mode was entered or exited
         /// </summary>
         public event EventHandler ControlledMulticlickModeChanged;
 
@@ -196,7 +196,7 @@ namespace TTMulti
         /// a second TryActivate attempt that would fight with game-window focus.
         /// </para>
         /// </summary>
-        public void TriggerInstantMultiClick(bool activateIfInactive = true, Point? cursorOverride = null, bool separateLR = false)
+        public void TriggerInstantMultiClick(bool activateIfInactive = true, Point? cursorOverride = null, bool separateLR = false, bool rightButton = false)
         {
             // Use the cursor position captured at press time when provided — this prevents a
             // click miss when the cursor drifts between press and release (or MC activation moves
@@ -259,15 +259,15 @@ namespace TTMulti
             foreach (ToontownController c in toClick)
             {
                 if (c.HasWindow)
-                    ClickForwarding.PostLeftClick(c, relativeX, relativeY);
+                    ClickForwarding.PostClick(c, relativeX, relativeY, rightButton);
             }
         }
 
         /// <summary>
-        /// Sends a left-click at the current cursor position to only the game window under the cursor.
-        /// Used by Controlled Multi-Click Mode's "regular click" bind.
+        /// Sends a left- or right-click at the current cursor position to only the game window under the
+        /// cursor.  Used by Precise Click Mode's "passthrough" binds — click one toon without stealing focus.
         /// </summary>
-        public void TriggerRegularClick()
+        public void TriggerRegularClick(bool rightButton = false)
         {
             Point cursorPos = Win32.GetCursorPosition();
 
@@ -277,7 +277,7 @@ namespace TTMulti
                 if (ClickForwarding.ClientAreaContainsPoint(clientAreaLocation, c.WindowSize, cursorPos))
                 {
                     Point rel = ClickForwarding.ToClientRelative(clientAreaLocation, cursorPos);
-                    ClickForwarding.PostLeftClick(c, rel.X, rel.Y);
+                    ClickForwarding.PostClick(c, rel.X, rel.Y, rightButton);
                     break;
                 }
             }
@@ -816,18 +816,20 @@ namespace TTMulti
             return false;
         }
 
-        // Controlled Multi-Click Mode state
+        // Precise Click Mode state.  (The setting keys / identifiers keep the historical
+        // "controlledMulticlick" name so existing saved user configs still load.)
         private bool _isControlledMulticlickMode = false;
 
         /// <summary>
-        /// Whether Controlled Multi-Click Mode is currently active.
-        /// In this mode, fake cursors are shown on all game windows and the configured click
-        /// key sends a left-click to every non-minimized window.
+        /// Whether Precise Click Mode is currently active.
+        /// In this mode, fake cursors are shown on all game windows and ordinary clicks on the game
+        /// windows are blocked; the configured regular-click bind sends a left-click to only the window
+        /// under the cursor (without stealing its focus).
         /// </summary>
         internal bool IsControlledMulticlickMode => _isControlledMulticlickMode;
 
         /// <summary>
-        /// Enters Controlled Multi-Click Mode.
+        /// Enters Precise Click Mode.
         /// </summary>
         public void EnterControlledMulticlickMode()
         {
@@ -842,7 +844,7 @@ namespace TTMulti
         }
 
         /// <summary>
-        /// Exits Controlled Multi-Click Mode.
+        /// Exits Precise Click Mode.
         /// </summary>
         public void ExitControlledMulticlickMode()
         {

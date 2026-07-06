@@ -49,6 +49,8 @@ namespace TTMulti.Ui.Settings
 
             _pages = new System.Collections.Generic.Dictionary<string, System.Windows.FrameworkElement>
             {
+                { "General", pageGeneral },
+                { "Appearance", pageAppearance },
                 { "Multi-Mode Keys", pageKeyBindings },
                 { "Controller Modes", pageModes },
                 { "Custom Modes", pageCustomModes },
@@ -56,9 +58,12 @@ namespace TTMulti.Ui.Settings
                 { "Multi-Click", pageMultiClick },
                 { "Auto-Find", pageAutoFind },
                 { "Layout Presets", pageLayoutPresets },
-                { "Colors", pageColors },
-                { "General", pageGeneral },
             };
+
+            // The rail's SelectionChanged fired during InitializeComponent (before _pages existed) and no-op'd,
+            // so sync the visible page to the initially-selected rail item now instead of relying on each
+            // page's XAML default Visibility matching the selection.
+            NavList_SelectionChanged(navList, null);
         }
 
         private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
