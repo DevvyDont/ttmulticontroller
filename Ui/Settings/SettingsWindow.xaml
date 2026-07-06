@@ -405,7 +405,7 @@
                                 </Grid>
                                 <StackPanel Margin="0,3" Orientation="Horizontal">
                                     <RadioButton Content="Hold" GroupName="CmActivate" IsChecked="{Binding controlledMulticlickActivateHold, Mode=TwoWay}" />
-                                    <RadioButton Margin="16,0,0,0" Content="Toggle" GroupName="CmActivate" IsChecked="{Binding controlledMulticlickActivateHold, Converter={StaticResource InverseBool}, Mode=TwoWay}" />
+                                    <RadioButton Margin="16,0,0,0" Content="Toggle" GroupName="CmActivate" IsChecked="{Binding controlledMulticlickActivateHold, Converter={StaticResource InverseBool}, Mode=OneWay}" />
                                 </StackPanel>
                                 <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding controlledMulticlickActivateGlobal, Mode=TwoWay}" />
                             </StackPanel>
