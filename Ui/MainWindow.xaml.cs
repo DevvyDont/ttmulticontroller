@@ -306,14 +306,12 @@ namespace TTMulti.Ui
 
         private void OptionsButton_Click(object sender, RoutedEventArgs e)
         {
-            // The new WPF SettingsWindow (Ui/Settings) is being built up over R8a–R8c; until the Layout
-            // Presets page lands and the flip happens, Options keeps opening the complete WinForms OptionsDlg.
-            var dlg = new OptionsDlg();
+            var settings = new TTMulti.Ui.Settings.SettingsWindow { Owner = this };
             _ignoreMessages = true;
-            var result = dlg.ShowDialog(new Win32WindowOwner(_hwnd));
+            bool? result = settings.ShowDialog();
             _ignoreMessages = false;
 
-            if (result == System.Windows.Forms.DialogResult.OK)
+            if (result == true)
             {
                 ReloadOptions();
                 _controller.EnsureValidActiveCustomModeId();

@@ -18,6 +18,7 @@ namespace TTMulti.Ui.Settings
         private System.Collections.Generic.Dictionary<string, System.Windows.FrameworkElement> _pages;
         private readonly KeyBindingsEditor _keyBindings = new KeyBindingsEditor();
         private readonly CustomModesEditor _customModes = new CustomModesEditor();
+        private readonly LayoutPresetsEditor _layoutPresets = new LayoutPresetsEditor();
 
         public SettingsWindow()
         {
@@ -32,6 +33,10 @@ namespace TTMulti.Ui.Settings
             // The custom-modes editor owns the custom-modes JSON file, committed inside the transaction.
             _session.Register(_customModes);
             pageCustomModes.DataContext = _customModes;
+
+            // The layout-presets editor owns the layout-presets JSON file, committed inside the transaction.
+            _session.Register(_layoutPresets);
+            pageLayoutPresets.DataContext = _layoutPresets;
 
             // Sub-panels whose controls need read-modify-write over a shared setting get their own DataContext.
             switchKeyPanel.DataContext = new SwitchKeyViewModel();
@@ -50,6 +55,7 @@ namespace TTMulti.Ui.Settings
                 { "Hotkeys", pageHotkeys },
                 { "Multi-Click", pageMultiClick },
                 { "Auto-Find", pageAutoFind },
+                { "Layout Presets", pageLayoutPresets },
                 { "Colors", pageColors },
                 { "General", pageGeneral },
             };
@@ -89,6 +95,59 @@ namespace TTMulti.Ui.Settings
 
         private void CmRemoveBinding_Click(object sender, RoutedEventArgs e) =>
             _customModes.RemoveBinding(_customModes.SelectedBinding);
+
+        // ── Layout presets (individual presets still edited in the WinForms editor form) ──
+
+        private System.Windows.Forms.IWin32Window OwnerHandle() =>
+            new WpfWin32Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+
+        private void LpAdd_Click(object sender, RoutedEventArgs e)
+        {
+            var preset = LayoutPresetsEditor.NewDefault();
+            using (var editor = new Forms.LayoutPresetEditorForm(preset))
+            {
+                if (editor.ShowDialog(OwnerHandle()) == System.Windows.Forms.DialogResult.OK)
+                    _layoutPresets.Add(editor.Preset);
+            }
+        }
+
+        private void LpEdit_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = _layoutPresets.SelectedPreset;
+            if (selected == null)
+            {
+                System.Windows.MessageBox.Show(this, "Select a preset to edit.", "Layout Presets");
+                return;
+            }
+            using (var editor = new Forms.LayoutPresetEditorForm(LayoutPresetsEditor.Clone(selected)))
+            {
+                if (editor.ShowDialog(OwnerHandle()) == System.Windows.Forms.DialogResult.OK)
+                    _layoutPresets.Replace(selected, editor.Preset);
+            }
+        }
+
+        private void LpDelete_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = _layoutPresets.SelectedPreset;
+            if (selected == null)
+            {
+                System.Windows.MessageBox.Show(this, "Select a preset to delete.", "Layout Presets");
+                return;
+            }
+            string name = string.IsNullOrEmpty(selected.Name) ? "this preset" : selected.Name;
+            if (System.Windows.MessageBox.Show(this, "Delete layout preset \"" + name + "\"?", "Delete Preset",
+                    System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning) == System.Windows.MessageBoxResult.Yes)
+            {
+                _layoutPresets.Remove(selected);
+            }
+        }
+
+        /// <summary>Lets the WinForms LayoutPresetEditorForm use this WPF window as its owner (via HWND).</summary>
+        private sealed class WpfWin32Owner : System.Windows.Forms.IWin32Window
+        {
+            public WpfWin32Owner(System.IntPtr handle) { Handle = handle; }
+            public System.IntPtr Handle { get; }
+        }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {

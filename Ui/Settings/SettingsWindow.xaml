@@ -71,6 +71,7 @@
                 <ListBoxItem Content="Hotkeys" />
                 <ListBoxItem Content="Multi-Click" />
                 <ListBoxItem Content="Auto-Find" />
+                <ListBoxItem Content="Layout Presets" />
                 <ListBoxItem Content="Colors" />
                 <ListBoxItem Content="General" />
             </ListBox>
@@ -497,6 +498,47 @@
                                     <CheckBox Margin="0,0,12,0" Content="Ctrl" IsChecked="{Binding Control, Mode=TwoWay}" />
                                     <CheckBox Content="Shift" IsChecked="{Binding Shift, Mode=TwoWay}" />
                                 </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ── Layout Presets ─────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageLayoutPresets" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Layout presets" />
+                        <TextBlock
+                            Margin="2,0,0,8"
+                            FontSize="12"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            Text="Each preset's hotkey arranges the controller windows across your monitors." />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ListBox
+                                x:Name="layoutPresetsList"
+                                Grid.Column="0"
+                                Height="180"
+                                DisplayMemberPath="Name"
+                                ItemsSource="{Binding Presets}"
+                                SelectedItem="{Binding SelectedPreset, Mode=TwoWay}" />
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <ui:Button MinWidth="80" Content="Add" Click="LpAdd_Click" />
+                                <ui:Button MinWidth="80" Margin="0,6,0,0" Content="Edit" Click="LpEdit_Click" />
+                                <ui:Button MinWidth="80" Margin="0,6,0,0" Content="Delete" Click="LpDelete_Click" />
+                            </StackPanel>
+                        </Grid>
+                        <Border Style="{StaticResource Card}" Margin="0,10,0,0">
+                            <StackPanel>
+                                <CheckBox Content="Lefts first (controller order when applying a preset)"
+                                    IsChecked="{Binding layoutPriorityLeftsFirst, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
+                                <TextBlock
+                                    Margin="0,4,0,0"
+                                    FontSize="11"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap"
+                                    Text="Lefts first: G1P1L, G1P2L, G1P1R, G1P2R…   Pairs first: G1P1L, G1P1R, G1P2L, G1P2R…" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
