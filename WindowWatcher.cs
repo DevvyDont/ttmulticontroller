@@ -62,7 +62,13 @@ namespace TTMulti
             }
         }
 
-        private readonly HashSet<IntPtr> watchedWindowHandles = new HashSet<IntPtr>();
+        // Reference-counted watch set: a handle can be transiently owned by two controllers at once during a
+        // Switching-Mode swap (each swapped controller's WindowHandle setter re-watches the other's old handle
+        // before that controller releases it). Counting stops the releasing controller's StopWatchingWindow from
+        // dropping a handle the new owner still needs — which otherwise left the swapped window unwatched, so
+        // focusing it fired no activation and "release held keys on focus" silently died for that window.
+        // (CORR: swap-clobber release bug)
+        private readonly Dictionary<IntPtr, int> watchedWindowHandles = new Dictionary<IntPtr, int>();
         private readonly Dictionary<IntPtr, WindowInfo> lastWindowInfos = new Dictionary<IntPtr, WindowInfo>();
         private IntPtr lastActiveWindowHandle = IntPtr.Zero;
 
@@ -105,19 +111,43 @@ namespace TTMulti
             _hooksInstalled = false;
         }
 
+        /// <summary>Whether a handle is currently watched (i.e. its foreground/move/close events are delivered).
+        /// Exposed for the swap-clobber regression test — this is exactly the gate that decides whether focusing
+        /// a window fires an activation event.</summary>
+        internal bool IsWatching(IntPtr windowHandle) => watchedWindowHandles.ContainsKey(windowHandle);
+
         /// <summary>Add a window handle to be notified when it is moved, resized, minimized, activated, or closed.</summary>
         public void WatchWindow(IntPtr windowHandle)
         {
-            if (windowHandle == IntPtr.Zero || !watchedWindowHandles.Add(windowHandle))
+            if (windowHandle == IntPtr.Zero)
                 return;
+
+            if (watchedWindowHandles.TryGetValue(windowHandle, out int count))
+            {
+                // Already watched (and seeded) — another controller shares it mid-swap. Just count the owner.
+                watchedWindowHandles[windowHandle] = count + 1;
+                return;
+            }
+
+            watchedWindowHandles[windowHandle] = 1;
 
             // Seed initial state and fire the initial events immediately (the poll used to do this on its next tick).
             SeedWindow(windowHandle);
         }
 
-        /// <summary>Stop notifications for a window.</summary>
+        /// <summary>Stop notifications for a window (decrements its owner count; drops it once no controller owns it).</summary>
         public void StopWatchingWindow(IntPtr windowHandle)
         {
+            if (!watchedWindowHandles.TryGetValue(windowHandle, out int count))
+                return;
+
+            if (count > 1)
+            {
+                // Another controller still owns this handle (transient dual-ownership during a swap).
+                watchedWindowHandles[windowHandle] = count - 1;
+                return;
+            }
+
             watchedWindowHandles.Remove(windowHandle);
             lastWindowInfos.Remove(windowHandle);
         }
@@ -136,14 +166,14 @@ namespace TTMulti
                     break;
 
                 case Win32.EVENT_OBJECT_DESTROY:
-                    if (watchedWindowHandles.Contains(hwnd))
+                    if (watchedWindowHandles.ContainsKey(hwnd))
                         HandleWindowClosed(hwnd);
                     break;
 
                 case Win32.EVENT_OBJECT_LOCATIONCHANGE:
                 case Win32.EVENT_SYSTEM_MINIMIZESTART:
                 case Win32.EVENT_SYSTEM_MINIMIZEEND:
-                    if (watchedWindowHandles.Contains(hwnd))
+                    if (watchedWindowHandles.ContainsKey(hwnd))
                         RefreshWindowInfo(hwnd);
                     break;
             }
@@ -155,7 +185,7 @@ namespace TTMulti
                 return;
 
             // Only notify when a watched window gained or lost the foreground.
-            if (watchedWindowHandles.Contains(lastActiveWindowHandle) || watchedWindowHandles.Contains(activeWindowHandle))
+            if (watchedWindowHandles.ContainsKey(lastActiveWindowHandle) || watchedWindowHandles.ContainsKey(activeWindowHandle))
                 ActiveWindowChanged?.Invoke(this, new Events.WindowActivatedEventArgs(lastActiveWindowHandle, activeWindowHandle));
 
             lastActiveWindowHandle = activeWindowHandle;
@@ -164,6 +194,8 @@ namespace TTMulti
         private void HandleWindowClosed(IntPtr windowHandle)
         {
             WindowClosed?.Invoke(this, new Events.WindowClosedEventArgs(windowHandle));
+            // The window is destroyed — drop it outright regardless of owner count (any lingering controller's
+            // later StopWatchingWindow is then a harmless no-op).
             watchedWindowHandles.Remove(windowHandle);
             lastWindowInfos.Remove(windowHandle);
         }

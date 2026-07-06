@@ -13,7 +13,7 @@ using Wpf.Ui.Controls;
 namespace TTMulti.Ui
 {
     /// <summary>
-    /// The WPF main window (R6/R7 of the UI rebuild) — a compact FluentWindow that hosts the SAME
+    /// The WPF main window (R6/R7 of the UI rebuild): a compact FluentWindow that hosts the SAME
     /// <see cref="InputCaptureHost"/> the WinForms shell uses, feeding it an HWND and UI-thread services
     /// through <see cref="IInputShell"/>. The message plumbing that WinForms did with IMessageFilter /
     /// WndProc is replicated with <see cref="ComponentDispatcher.ThreadPreprocessMessage"/> (the pre-dispatch
@@ -39,7 +39,7 @@ namespace TTMulti.Ui
 
             // This window is "played" like the game: while it's focused the user is sending WASD / arrow keys /
             // space to the game windows (the preprocess filter forwards them). Keep the interface strictly
-            // mouse-driven by denying keyboard focus to every control — with nothing focusable there is no
+            // mouse-driven by denying keyboard focus to every control; with nothing focusable there is no
             // target for Tab/arrow navigation or Space/Enter activation, so a strafe or jump keystroke can
             // never tab between or "click" the controller's own buttons (UX-06). Modal dialogs are separate
             // windows with their own focus scope, so their keyboard input is unaffected.
@@ -134,11 +134,17 @@ namespace TTMulti.Ui
 
         /// <summary>
         /// The WndProc equivalent: WM_HOTKEY that the preprocess filter let through (pass-through IDs, and
-        /// IDs 0/1/2 when ProcessInput didn't consume them) are handled here — identical to the WinForms
+        /// IDs 0/1/2 when ProcessInput didn't consume them) are handled here, identical to the WinForms
         /// WndProc override. Left unhandled so default window processing still runs.
         /// </summary>
         private IntPtr WndProcHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            // A title-bar drag or resize enters a Win32 modal move/size loop whose own message pump bypasses the
+            // preprocess input filter, so a KEYUP released during the drag never reaches the engine and the key
+            // stays stuck. When the loop ends, reconcile held keys against the physical keyboard to recover it.
+            if (msg == (int)Win32.WM.EXITSIZEMOVE)
+                _controller?.ReconcileHeldKeys();
+
             _inputHost?.HandleWindowMessage(msg, wParam, lParam);
             return IntPtr.Zero;
         }
@@ -191,7 +197,7 @@ namespace TTMulti.Ui
             ApplyModeHeight();
         }
 
-        // Each layout is a fixed size — the window isn't resizable (ResizeMode=NoResize) and the UI doesn't
+        // Each layout is a fixed size; the window isn't resizable (ResizeMode=NoResize) and the UI doesn't
         // reflow, so its width and height are hard-locked (Min = Max) to the active layout's content box.
         private const double DefaultWindowWidth = 264;
         private const double DefaultWindowHeight = 158;
@@ -200,7 +206,7 @@ namespace TTMulti.Ui
 
         /// <summary>
         /// Snap the window to the active layout: hard-lock the width and height (so it can't be dragged and
-        /// compact ↔ normal switches cleanly), and lay out the crosshair row for that mode — spread wide with a
+        /// compact ↔ normal switches cleanly), and lay out the crosshair row for that mode, spread wide with a
         /// stretched centre column when normal, or a tight centred cluster (centre column hugs the buttons,
         /// tighter side margins) when compact, so the small compact window fits the crosshairs + action buttons.
         /// </summary>
@@ -274,10 +280,10 @@ namespace TTMulti.Ui
             _inputHost.OnSettingsReloaded();
             _viewModel?.ForceRefresh();
 
-            // Compact-mode toggle changes the layout — snap the window to that mode's fixed height.
+            // Compact-mode toggle changes the layout: snap the window to that mode's fixed height.
             ApplyModeHeight();
 
-            // Mode colours may have changed — re-render the logo icon to match.
+            // Mode colours may have changed, so re-render the logo icon to match.
             UpdateWindowIcon();
         }
 
@@ -287,7 +293,7 @@ namespace TTMulti.Ui
             bool suspended = _inputHost != null && _inputHost.IsGlobalHotkeysSuspended;
             if (_viewModel != null)
                 _viewModel.IsSuspended = suspended;
-            this.Title = suspended ? "Multicontroller — Hotkeys Suspended" : "Multicontroller";
+            this.Title = suspended ? "Multicontroller (Hotkeys Suspended)" : "Multicontroller";
         }
 
         protected override void OnActivated(EventArgs e)
@@ -296,6 +302,8 @@ namespace TTMulti.Ui
             if (_controller != null)
             {
                 _controller.IsActive = true;
+                // Catch any key orphaned while the shell was not receiving input (e.g. released during a drag).
+                _controller.ReconcileHeldKeys();
                 _inputHost?.RegisterFocusHotkeys();
             }
             if (!_shownOnce)
@@ -308,10 +316,15 @@ namespace TTMulti.Ui
         protected override void OnDeactivated(EventArgs e)
         {
             base.OnDeactivated(e);
-            // The user deliberately focused another window — cancel any pending activation loop.
+            // The user deliberately focused another window, so cancel any pending activation loop.
             _inputHost?.CancelActivation();
             if (_controller != null)
+            {
                 _controller.IsActive = false;
+                // If the app truly went to the background (taskbar / another app), release every held key so no
+                // toon keeps moving. No-op when focus went to a game window or one of our own windows.
+                _controller.NotifyShellDeactivated();
+            }
             _inputHost?.RegisterFocusHotkeys();
         }
 

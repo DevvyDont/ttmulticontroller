@@ -198,7 +198,7 @@ namespace TTMulti
         /// </summary>
         public void TriggerInstantMultiClick(bool activateIfInactive = true, Point? cursorOverride = null, bool separateLR = false, bool rightButton = false)
         {
-            // Use the cursor position captured at press time when provided — this prevents a
+            // Use the cursor position captured at press time when provided; this prevents a
             // click miss when the cursor drifts between press and release (or MC activation moves
             // the cursor off the game window).
             Point cursorPos = cursorOverride ?? Win32.GetCursorPosition();
@@ -265,7 +265,7 @@ namespace TTMulti
 
         /// <summary>
         /// Sends a left- or right-click at the current cursor position to only the game window under the
-        /// cursor.  Used by Precise Click Mode's "passthrough" binds — click one toon without stealing focus.
+        /// cursor.  Used by Precise Click Mode's "passthrough" binds: click one toon without stealing focus.
         /// </summary>
         public void TriggerRegularClick(bool rightButton = false)
         {
@@ -303,7 +303,7 @@ namespace TTMulti
             {
                 if (currentGroupIndex != value)
                 {
-                    // Release held keys before the active group changes (CORR-05) — but only when the
+                    // Release held keys before the active group changes (CORR-05), but only when the
                     // "Sticky Controls" setting says to.  With it off (default), a key held across the switch
                     // stays down on the windows you left, so they keep moving until you switch back and
                     // release it.  With it on, held keys are force-released on switch (STICKY-01).
@@ -368,6 +368,12 @@ namespace TTMulti
             {
                 if (_currentIndividualControllerIndex != value)
                 {
+                    // Release held keys before the active controller changes, gated on the Sticky Controls
+                    // setting so held keys persist across the switch when it is off (STICKY-01), matching the
+                    // group / pair setters.
+                    if (Properties.Settings.Default.releaseKeysOnWindowFocus)
+                        ReleaseAllHeldForwardedKeys();
+
                     _currentIndividualControllerIndex = value;
 
                     ActiveControllersChanged?.Invoke(this, EventArgs.Empty);
@@ -568,6 +574,11 @@ namespace TTMulti
         
         Dictionary<Keys, List<Keys>> leftKeys = new Dictionary<Keys, List<Keys>>(),
             rightKeys = new Dictionary<Keys, List<Keys>>();
+
+        /// <summary>Per-physical-key record of exactly what each standard-mode KEYDOWN forwarded, so the matching
+        /// KEYUP (or a physical-state reconcile) releases the same (controller, posted key) pairs no matter how the
+        /// routing moved while the key was held. Custom mode keeps its own equivalent in CustomModeInputRouter.</summary>
+        readonly ForwardedKeyLedger<ToontownController> _forwardedKeys = new ForwardedKeyLedger<ToontownController>();
         
         bool zeroPowerThrowKeyPressed = false;
 
@@ -1494,7 +1505,7 @@ namespace TTMulti
                 {
                     // When trigger-on-release is enabled the keyboard hook owns the click (fires on
                     // key-up).  If a raw KEYDOWN reaches here it means MC is the active window and
-                    // the hook suppressed the key before posting it — but just in case, guard here too.
+                    // the hook suppressed the key before posting it, but just in case, guard here too.
                     if (Properties.Settings.Default.multiclickTriggerOnRelease && msg == Win32.WM.KEYDOWN)
                         return true; // consume without firing; hook fires on release
                     TriggerInstantMultiClick(separateLR: Properties.Settings.Default.replicateMouseSeparateLR);
@@ -1519,7 +1530,12 @@ namespace TTMulti
                         {
                             ShouldActivate?.Invoke(this, EventArgs.Empty);
                         }
-                        
+
+                        // Switching mode consumes all input, so any key held at entry would never get a KEYUP.
+                        // Release everything now (gated on the Sticky Controls setting, like the other paths).
+                        if (Properties.Settings.Default.releaseKeysOnWindowFocus)
+                            ReleaseAllHeldForwardedKeys();
+
                         _switchingMode = true;
                         _firstSelectedController = null;
                         _secondSelectedController = null;
@@ -1726,7 +1742,7 @@ namespace TTMulti
             {
                 // A number key selects a group. Normally this only works while already in Group mode; with
                 // Express Group Focus on, it fires from any mode and jumps straight into Group (Multi) mode
-                // first — one keypress both switches to Multi and selects the group.
+                // first: one keypress both switches to Multi and selects the group.
                 int index;
 
                 if (keysPressed >= Keys.D0 && keysPressed <= Keys.D9)
@@ -1758,7 +1774,7 @@ namespace TTMulti
                     return false;
                 }
 
-                // Mode lock: inactive zero-power paths change MulticontrollerMode — block them entirely
+                // Mode lock: inactive zero-power paths change MulticontrollerMode: block them entirely
                 if (_modeLockEngaged && !IsActive)
                 {
                     if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY)
@@ -1933,7 +1949,7 @@ namespace TTMulti
                 return true; // Consume all input in switching mode
             }
 
-            // When no game windows are connected there is nothing to forward to, so don't consume keystrokes —
+            // When no game windows are connected there is nothing to forward to, so don't consume keystrokes;
             // let them navigate the main window and trigger Alt mnemonics. Otherwise the MC window swallows every
             // key while focused, which traps keyboard users and blocks mnemonics like Alt+O (UX-06). This runs
             // before ProcessCmdKey (the message filter is earlier in the pipeline), so it's the effective gate.
@@ -1958,12 +1974,30 @@ namespace TTMulti
                 return result != CustomRouteResult.PassThrough;
             }
 
+            bool isKeyUp = msg == Win32.WM.KEYUP || msg == Win32.WM.SYSKEYUP;
+
+            // A KEYUP releases exactly what the matching KEYDOWN forwarded, taken from the ledger, regardless of
+            // the current mode / active set / IsActive / minimize state. This is what stops a physically released
+            // key from being stranded on a window whose routing changed while the key was held: the old code
+            // recomputed the target set at UP-time, so the KEYUP could miss the windows that got the DOWN. Custom
+            // mode does its own equivalent in the branch above.
+            if (isKeyUp)
+            {
+                var released = _forwardedKeys.TakeUp(keysPressed);
+                foreach (var o in released)
+                    o.Controller.PostMessage(Win32.WM.KEYUP, (IntPtr)o.PostedKey, Win32.MakePostedKeyLParam(o.PostedKey, true));
+
+                // Consume the KEYUP whenever we are forwarding (mirrors the KEYDOWN consume-all below) so released
+                // keys don't leak into the MC window; when not active, only consume if we actually released.
+                return IsActive || released.Count > 0;
+            }
+
             if (IsActive)
             {
                 IEnumerable<ToontownController> affectedControllers = ActiveControllers;
                 List<Keys> keysToPress = new List<Keys>();
-                
-                if (CurrentMode == MulticontrollerMode.Group 
+
+                if (CurrentMode == MulticontrollerMode.Group
                     || CurrentMode == MulticontrollerMode.AllGroup)
                 {
                     if (leftKeys.ContainsKey(keysPressed) && !rightKeys.ContainsKey(keysPressed))
@@ -1989,10 +2023,16 @@ namespace TTMulti
                 // below (and the per-key loop) would otherwise re-run it for every mapped key (PERF-10).
                 var affectedList = WhereNotMinimized(affectedControllers).ToList();
 
+                // Record exactly what we post so the matching KEYUP releases the same (controller, key) pairs.
+                var forwarded = new List<(ToontownController, Keys)>();
+
                 if (CurrentMode == MulticontrollerMode.MirrorAll)
                 {
                     foreach (ToontownController c in affectedList)
+                    {
                         c.PostMessage(msg, wParam, lParam);
+                        forwarded.Add((c, keysPressed));
+                    }
                 }
                 else if (CurrentMode == MulticontrollerMode.Focused)
                 {
@@ -2005,12 +2045,16 @@ namespace TTMulti
                     {
                         // Directional keys only go to the focused window
                         _focusedController.PostMessage(msg, wParam, lParam);
+                        forwarded.Add((_focusedController, keysPressed));
                     }
                     else if (!isDirectionalKey)
                     {
                         // All non-directional keys go to all windows
                         foreach (ToontownController c in affectedList)
+                        {
                             c.PostMessage(msg, wParam, lParam);
+                            forwarded.Add((c, keysPressed));
+                        }
                     }
                     // If isDirectionalKey is true but _focusedController is null/invalid/minimized, don't send to anyone
                 }
@@ -2018,15 +2062,18 @@ namespace TTMulti
                 {
                     // Group/AllGroup: the physical trigger key is remapped to actualKey, so post an lParam built for
                     // actualKey's own scan code instead of forwarding the trigger key's lParam (WIN32-05).
-                    bool isKeyUp = msg == Win32.WM.KEYUP || msg == Win32.WM.SYSKEYUP;
                     foreach (Keys actualKey in keysToPress)
                     {
-                        IntPtr keyLParam = Win32.MakePostedKeyLParam(actualKey, isKeyUp);
+                        IntPtr keyLParam = Win32.MakePostedKeyLParam(actualKey, false);
                         foreach (ToontownController c in affectedList)
+                        {
                             c.PostMessage(msg, (IntPtr)actualKey, keyLParam);
+                            forwarded.Add((c, actualKey));
+                        }
                     }
                 }
 
+                _forwardedKeys.RecordDown(keysPressed, forwarded);
                 return true;
             }
 
@@ -2043,64 +2090,74 @@ namespace TTMulti
 
         private void Controller_WindowActivated(object sender, EventArgs e)
         {
+            // Manually driving one game window (you clicked into it): release every held key on the OTHER windows
+            // so only the focused window keeps moving. Precise (each window's actual held keys), not just movement.
             if (Properties.Settings.Default.releaseKeysOnWindowFocus && sender is ToontownController focused)
-                ReleaseMovementKeysOnOtherWindows(focused);
+                ReleaseHeldKeysOn(WhereNotMinimized(AllControllersWithWindows).Where(c => c != focused));
             WindowActivated?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
-        /// Sends KEYUP for movement keys to the given controllers (e.g. so they stop moving when focus/active group changes).
-        /// Releases both LeftToonKey and RightToonKey for every controller so all modes are covered — in MirrorAll the
-        /// raw key is sent to all windows regardless of type, so both sets must be released.  Sending KEYUP for a key
-        /// that is not currently pressed is harmless.
+        /// Posts KEYUP for exactly the keys each given controller currently holds down (its own _heldKeys ledger),
+        /// and drops those controllers from the forwarded-key ledger. Used by every release-on-deactivate path so a
+        /// window that stops receiving input releases ALL of its held keys, not just the five movement keys.
         /// </summary>
-        private void ReleaseMovementKeysOnControllers(IEnumerable<ToontownController> controllers)
+        private void ReleaseHeldKeysOn(IEnumerable<ToontownController> controllers)
         {
             if (controllers == null) return;
-
-            var movementTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "forward", "left", "backward", "right", "jump" };
-            var allMovementKeys = new HashSet<Keys>();
-            foreach (var binding in Properties.SerializedSettings.Default.Bindings)
-            {
-                if (!movementTitles.Contains(binding.Title)) continue;
-                if (binding.LeftToonKey != Keys.None) allMovementKeys.Add(binding.LeftToonKey);
-                if (binding.RightToonKey != Keys.None) allMovementKeys.Add(binding.RightToonKey);
-            }
-
-            // lParam for WM_KEYUP: bit 31 = transition state (1 = releasing), bit 30 = previous state (1 = was down), repeat count = 1.
-            // Sending lParam=0 incorrectly signals a key-down transition (bit 31=0), which causes chat boxes to interpret it as a keypress.
-            IntPtr keyUpLParam = (IntPtr)unchecked((int)0xC0000001u);
-
             foreach (ToontownController c in controllers)
             {
-                if (c == null || !c.HasWindow) continue;
-                foreach (Keys k in allMovementKeys)
-                {
-                    c.PostMessage(Win32.WM.KEYUP, (IntPtr)k, keyUpLParam);
-                }
+                if (c == null) continue;
+                c.ReleaseAllHeldKeys();
+                _forwardedKeys.RemoveController(c);
             }
         }
 
         /// <summary>
-        /// Sends KEYUP for movement keys to all controlled windows except the focused one.
-        /// Used when releaseKeysOnWindowFocus is enabled: when user focuses a window by clicking (or switches group), other windows get key-up so they don't keep moving.
-        /// </summary>
-        internal void ReleaseMovementKeysOnOtherWindows(ToontownController focusedController)
-        {
-            if (focusedController == null) return;
-            var others = WhereNotMinimized(AllControllersWithWindows).Where(c => c != focusedController);
-            ReleaseMovementKeysOnControllers(others);
-        }
-
-        /// <summary>
-        /// When releaseKeysOnWindowFocus is enabled, release movement keys on controllers that are no longer active (e.g. after switching group).
+        /// When releaseKeysOnWindowFocus is enabled, release held keys on controllers that are no longer in the
+        /// active set (e.g. after switching group / pair / individual controller).
         /// </summary>
         private void TryReleaseKeysOnInactiveControllers()
         {
             if (!Properties.Settings.Default.releaseKeysOnWindowFocus) return;
             var inactive = WhereNotMinimized(AllControllersWithWindows).Except(ActiveControllers);
-            ReleaseMovementKeysOnControllers(inactive);
+            ReleaseHeldKeysOn(inactive);
+        }
+
+        /// <summary>
+        /// Releases any forwarded key whose physical trigger is no longer physically down. Recovers keys whose
+        /// KEYUP never reached the input filter (e.g. it was swallowed by a title-bar-drag modal loop), which
+        /// otherwise leaves the key stuck even though the user released it. Ungated: it only releases keys that are
+        /// actually up, so it is always correct. Must run on the UI thread (GetAsyncKeyState + PostMessage).
+        /// </summary>
+        internal void ReconcileHeldKeys()
+        {
+            var released = _forwardedKeys.Reconcile(k => (Win32.GetAsyncKeyState(k) & 0x8000) != 0);
+            foreach (var o in released)
+                o.Controller.PostMessage(Win32.WM.KEYUP, (IntPtr)o.PostedKey, Win32.MakePostedKeyLParam(o.PostedKey, true));
+        }
+
+        /// <summary>
+        /// Called when the shell window loses activation. If the app has genuinely gone to the background (the new
+        /// foreground belongs to another process and is not one of our controlled game windows), release every held
+        /// key so no toon keeps moving. Skips the game-window-focus case (the activation thread steals focus back and
+        /// Controller_WindowActivated already released the others) and moving between our own windows. Gated.
+        /// </summary>
+        internal void NotifyShellDeactivated()
+        {
+            if (!Properties.Settings.Default.releaseKeysOnWindowFocus) return;
+
+            IntPtr fg = Win32.GetForegroundWindow();
+            if (fg != IntPtr.Zero)
+            {
+                if (AllControllersWithWindows.Any(c => c.WindowHandle == fg))
+                    return; // focus went to a controlled game window; the focus path handles release
+                Win32.GetWindowThreadProcessId(fg, out uint pid);
+                if (pid == (uint)Environment.ProcessId)
+                    return; // one of our own windows (Groups / Settings)
+            }
+
+            ReleaseAllHeldForwardedKeys();
         }
 
         /// <summary>
@@ -2112,13 +2169,14 @@ namespace TTMulti
         {
             foreach (ToontownController c in AllControllersWithWindows)
                 c.ReleaseAllHeldKeys();
+            _forwardedKeys.Clear();
             CustomModeInputRouter.ResetHeldTriggers();
         }
 
         /// <summary>
         /// Posts an instant 0%-power throw (KEYDOWN immediately followed by KEYUP) to a controller using well-formed
-        /// key lParams.  A zero lParam clears the key-up transition bit, which the games misread as a keypress
-        /// (see <see cref="ReleaseMovementKeysOnControllers"/>) — WIN32-03.
+        /// key lParams.  A zero lParam clears the key-up transition bit, which the games misread as a keypress, so
+        /// use Win32.MakePostedKeyLParam for both edges (WIN32-03).
         /// </summary>
         private void PostZeroPowerThrow(ToontownController controller, KeyMapping throwBinding)
         {
@@ -2149,9 +2207,9 @@ namespace TTMulti
                 }
 
                 // When the multicontroller goes to the background (no game window is focused),
-                // release movement keys on every window so no toon keeps moving indefinitely.
+                // release every held key on every window so no toon keeps moving indefinitely.
                 if (Properties.Settings.Default.releaseKeysOnWindowFocus)
-                    ReleaseMovementKeysOnControllers(WhereNotMinimized(AllControllersWithWindows));
+                    ReleaseAllHeldForwardedKeys();
             }
         }
 
@@ -2393,9 +2451,9 @@ namespace TTMulti
 
         /// <summary>
         /// Per-window invisible-frame offsets so placed windows meet edge-to-edge. Uses the real DWM frame
-        /// thickness (accurate per window, and DPI-correct — including automatically once Per-Monitor V2 is
+        /// thickness (accurate per window, and DPI-correct, including automatically once Per-Monitor V2 is
         /// enabled) instead of the fixed 100%-DPI constants, falling back to the constants if the DWM query
-        /// returns implausible values (e.g. a window still mid-restore) — WIN32-06.
+        /// returns implausible values (e.g. a window still mid-restore). WIN32-06.
         /// </summary>
         private static void GetPlacementFrameOffsets(IntPtr hwnd, out int xOffset, out int wOverlap, out int hOverlap)
         {
@@ -2558,7 +2616,7 @@ namespace TTMulti
         /// low-level hook whose callback exceeds LowLevelHooksTimeout, with no notification, leaving the feature
         /// dead mid-session; the watchdog (InputCaptureHost) calls this periodically after input to heal that.
         /// Unhook-then-reinstall is a no-op-then-fresh-install when the hook is already gone, and an atomic swap
-        /// when it is healthy. Must run on the same (UI) thread that pumps the hook — the watchdog guarantees that.
+        /// when it is healthy. Must run on the same (UI) thread that pumps the hook; the watchdog guarantees that.
         /// </summary>
         internal void RearmSwitchingMouseHookIfInstalled()
         {

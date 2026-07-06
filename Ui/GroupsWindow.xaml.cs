@@ -9,7 +9,7 @@ namespace TTMulti.Ui
 {
     /// <summary>
     /// WPF replacement for WindowGroupsForm + ControllerGroupView/ControllerPairView. Edits the live
-    /// controller groups (no OK/Cancel transaction — the OK button just closes). The main window shows all
+    /// controller groups (no OK/Cancel transaction, the OK button just closes). The main window shows all
     /// borders while this is open.
     /// </summary>
     public partial class GroupsWindow : FluentWindow
@@ -67,12 +67,15 @@ namespace TTMulti.Ui
         {
             base.OnActivated(e);
             _controller.IsActive = true;
+            _controller.ReconcileHeldKeys();
         }
 
         protected override void OnDeactivated(EventArgs e)
         {
             base.OnDeactivated(e);
             _controller.IsActive = false;
+            // Release held keys if the app truly went to the background (not to a game window or our own windows).
+            _controller.NotifyShellDeactivated();
         }
 
         protected override void OnClosing(CancelEventArgs e)
