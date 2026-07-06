@@ -25,7 +25,6 @@ namespace TTMulti.Ui.Controls
         public WindowCrosshair()
         {
             InitializeComponent();
-            finderImage.Source = WpfImaging.ToBitmapSource(Properties.Resources.finderf);
 
             MouseLeftButtonDown += OnMouseLeftButtonDown;
             MouseLeftButtonUp += OnMouseLeftButtonUp;
@@ -65,6 +64,10 @@ namespace TTMulti.Ui.Controls
             rootBorder.BorderBrush = assigned && AccentBrush != null
                 ? AccentBrush
                 : (Brush)FindResource("ControlStrokeColorDefaultBrush");
+            // Colour the target icon with the toon's accent once a window is picked; muted until then.
+            finderIcon.Foreground = assigned && AccentBrush != null
+                ? AccentBrush
+                : (Brush)FindResource("TextFillColorSecondaryBrush");
         }
 
         // ── Drag-to-pick ────────────────────────────────────────────────────────────
@@ -73,7 +76,7 @@ namespace TTMulti.Ui.Controls
         {
             _dragging = true;
             CaptureMouse();
-            finderImage.Source = WpfImaging.ToBitmapSource(Properties.Resources.findere);
+            finderIcon.Filled = true;
             Cursor = SearchCursor;
         }
 
@@ -85,7 +88,7 @@ namespace TTMulti.Ui.Controls
             _dragging = false;
             ReleaseMouseCapture();
             Cursor = Cursors.Hand;
-            finderImage.Source = WpfImaging.ToBitmapSource(Properties.Resources.finderf);
+            finderIcon.Filled = false;
 
             // Physical-pixel cursor position → the window directly under it. Reject our own window and any
             // non-top-level window (only a root game window is a valid target), matching the old control.

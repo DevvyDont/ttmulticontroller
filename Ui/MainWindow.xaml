@@ -6,14 +6,55 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     Title="Toontown Multicontroller"
     Width="340"
-    MinWidth="320"
+    MinWidth="340"
+    MaxWidth="340"
     ResizeMode="CanMinimize"
-    SizeToContent="Height"
     WindowBackdropType="Mica"
     WindowStartupLocation="CenterScreen"
     ExtendsContentIntoTitleBar="True">
     <ui:FluentWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Mode selector rendered as a filled(on) / outlined(off) coloured button. BorderBrush carries the
+             mode's colour; RadioButtons stay mutually exclusive and can't be clicked off. -->
+        <Style x:Key="ModeButton" TargetType="RadioButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinWidth" Value="76" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid>
+                            <Border x:Name="fill" CornerRadius="6" Background="{TemplateBinding BorderBrush}" Opacity="0" />
+                            <Border CornerRadius="6" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1.5" />
+                            <TextBlock x:Name="label"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Foreground="{TemplateBinding BorderBrush}"
+                                Text="{TemplateBinding Content}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="fill" Property="Opacity" Value="1" />
+                                <Setter TargetName="label" Property="Foreground" Value="White" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsChecked" Value="False" />
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="fill" Property="Opacity" Value="0.15" />
+                            </MultiTrigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </ui:FluentWindow.Resources>
 
     <Grid>
@@ -29,11 +70,12 @@
 
         <StackPanel Grid.Row="1" Margin="16,4,16,16">
 
-            <!-- Toon window pairing -->
+            <!-- Toon window pairing with the mode selector between the two toon pickers -->
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" HorizontalAlignment="Center">
@@ -46,10 +88,38 @@
                         Margin="0,6,0,0"
                         HorizontalAlignment="Center"
                         FontSize="12"
-                        Text="Left toon" />
+                        Text="Left toon"
+                        Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                <!-- Mode selector: two buttons that stretch to fill the full toon-column height (tiles +
+                     labels), splitting it evenly. -->
+                <Grid Grid.Column="1" Margin="8,0" VerticalAlignment="Stretch">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <RadioButton
+                        Grid.Row="0"
+                        Style="{StaticResource ModeButton}"
+                        Margin="0,0,0,2"
+                        Content="Multi"
+                        GroupName="Mode"
+                        BorderBrush="{Binding MultiModeBrush}"
+                        IsChecked="{Binding IsMultiMode, Mode=TwoWay}"
+                        IsEnabled="{Binding AreModeButtonsEnabled}" />
+                    <RadioButton
+                        Grid.Row="1"
+                        Style="{StaticResource ModeButton}"
+                        Margin="0,2,0,0"
+                        Content="Mirror"
+                        GroupName="Mode"
+                        BorderBrush="{Binding MirrorModeBrush}"
+                        IsChecked="{Binding IsMirrorMode, Mode=TwoWay}"
+                        IsEnabled="{Binding AreModeButtonsEnabled}" />
+                </Grid>
+
+                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                     <ctrl:WindowCrosshair
                         x:Name="rightCrosshair"
                         HorizontalAlignment="Center"
@@ -59,45 +129,26 @@
                         Margin="0,6,0,0"
                         HorizontalAlignment="Center"
                         FontSize="12"
-                        Text="Right toon" />
+                        Text="Right toon"
+                        Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
             </Grid>
 
-            <!-- Mode selector -->
-            <StackPanel
-                Margin="0,16,0,0"
-                HorizontalAlignment="Center"
-                Orientation="Horizontal">
-                <RadioButton
-                    x:Name="multiRadio"
-                    MinWidth="80"
-                    Content="Multi"
-                    GroupName="Mode"
-                    IsChecked="{Binding IsMultiMode, Mode=TwoWay}"
-                    IsEnabled="{Binding AreModeButtonsEnabled}" />
-                <RadioButton
-                    x:Name="mirrorRadio"
-                    MinWidth="80"
-                    Margin="16,0,0,0"
-                    Content="Mirror"
-                    GroupName="Mode"
-                    IsChecked="{Binding IsMirrorMode, Mode=TwoWay}"
-                    IsEnabled="{Binding AreModeButtonsEnabled}" />
+            <!-- Live status (full mode summary — default mode only) -->
+            <StackPanel Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}">
+                <TextBlock
+                    Margin="0,16,0,0"
+                    HorizontalAlignment="Center"
+                    FontSize="15"
+                    FontWeight="SemiBold"
+                    Text="{Binding ModeSummary}" />
+                <TextBlock
+                    Margin="0,2,0,0"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                    Text="{Binding GroupCountText}" />
             </StackPanel>
-
-            <!-- Live status -->
-            <TextBlock
-                Margin="0,16,0,0"
-                HorizontalAlignment="Center"
-                FontSize="15"
-                FontWeight="SemiBold"
-                Text="{Binding ModeSummary}" />
-            <TextBlock
-                Margin="0,2,0,0"
-                HorizontalAlignment="Center"
-                FontSize="12"
-                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                Text="{Binding GroupCountText}" />
 
             <!-- State chips -->
             <StackPanel
@@ -127,24 +178,58 @@
                 </Border>
             </StackPanel>
 
-            <!-- Actions -->
-            <StackPanel
+            <!-- Actions (default): two equal-width buttons (UniformGrid makes both cells the same size). -->
+            <UniformGrid
                 Margin="0,16,0,0"
                 HorizontalAlignment="Center"
-                Orientation="Horizontal">
+                Columns="2"
+                Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}">
                 <ui:Button
                     x:Name="groupsButton"
-                    Margin="0,0,8,0"
-                    Content="Window Groups"
+                    Margin="0,0,4,0"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Content="Groups"
                     Icon="{ui:SymbolIcon Grid24}"
                     Click="GroupsButton_Click" />
                 <ui:Button
                     x:Name="optionsButton"
+                    Margin="4,0,0,0"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
                     Appearance="Primary"
                     Content="Options"
                     Icon="{ui:SymbolIcon Settings24}"
                     Click="OptionsButton_Click" />
-            </StackPanel>
+            </UniformGrid>
+
+            <!-- Actions (compact): group status on the left, icon-only Groups / Options on the right. -->
+            <Grid
+                Margin="0,16,0,0"
+                Visibility="{Binding IsCompact, Converter={StaticResource BoolToVis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Text="{Binding GroupSummary}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <ui:Button
+                        Margin="0,0,6,0"
+                        Icon="{ui:SymbolIcon Grid24}"
+                        ToolTip="Window Groups"
+                        Click="GroupsButton_Click" />
+                    <ui:Button
+                        Appearance="Primary"
+                        Icon="{ui:SymbolIcon Settings24}"
+                        ToolTip="Options"
+                        Click="OptionsButton_Click" />
+                </StackPanel>
+            </Grid>
         </StackPanel>
     </Grid>
 </ui:FluentWindow>

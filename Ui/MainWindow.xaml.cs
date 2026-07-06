@@ -188,6 +188,24 @@ namespace TTMulti.Ui
             Wpf.Ui.Appearance.SystemThemeWatcher.Watch(this);
 
             InitializeController();
+            ApplyModeHeight();
+        }
+
+        // The window is a fixed size per layout mode — it isn't resizable (CanMinimize) and the UI isn't
+        // designed to reflow, so each mode gets a hard-locked height (measured content heights of each layout).
+        private const double DefaultWindowHeight = 254;
+        private const double CompactWindowHeight = 174;
+
+        /// <summary>
+        /// Hard-lock the window height to the current mode's content height (Min = Max = Height), so it can't
+        /// be resized and switching compact ↔ normal snaps cleanly to the right size instead of clipping.
+        /// </summary>
+        private void ApplyModeHeight()
+        {
+            double h = Properties.Settings.Default.compactUI ? CompactWindowHeight : DefaultWindowHeight;
+            MinHeight = h;
+            MaxHeight = h;
+            Height = h;
         }
 
         /// <summary>The WinForms MulticontrollerWnd_Load equivalent (HWND already exists here).</summary>
@@ -232,6 +250,9 @@ namespace TTMulti.Ui
             // Reset suspension, allow re-reporting hotkey conflicts, and rebuild all registrations.
             _inputHost.OnSettingsReloaded();
             _viewModel?.ForceRefresh();
+
+            // Compact-mode toggle changes the layout — snap the window to that mode's fixed height.
+            ApplyModeHeight();
         }
 
         /// <summary>Reflect the global-hotkeys-suspended state in the chip and the taskbar title (UX-08).</summary>

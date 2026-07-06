@@ -54,6 +54,18 @@ namespace TTMulti.Ui.ViewModels
             private set => Set(ref _groupCountText, value);
         }
 
+        /// <summary>Current group + total, shown in compact mode instead of the full mode summary.</summary>
+        private string _groupSummary = "";
+        public string GroupSummary
+        {
+            get => _groupSummary;
+            private set => Set(ref _groupSummary, value);
+        }
+
+        // Layout toggles driven by the compactUI setting (re-read each Refresh, i.e. after Options closes).
+        public bool IsCompact => Properties.Settings.Default.compactUI;
+        public bool IsNotCompact => !Properties.Settings.Default.compactUI;
+
         private bool _isModeLocked;
         public bool IsModeLocked
         {
@@ -115,6 +127,21 @@ namespace TTMulti.Ui.ViewModels
             private set => Set(ref _rightAccentBrush, value);
         }
 
+        // Mode-button colours: Multi uses the Multi-mode left-toon colour, Mirror uses the Mirror-mode colour.
+        private Brush _multiModeBrush = Brushes.Transparent;
+        public Brush MultiModeBrush
+        {
+            get => _multiModeBrush;
+            private set => Set(ref _multiModeBrush, value);
+        }
+
+        private Brush _mirrorModeBrush = Brushes.Transparent;
+        public Brush MirrorModeBrush
+        {
+            get => _mirrorModeBrush;
+            private set => Set(ref _mirrorModeBrush, value);
+        }
+
         // ── Crosshair drops ─────────────────────────────────────────────────────────
 
         public void AssignLeftWindow(IntPtr handle) => AssignWindow(left: true, handle);
@@ -155,10 +182,15 @@ namespace TTMulti.Ui.ViewModels
             ModeSummary = GetStatusModeSummaryText();
             int groups = _controller.ControllerGroups.Count;
             GroupCountText = groups + (groups == 1 ? " group" : " groups");
+            GroupSummary = "Group " + (_controller.CurrentGroupIndex + 1) + "  ·  " + GroupCountText;
             IsModeLocked = _controller.IsModeLockEngaged;
+            OnPropertyChanged(nameof(IsCompact));
+            OnPropertyChanged(nameof(IsNotCompact));
 
-            LeftAccentBrush = ToBrush(Colors.LeftGroup);
-            RightAccentBrush = ToBrush(Colors.RightGroup);
+            LeftAccentBrush = ToBrush(AccentColorFor(ControllerType.Left));
+            RightAccentBrush = ToBrush(AccentColorFor(ControllerType.Right));
+            MultiModeBrush = ToBrush(Colors.LeftGroup);
+            MirrorModeBrush = ToBrush(Colors.AllGroups);
 
             OnPropertyChanged(nameof(IsMultiMode));
             OnPropertyChanged(nameof(IsMirrorMode));
@@ -221,6 +253,32 @@ namespace TTMulti.Ui.ViewModels
                 case MulticontrollerMode.MirrorGroup: return "Mirror Group  ·  Group " + g;
                 case MulticontrollerMode.MirrorIndividual: return "Mirror One";
                 default: return _controller.CurrentMode.ToString();
+            }
+        }
+
+        /// <summary>
+        /// The accent colour a toon's crosshair shows, mirroring the game-window border colour for the current
+        /// mode (see the ToontownController border logic): Mirror → the mirror colour for both sides, Custom →
+        /// the active custom mode's slot colour, Focused → focused/unfocused, otherwise the Multi left/right
+        /// colours.
+        /// </summary>
+        private System.Drawing.Color AccentColorFor(ControllerType type)
+        {
+            switch (_controller.CurrentMode)
+            {
+                case MulticontrollerMode.MirrorAll:
+                    return Colors.AllGroups;
+                case MulticontrollerMode.Custom:
+                    return _controller.GetActiveCustomModeBorderColorFor(type);
+                case MulticontrollerMode.Focused:
+                    var c = type == ControllerType.Left
+                        ? _controller.LeftControllers.FirstOrDefault()
+                        : _controller.RightControllers.FirstOrDefault();
+                    return c != null && _controller.IsFocusedController(c)
+                        ? Colors.FocusedFocused
+                        : Colors.FocusedUnfocused;
+                default:
+                    return type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
             }
         }
 
