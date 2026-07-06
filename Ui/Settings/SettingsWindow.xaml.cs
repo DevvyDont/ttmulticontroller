@@ -36,7 +36,8 @@ namespace TTMulti.Ui.Settings
 
             // The layout-presets editor owns the layout-presets JSON file, committed inside the transaction.
             _session.Register(_layoutPresets);
-            pageLayoutPresets.DataContext = _layoutPresets;
+            // Layout presets now live inside the Window Management page; scope just that section to the editor.
+            layoutPresetsSection.DataContext = _layoutPresets;
 
             // Sub-panels whose controls need read-modify-write over a shared setting get their own DataContext.
             switchKeyPanel.DataContext = new SwitchKeyViewModel();
@@ -55,8 +56,6 @@ namespace TTMulti.Ui.Settings
                 { "Controller Modes", pageModes },
                 { "Custom Modes", pageCustomModes },
                 { "Multi-Click", pageMultiClick },
-                { "Auto-Find", pageAutoFind },
-                { "Layout Presets", pageLayoutPresets },
                 { "Window Management", pageWindowManagement },
             };
 
