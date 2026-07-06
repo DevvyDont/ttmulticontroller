@@ -96,19 +96,13 @@ namespace TTMulti.Ui.Settings
         private void CmRemoveBinding_Click(object sender, RoutedEventArgs e) =>
             _customModes.RemoveBinding(_customModes.SelectedBinding);
 
-        // ── Layout presets (individual presets still edited in the WinForms editor form) ──
-
-        private System.Windows.Forms.IWin32Window OwnerHandle() =>
-            new WpfWin32Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+        // ── Layout presets (individual presets edited in the WPF LayoutPresetEditorWindow) ──
 
         private void LpAdd_Click(object sender, RoutedEventArgs e)
         {
-            var preset = LayoutPresetsEditor.NewDefault();
-            using (var editor = new Forms.LayoutPresetEditorForm(preset))
-            {
-                if (editor.ShowDialog(OwnerHandle()) == System.Windows.Forms.DialogResult.OK)
-                    _layoutPresets.Add(editor.Preset);
-            }
+            var editor = new LayoutPresetEditorWindow(LayoutPresetsEditor.NewDefault()) { Owner = this };
+            if (editor.ShowDialog() == true)
+                _layoutPresets.Add(editor.Preset);
         }
 
         private void LpEdit_Click(object sender, RoutedEventArgs e)
@@ -119,11 +113,9 @@ namespace TTMulti.Ui.Settings
                 System.Windows.MessageBox.Show(this, "Select a preset to edit.", "Layout Presets");
                 return;
             }
-            using (var editor = new Forms.LayoutPresetEditorForm(LayoutPresetsEditor.Clone(selected)))
-            {
-                if (editor.ShowDialog(OwnerHandle()) == System.Windows.Forms.DialogResult.OK)
-                    _layoutPresets.Replace(selected, editor.Preset);
-            }
+            var editor = new LayoutPresetEditorWindow(LayoutPresetsEditor.Clone(selected)) { Owner = this };
+            if (editor.ShowDialog() == true)
+                _layoutPresets.Replace(selected, editor.Preset);
         }
 
         private void LpDelete_Click(object sender, RoutedEventArgs e)
@@ -140,13 +132,6 @@ namespace TTMulti.Ui.Settings
             {
                 _layoutPresets.Remove(selected);
             }
-        }
-
-        /// <summary>Lets the WinForms LayoutPresetEditorForm use this WPF window as its owner (via HWND).</summary>
-        private sealed class WpfWin32Owner : System.Windows.Forms.IWin32Window
-        {
-            public WpfWin32Owner(System.IntPtr handle) { Handle = handle; }
-            public System.IntPtr Handle { get; }
         }
 
         private void About_Click(object sender, RoutedEventArgs e)
