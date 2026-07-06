@@ -17,6 +17,7 @@ namespace TTMulti.Ui.Settings
 
         private System.Collections.Generic.Dictionary<string, System.Windows.FrameworkElement> _pages;
         private readonly KeyBindingsEditor _keyBindings = new KeyBindingsEditor();
+        private readonly CustomModesEditor _customModes = new CustomModesEditor();
 
         public SettingsWindow()
         {
@@ -27,6 +28,10 @@ namespace TTMulti.Ui.Settings
             // The keybindings grid owns non-Settings state (serialized XML), committed inside the transaction.
             _session.Register(_keyBindings);
             keyBindingsItems.ItemsSource = _keyBindings.Rows;
+
+            // The custom-modes editor owns the custom-modes JSON file, committed inside the transaction.
+            _session.Register(_customModes);
+            pageCustomModes.DataContext = _customModes;
 
             // Sub-panels whose controls need read-modify-write over a shared setting get their own DataContext.
             switchKeyPanel.DataContext = new SwitchKeyViewModel();
@@ -41,6 +46,7 @@ namespace TTMulti.Ui.Settings
             {
                 { "Multi-Mode Keys", pageKeyBindings },
                 { "Controller Modes", pageModes },
+                { "Custom Modes", pageCustomModes },
                 { "Hotkeys", pageHotkeys },
                 { "Multi-Click", pageMultiClick },
                 { "Auto-Find", pageAutoFind },
@@ -66,6 +72,23 @@ namespace TTMulti.Ui.Settings
             if ((sender as FrameworkElement)?.Tag is KeyMappingRowViewModel row)
                 _keyBindings.Remove(row);
         }
+
+        private void CmAddMode_Click(object sender, RoutedEventArgs e) => _customModes.AddMode();
+
+        private void CmRemoveMode_Click(object sender, RoutedEventArgs e)
+        {
+            if (_customModes.SelectedMode != null &&
+                System.Windows.MessageBox.Show(this, "Remove this custom mode?", "Confirm",
+                    System.Windows.MessageBoxButton.YesNo) == System.Windows.MessageBoxResult.Yes)
+            {
+                _customModes.RemoveMode(_customModes.SelectedMode);
+            }
+        }
+
+        private void CmAddBinding_Click(object sender, RoutedEventArgs e) => _customModes.AddBinding();
+
+        private void CmRemoveBinding_Click(object sender, RoutedEventArgs e) =>
+            _customModes.RemoveBinding(_customModes.SelectedBinding);
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
