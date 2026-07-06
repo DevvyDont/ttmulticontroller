@@ -6,9 +6,9 @@ using System.Windows.Media.Imaging;
 namespace TTMulti.Ui.Controls
 {
     /// <summary>
-    /// Renders the app logo to a multi-resolution .ico file for the static exe/Explorer icon (ApplicationIcon).
-    /// Uses fixed default Multi/Mirror colours so the file icon is stable regardless of the user's palette (the
-    /// live window/taskbar icon still recolours at runtime). Invoked via the "--export-icon" startup switch.
+    /// Renders the app logo to a multi-resolution .ico file. Used two ways: the "--export-icon" startup switch
+    /// bakes the fixed-default-colour file into the build (the exe's ApplicationIcon), and SaveUserIco writes a
+    /// per-user file in the user's Multi/Mirror colours that TaskbarIconManager points the pinned shortcut at.
     /// </summary>
     internal static class IconExporter
     {
@@ -17,14 +17,21 @@ namespace TTMulti.Ui.Controls
 
         private static readonly int[] Sizes = { 16, 24, 32, 48, 64, 128, 256 };
 
-        public static void SaveIco(string path)
+        /// <summary>Write the .ico using the fixed default palette (the stable exe/Explorer icon).</summary>
+        public static void SaveIco(string path) => SaveIco(path, DefaultLeft, DefaultRight);
+
+        /// <summary>Write the .ico using the user's current Multi (front) and Mirror (back) mode colours.</summary>
+        public static void SaveUserIco(string path) =>
+            SaveIco(path, ToBrush(TTMulti.Colors.LeftGroup), ToBrush(TTMulti.Colors.AllGroups));
+
+        public static void SaveIco(string path, Brush left, Brush right)
         {
             var pngs = new List<byte[]>();
             foreach (int size in Sizes)
             {
-                // Drop the face on the small frames (16–48) where it just smears; keep it on the large ones
-                // (64–256) that Explorer shows in its big-icon views.
-                BitmapSource bmp = AppLogo.RenderIcon(DefaultLeft, DefaultRight, size, showFace: size >= AppLogo.FaceMinSize);
+                // Drop the face on the small frames (16 to 48) where it just smears; keep it on the large ones
+                // (64 to 256) that Explorer shows in its big-icon views.
+                BitmapSource bmp = AppLogo.RenderIcon(left, right, size, showFace: size >= AppLogo.FaceMinSize);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bmp));
                 using (var ms = new MemoryStream())
@@ -65,6 +72,13 @@ namespace TTMulti.Ui.Controls
                 foreach (byte[] png in pngs)
                     w.Write(png);
             }
+        }
+
+        private static Brush ToBrush(System.Drawing.Color c)
+        {
+            var b = new SolidColorBrush(Color.FromArgb(c.A, c.R, c.G, c.B));
+            b.Freeze();
+            return b;
         }
     }
 }

@@ -268,7 +268,15 @@ namespace TTMulti.Ui
         /// Multi (front) and Mirror (back) mode colours, so the app icon reflects their palette. Refreshed after
         /// Options changes.
         /// </summary>
-        private void UpdateWindowIcon() => Controls.AppLogo.ApplyAppIcon(this, titleBar, titleBarIconSize: 17);
+        private void UpdateWindowIcon()
+        {
+            Controls.AppLogo.ApplyAppIcon(this, titleBar, titleBarIconSize: 17);
+
+            // Also theme the pinned taskbar icon (Windows takes it from the pinned shortcut / exe, not the live
+            // window). Deferred to Background priority so the .ico render + shortcut COM stay off the paint path.
+            Dispatcher.BeginInvoke(new Action(() => Controls.TaskbarIconManager.Refresh()),
+                System.Windows.Threading.DispatcherPriority.Background);
+        }
 
         private void ReloadOptions()
         {
