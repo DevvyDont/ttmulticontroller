@@ -36,6 +36,14 @@ namespace TTMulti.Ui
         {
             InitializeComponent();
             RestoreWindowPosition();
+
+            // This window is "played" like the game: while it's focused the user is sending WASD / arrow keys /
+            // space to the game windows (the preprocess filter forwards them). Keep the interface strictly
+            // mouse-driven by denying keyboard focus to every control — with nothing focusable there is no
+            // target for Tab/arrow navigation or Space/Enter activation, so a strafe or jump keystroke can
+            // never tab between or "click" the controller's own buttons (UX-06). Modal dialogs are separate
+            // windows with their own focus scope, so their keyboard input is unaffected.
+            PreviewGotKeyboardFocus += (s, e) => e.Handled = true;
         }
 
         // ── IInputShell ─────────────────────────────────────────────────────────────
@@ -136,20 +144,29 @@ namespace TTMulti.Ui
         }
 
         /// <summary>
-        /// The ProcessCmdKey equivalent: while actively controlling connected windows, Tab and the arrow keys
-        /// must not drive WPF focus navigation (UX-06). The keystroke itself is forwarded to the games by the
-        /// preprocess filter; here we just stop WPF from also acting on it.
+        /// Backstop to the keyboard-focus denial set up in the constructor: this window is strictly
+        /// mouse-driven, so swallow the keys WPF would otherwise use to move focus (Tab / arrows), activate a
+        /// control (Space / Enter), or enter menu mode (Alt / F10). The keystroke is already forwarded to the
+        /// games by the preprocess filter before this runs, so this only stops WPF's own UI handling (UX-06).
         /// </summary>
         protected override void OnPreviewKeyDown(KeyEventArgs e)
         {
             base.OnPreviewKeyDown(e);
-            if (_controller != null && _controller.IsActive && _controller.AllControllersWithWindows.Any())
+            switch (e.Key)
             {
-                if (e.Key == Key.Tab || e.Key == Key.Up || e.Key == Key.Down || e.Key == Key.Left || e.Key == Key.Right
-                    || e.SystemKey == Key.LeftAlt || e.SystemKey == Key.RightAlt)
-                {
+                case Key.Tab:
+                case Key.Up:
+                case Key.Down:
+                case Key.Left:
+                case Key.Right:
+                case Key.Space:
+                case Key.Enter:
                     e.Handled = true;
-                }
+                    break;
+                case Key.System:
+                    if (e.SystemKey == Key.LeftAlt || e.SystemKey == Key.RightAlt || e.SystemKey == Key.F10)
+                        e.Handled = true;
+                    break;
             }
         }
 
