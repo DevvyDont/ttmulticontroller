@@ -149,6 +149,11 @@ namespace TTMulti.Ui.Settings
             public System.IntPtr Handle { get; }
         }
 
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            new AboutWindow { Owner = this }.ShowDialog();
+        }
+
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
             _session.Commit();

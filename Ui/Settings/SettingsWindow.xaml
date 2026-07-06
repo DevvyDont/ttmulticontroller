@@ -331,6 +331,18 @@
                             </StackPanel>
                         </Border>
 
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="About" />
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource RowLabel}" Text="Version, homepage, and update check" />
+                                <ui:Button Grid.Column="1" Content="About" Icon="{ui:SymbolIcon Info24}" Click="About_Click" />
+                            </Grid>
+                        </Border>
+
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Appearance" />
                         <Border Style="{StaticResource Card}">
                             <CheckBox Content="Tint the title bar with the current mode colour" IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" />

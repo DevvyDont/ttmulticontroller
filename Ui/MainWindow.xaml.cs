@@ -322,7 +322,7 @@ namespace TTMulti.Ui
         {
             _controller.ShowAllBorders = true;
             _ignoreMessages = true;
-            new WindowGroupsForm().ShowDialog(new Win32WindowOwner(_hwnd));
+            new TTMulti.Ui.GroupsWindow { Owner = this }.ShowDialog();
             _ignoreMessages = false;
             _controller.ShowAllBorders = false;
         }

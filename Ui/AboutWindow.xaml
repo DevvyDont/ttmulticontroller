@@ -1,0 +1,68 @@
+<ui:FluentWindow
+    x:Class="TTMulti.Ui.AboutWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="About Toontown Multicontroller"
+    Width="440"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    ExtendsContentIntoTitleBar="True"
+    WindowBackdropType="Mica"
+    WindowStartupLocation="CenterOwner">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar
+            Grid.Row="0"
+            Title="About"
+            ShowMaximize="False"
+            ShowMinimize="False" />
+
+        <StackPanel Grid.Row="1" Margin="24,8,24,20">
+            <Image
+                x:Name="iconImage"
+                Width="56"
+                Height="56"
+                HorizontalAlignment="Center"
+                RenderOptions.BitmapScalingMode="HighQuality" />
+            <TextBlock
+                Margin="0,12,0,0"
+                HorizontalAlignment="Center"
+                FontSize="18"
+                FontWeight="SemiBold"
+                Text="Toontown Multicontroller" />
+            <TextBlock
+                x:Name="versionText"
+                Margin="0,2,0,0"
+                HorizontalAlignment="Center"
+                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                Text="Version" />
+            <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center">
+                <Hyperlink x:Name="homepageLink" RequestNavigate="Homepage_RequestNavigate">
+                    <Run x:Name="homepageRun" Text="Homepage" />
+                </Hyperlink>
+            </TextBlock>
+
+            <StackPanel
+                Margin="0,20,0,0"
+                HorizontalAlignment="Center"
+                Orientation="Horizontal">
+                <ui:Button
+                    x:Name="checkUpdatesButton"
+                    Content="Check for updates"
+                    Icon="{ui:SymbolIcon ArrowSync24}"
+                    Click="CheckUpdates_Click" />
+                <ui:Button
+                    Margin="8,0,0,0"
+                    MinWidth="90"
+                    Appearance="Primary"
+                    Content="Close"
+                    Click="Close_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>
