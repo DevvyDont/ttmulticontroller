@@ -40,26 +40,12 @@ namespace TTMulti.Ui.ViewModels
 
         // ── Bindable state ──────────────────────────────────────────────────────────
 
+        /// <summary>The mode-name status line (e.g. "Mirror Mode", "Multi-Mode Group 2"), shown in both layouts.</summary>
         private string _modeSummary = "";
         public string ModeSummary
         {
             get => _modeSummary;
             private set => Set(ref _modeSummary, value);
-        }
-
-        private string _groupCountText = "";
-        public string GroupCountText
-        {
-            get => _groupCountText;
-            private set => Set(ref _groupCountText, value);
-        }
-
-        /// <summary>Current group + total, shown in compact mode instead of the full mode summary.</summary>
-        private string _groupSummary = "";
-        public string GroupSummary
-        {
-            get => _groupSummary;
-            private set => Set(ref _groupSummary, value);
         }
 
         // Layout toggles driven by the compactUI setting (re-read each Refresh, i.e. after Options closes).
@@ -180,9 +166,6 @@ namespace TTMulti.Ui.ViewModels
         private void Refresh()
         {
             ModeSummary = GetStatusModeSummaryText();
-            int groups = _controller.ControllerGroups.Count;
-            GroupCountText = groups + (groups == 1 ? " group" : " groups");
-            GroupSummary = "Group " + (_controller.CurrentGroupIndex + 1) + "  ·  " + GroupCountText;
             IsModeLocked = _controller.IsModeLockEngaged;
             OnPropertyChanged(nameof(IsCompact));
             OnPropertyChanged(nameof(IsNotCompact));
@@ -242,7 +225,7 @@ namespace TTMulti.Ui.ViewModels
             int g = _controller.CurrentGroupIndex + 1;
             switch (_controller.CurrentMode)
             {
-                case MulticontrollerMode.Group: return "Multi Mode  ·  Group " + g;
+                case MulticontrollerMode.Group: return "Multi-Mode Group " + g;
                 case MulticontrollerMode.MirrorAll: return "Mirror Mode";
                 case MulticontrollerMode.AllGroup: return "All Groups Mode";
                 case MulticontrollerMode.Focused: return "Focused Mode";

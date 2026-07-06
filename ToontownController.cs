@@ -78,6 +78,14 @@ namespace TTMulti
                     _windowHandle = value;
                     _captionColorApplied = false; // new window: force caption color re-apply (PERF-05 guard)
 
+                    // Reset the foreground latch whenever the handle changes (window closed, reassigned by a
+                    // number key, or swapped by Switching Mode). WindowActivated — the only raw-focus trigger
+                    // for releaseKeysOnWindowFocus — fires only on a false→true transition; if the latch were
+                    // left stuck true across a handle change, re-focusing the (new/swapped) window would produce
+                    // no edge and never release the other windows' held keys. Set the backing field directly so
+                    // this reset raises no WindowDeactivated side effect. (CORR: stuck-latch release bug)
+                    _isWindowActive = false;
+
                     if (_windowHandle != IntPtr.Zero)
                     {
                         WindowWatcher.Instance.WatchWindow(_windowHandle);

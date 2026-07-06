@@ -5,9 +5,9 @@
     xmlns:ctrl="clr-namespace:TTMulti.Ui.Controls"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     Title="Toontown Multicontroller"
-    Width="340"
-    MinWidth="340"
-    MaxWidth="340"
+    Width="264"
+    MinWidth="264"
+    MaxWidth="264"
     ResizeMode="CanMinimize"
     WindowBackdropType="Mica"
     WindowStartupLocation="CenterScreen"
@@ -70,7 +70,8 @@
 
         <StackPanel Grid.Row="1" Margin="16,4,16,16">
 
-            <!-- Toon window pairing with the mode selector between the two toon pickers -->
+            <!-- Toon window pairing with the centre column between the two toon pickers. The centre holds the
+                 Multi/Mirror mode selector (default) OR the Options/Groups action buttons (compact). -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -78,27 +79,22 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                    <ctrl:WindowCrosshair
-                        x:Name="leftCrosshair"
-                        HorizontalAlignment="Center"
-                        AccentBrush="{Binding LeftAccentBrush}"
-                        SelectedWindowHandle="{Binding LeftWindowHandle, Mode=OneWay}" />
-                    <TextBlock
-                        Margin="0,6,0,0"
-                        HorizontalAlignment="Center"
-                        FontSize="12"
-                        Text="Left toon"
-                        Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}" />
-                </StackPanel>
+                <ctrl:WindowCrosshair
+                    x:Name="leftCrosshair"
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    AccentBrush="{Binding LeftAccentBrush}"
+                    SelectedWindowHandle="{Binding LeftWindowHandle, Mode=OneWay}" />
 
-                <!-- Mode selector: two buttons that stretch to fill the full toon-column height (tiles +
-                     labels), splitting it evenly. -->
+                <!-- Centre column: two variants overlaid, toggled by the compactUI setting. Both stack two
+                     controls that fill the toon-tile height, splitting it evenly. -->
                 <Grid Grid.Column="1" Margin="8,0" VerticalAlignment="Stretch">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
+
+                    <!-- Default: Multi / Mirror mode selector -->
                     <RadioButton
                         Grid.Row="0"
                         Style="{StaticResource ModeButton}"
@@ -107,7 +103,8 @@
                         GroupName="Mode"
                         BorderBrush="{Binding MultiModeBrush}"
                         IsChecked="{Binding IsMultiMode, Mode=TwoWay}"
-                        IsEnabled="{Binding AreModeButtonsEnabled}" />
+                        IsEnabled="{Binding AreModeButtonsEnabled}"
+                        Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}" />
                     <RadioButton
                         Grid.Row="1"
                         Style="{StaticResource ModeButton}"
@@ -116,39 +113,38 @@
                         GroupName="Mode"
                         BorderBrush="{Binding MirrorModeBrush}"
                         IsChecked="{Binding IsMirrorMode, Mode=TwoWay}"
-                        IsEnabled="{Binding AreModeButtonsEnabled}" />
+                        IsEnabled="{Binding AreModeButtonsEnabled}"
+                        Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}" />
+
+                    <!-- Compact: Options / Groups action buttons (mode is switched by hotkey in this layout) -->
+                    <ui:Button
+                        Grid.Row="0"
+                        Margin="0,0,0,2"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Appearance="Primary"
+                        Icon="{ui:SymbolIcon Settings24}"
+                        ToolTip="Options"
+                        Click="OptionsButton_Click"
+                        Visibility="{Binding IsCompact, Converter={StaticResource BoolToVis}}" />
+                    <ui:Button
+                        Grid.Row="1"
+                        Margin="0,2,0,0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Icon="{ui:SymbolIcon Grid24}"
+                        ToolTip="Window Groups"
+                        Click="GroupsButton_Click"
+                        Visibility="{Binding IsCompact, Converter={StaticResource BoolToVis}}" />
                 </Grid>
 
-                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                    <ctrl:WindowCrosshair
-                        x:Name="rightCrosshair"
-                        HorizontalAlignment="Center"
-                        AccentBrush="{Binding RightAccentBrush}"
-                        SelectedWindowHandle="{Binding RightWindowHandle, Mode=OneWay}" />
-                    <TextBlock
-                        Margin="0,6,0,0"
-                        HorizontalAlignment="Center"
-                        FontSize="12"
-                        Text="Right toon"
-                        Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}" />
-                </StackPanel>
+                <ctrl:WindowCrosshair
+                    x:Name="rightCrosshair"
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    AccentBrush="{Binding RightAccentBrush}"
+                    SelectedWindowHandle="{Binding RightWindowHandle, Mode=OneWay}" />
             </Grid>
-
-            <!-- Live status (full mode summary — default mode only) -->
-            <StackPanel Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}">
-                <TextBlock
-                    Margin="0,16,0,0"
-                    HorizontalAlignment="Center"
-                    FontSize="15"
-                    FontWeight="SemiBold"
-                    Text="{Binding ModeSummary}" />
-                <TextBlock
-                    Margin="0,2,0,0"
-                    HorizontalAlignment="Center"
-                    FontSize="12"
-                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                    Text="{Binding GroupCountText}" />
-            </StackPanel>
 
             <!-- State chips -->
             <StackPanel
@@ -178,35 +174,10 @@
                 </Border>
             </StackPanel>
 
-            <!-- Actions (default): two equal-width buttons (UniformGrid makes both cells the same size). -->
-            <UniformGrid
-                Margin="0,16,0,0"
-                HorizontalAlignment="Center"
-                Columns="2"
-                Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}">
-                <ui:Button
-                    x:Name="groupsButton"
-                    Margin="0,0,4,0"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Center"
-                    Content="Groups"
-                    Icon="{ui:SymbolIcon Grid24}"
-                    Click="GroupsButton_Click" />
-                <ui:Button
-                    x:Name="optionsButton"
-                    Margin="4,0,0,0"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Center"
-                    Appearance="Primary"
-                    Content="Options"
-                    Icon="{ui:SymbolIcon Settings24}"
-                    Click="OptionsButton_Click" />
-            </UniformGrid>
-
-            <!-- Actions (compact): group status on the left, icon-only Groups / Options on the right. -->
+            <!-- Status (default): mode name on the left, icon-only Groups / Options on the right. -->
             <Grid
-                Margin="0,16,0,0"
-                Visibility="{Binding IsCompact, Converter={StaticResource BoolToVis}}">
+                Margin="0,14,0,0"
+                Visibility="{Binding IsNotCompact, Converter={StaticResource BoolToVis}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -216,20 +187,31 @@
                     VerticalAlignment="Center"
                     FontSize="13"
                     FontWeight="SemiBold"
-                    Text="{Binding GroupSummary}" />
+                    Text="{Binding ModeSummary}" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <ui:Button
+                        x:Name="groupsButton"
                         Margin="0,0,6,0"
                         Icon="{ui:SymbolIcon Grid24}"
                         ToolTip="Window Groups"
                         Click="GroupsButton_Click" />
                     <ui:Button
+                        x:Name="optionsButton"
                         Appearance="Primary"
                         Icon="{ui:SymbolIcon Settings24}"
                         ToolTip="Options"
                         Click="OptionsButton_Click" />
                 </StackPanel>
             </Grid>
+
+            <!-- Status (compact): mode name centred below the crosshairs. -->
+            <TextBlock
+                Margin="0,12,0,0"
+                HorizontalAlignment="Center"
+                FontSize="14"
+                FontWeight="SemiBold"
+                Text="{Binding ModeSummary}"
+                Visibility="{Binding IsCompact, Converter={StaticResource BoolToVis}}" />
         </StackPanel>
     </Grid>
 </ui:FluentWindow>
