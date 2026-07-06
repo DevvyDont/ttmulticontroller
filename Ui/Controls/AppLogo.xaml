@@ -1,0 +1,38 @@
+<UserControl
+    x:Class="TTMulti.Ui.Controls.AppLogo"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:TTMulti.Ui.Controls">
+    <Viewbox Stretch="Uniform">
+        <!-- Two cat heads controlled together: each is compressed horizontally (they read a touch too wide at
+             1:1) and the pair is staggered into a roughly square footprint so the square icon fills nicely. The
+             back one uses the Mirror-mode colour; the front one uses the Multi-mode colour. Both wear a face. -->
+        <Canvas Width="74" Height="74">
+            <!-- Back cat: Mirror colour, upper-right. Slightly smaller than the front cat so its right ear
+                 clears the icon's square edge (and reads as sitting a little behind). -->
+            <local:CatHead Fill="{Binding RightBrush, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                           ShowFace="{Binding ShowFace, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}">
+                <local:CatHead.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform ScaleX="0.88" ScaleY="0.88" CenterX="32" CenterY="26" />
+                        <RotateTransform Angle="6" CenterX="32" CenterY="26" />
+                        <TranslateTransform X="10" Y="1" />
+                    </TransformGroup>
+                </local:CatHead.RenderTransform>
+            </local:CatHead>
+
+            <!-- Front cat: Multi colour, lower-left, with a rim to separate it from the back cat. -->
+            <local:CatHead Fill="{Binding LeftBrush, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                           RimBrush="{Binding RimBrush, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                           ShowFace="{Binding ShowFace, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}">
+                <local:CatHead.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform ScaleX="0.9" CenterX="32" CenterY="26" />
+                        <RotateTransform Angle="-7" CenterX="32" CenterY="26" />
+                        <TranslateTransform X="0" Y="20" />
+                    </TransformGroup>
+                </local:CatHead.RenderTransform>
+            </local:CatHead>
+        </Canvas>
+    </Viewbox>
+</UserControl>

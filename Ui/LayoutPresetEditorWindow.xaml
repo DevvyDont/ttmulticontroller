@@ -30,7 +30,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="Edit Layout Preset" ShowMaximize="False" />
+        <ui:TitleBar x:Name="titleBar" Grid.Row="0" Title="Edit Layout Preset" ShowMaximize="False" />
 
         <ScrollViewer Grid.Row="1" Padding="16,4,16,8" VerticalScrollBarVisibility="Auto">
             <StackPanel>

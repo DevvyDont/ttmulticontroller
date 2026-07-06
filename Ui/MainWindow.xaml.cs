@@ -191,16 +191,36 @@ namespace TTMulti.Ui
             ApplyModeHeight();
         }
 
+        // Each layout is a fixed size — the window isn't resizable (ResizeMode=NoResize) and the UI doesn't
+        // reflow, so its width and height are hard-locked (Min = Max) to the active layout's content box.
+        private const double DefaultWindowWidth = 264;
+        private const double DefaultWindowHeight = 158;
+        private const double CompactWindowWidth = 180;
+        private const double CompactWindowHeight = 110;
+
         /// <summary>
-        /// The window auto-fits its content height via <c>SizeToContent="Height"</c> (fixed width, CanMinimize
-        /// so the user can't resize). Each layout — compact vs normal — therefore snaps to exactly its own
-        /// content height with no dead space, and switching between them re-measures automatically. This clears
-        /// any inherited Min/Max so the auto-size is never clamped.
+        /// Snap the window to the active layout: hard-lock the width and height (so it can't be dragged and
+        /// compact ↔ normal switches cleanly), and lay out the crosshair row for that mode — spread wide with a
+        /// stretched centre column when normal, or a tight centred cluster (centre column hugs the buttons,
+        /// tighter side margins) when compact, so the small compact window fits the crosshairs + action buttons.
         /// </summary>
         private void ApplyModeHeight()
         {
-            MinHeight = 0;
-            MaxHeight = double.PositiveInfinity;
+            bool compact = Properties.Settings.Default.compactUI;
+
+            double w = compact ? CompactWindowWidth : DefaultWindowWidth;
+            MinWidth = w;
+            MaxWidth = w;
+            Width = w;
+
+            double h = compact ? CompactWindowHeight : DefaultWindowHeight;
+            MinHeight = h;
+            MaxHeight = h;
+            Height = h;
+
+            centerColumn.Width = compact ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
+            crosshairRow.HorizontalAlignment = compact ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+            contentRoot.Margin = compact ? new Thickness(8, 2, 8, 10) : new Thickness(16, 2, 16, 10);
         }
 
         /// <summary>The WinForms MulticontrollerWnd_Load equivalent (HWND already exists here).</summary>
@@ -234,7 +254,15 @@ namespace TTMulti.Ui
             rightCrosshair.WindowSelected += (s, handle) => _viewModel.AssignRightWindow(handle);
 
             OnSuspendStateChanged();
+            // (The window icon is rendered by ReloadOptions, which runs above during init and after Options.)
         }
+
+        /// <summary>
+        /// Render the two-cat logo to the window / taskbar icon (and the title bar) using the user's current
+        /// Multi (front) and Mirror (back) mode colours, so the app icon reflects their palette. Refreshed after
+        /// Options changes.
+        /// </summary>
+        private void UpdateWindowIcon() => Controls.AppLogo.ApplyAppIcon(this, titleBar, titleBarIconSize: 17);
 
         private void ReloadOptions()
         {
@@ -248,6 +276,9 @@ namespace TTMulti.Ui
 
             // Compact-mode toggle changes the layout — snap the window to that mode's fixed height.
             ApplyModeHeight();
+
+            // Mode colours may have changed — re-render the logo icon to match.
+            UpdateWindowIcon();
         }
 
         /// <summary>Reflect the global-hotkeys-suspended state in the chip and the taskbar title (UX-08).</summary>
@@ -256,7 +287,7 @@ namespace TTMulti.Ui
             bool suspended = _inputHost != null && _inputHost.IsGlobalHotkeysSuspended;
             if (_viewModel != null)
                 _viewModel.IsSuspended = suspended;
-            this.Title = suspended ? "Toontown Multicontroller — Hotkeys Suspended" : "Toontown Multicontroller";
+            this.Title = suspended ? "Multicontroller — Hotkeys Suspended" : "Multicontroller";
         }
 
         protected override void OnActivated(EventArgs e)

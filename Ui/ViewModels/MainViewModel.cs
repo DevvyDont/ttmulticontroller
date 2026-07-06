@@ -229,15 +229,15 @@ namespace TTMulti.Ui.ViewModels
             int g = _controller.CurrentGroupIndex + 1;
             switch (_controller.CurrentMode)
             {
-                case MulticontrollerMode.Group: return "Multi-Mode Group " + g;
+                case MulticontrollerMode.Group: return "Multi-Mode · G" + g;
                 case MulticontrollerMode.MirrorAll: return "Mirror Mode";
                 case MulticontrollerMode.AllGroup: return "All Groups Mode";
                 case MulticontrollerMode.Focused: return "Focused Mode";
                 case MulticontrollerMode.Custom:
                     var def = _controller.GetActiveCustomModeDefinition();
                     return def != null && !string.IsNullOrWhiteSpace(def.Name) ? def.Name : "Custom Mode";
-                case MulticontrollerMode.Pair: return "Pair  ·  Group " + g;
-                case MulticontrollerMode.MirrorGroup: return "Mirror Group  ·  Group " + g;
+                case MulticontrollerMode.Pair: return "Pair · G" + g;
+                case MulticontrollerMode.MirrorGroup: return "Mirror Group · G" + g;
                 case MulticontrollerMode.MirrorIndividual: return "Mirror One";
                 default: return _controller.CurrentMode.ToString();
             }

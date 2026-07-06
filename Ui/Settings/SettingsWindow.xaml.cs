@@ -23,6 +23,7 @@ namespace TTMulti.Ui.Settings
         public SettingsWindow()
         {
             InitializeComponent();
+            TTMulti.Ui.Controls.AppLogo.ApplyAppIcon(this, titleBar);
             // Every page binds directly to the live settings object (matching the old dialog's data-bindings).
             DataContext = Properties.Settings.Default;
 

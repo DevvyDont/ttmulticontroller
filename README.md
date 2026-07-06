@@ -1,4 +1,4 @@
-﻿# Toontown Multicontroller
+﻿# Multicontroller
 Allows you to control multiple toons at a time in Toontown.
 
 Homepage: https://danfresneda.com/tt/multicontroller

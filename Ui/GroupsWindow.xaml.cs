@@ -20,6 +20,7 @@ namespace TTMulti.Ui
         public GroupsWindow()
         {
             InitializeComponent();
+            Controls.AppLogo.ApplyAppIcon(this, titleBar);
             _controller = Multicontroller.Instance;
             _viewModel = new GroupsViewModel(_controller);
             DataContext = _viewModel;

@@ -41,6 +41,7 @@ namespace TTMulti.Ui
             if (_preset.SlotOverrides == null) _preset.SlotOverrides = new List<SlotOverride>();
 
             InitializeComponent();
+            Controls.AppLogo.ApplyAppIcon(this, titleBar);
             DataContext = this;
 
             nameBox.Text = _preset.Name ?? "";

@@ -55,6 +55,7 @@
         </Grid.RowDefinitions>
 
         <ui:TitleBar
+            x:Name="titleBar"
             Grid.Row="0"
             Title="Options"
             ShowMaximize="False" />

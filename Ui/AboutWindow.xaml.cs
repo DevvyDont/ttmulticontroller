@@ -13,13 +13,23 @@ namespace TTMulti.Ui
         {
             InitializeComponent();
 
-            iconImage.Source = WpfImaging.ToBitmapSource(Properties.Resources.icon.ToBitmap());
+            // Colour the logo's two cat heads with the user's Multi (front) and Mirror (back) mode colours.
+            appLogo.LeftBrush = ToBrush(Colors.LeftGroup);
+            appLogo.RightBrush = ToBrush(Colors.AllGroups);
+            Controls.AppLogo.ApplyAppIcon(this, titleBar);
             versionText.Text = "Version " + UpdateChecker.CurrentVersion;
 
             string url = Properties.Settings.Default.homepageUrl;
             homepageRun.Text = url;
             try { homepageLink.NavigateUri = new Uri(url); }
             catch { homepageLink.IsEnabled = false; }
+        }
+
+        private static System.Windows.Media.SolidColorBrush ToBrush(System.Drawing.Color c)
+        {
+            var b = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(c.A, c.R, c.G, c.B));
+            b.Freeze();
+            return b;
         }
 
         private void Homepage_RequestNavigate(object sender, RequestNavigateEventArgs e)
