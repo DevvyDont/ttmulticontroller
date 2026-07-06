@@ -25,6 +25,7 @@ namespace TTMulti.Ui.Controls
         public WindowCrosshair()
         {
             InitializeComponent();
+            ApplyTileSize();
 
             MouseLeftButtonDown += OnMouseLeftButtonDown;
             MouseLeftButtonUp += OnMouseLeftButtonUp;
@@ -32,6 +33,27 @@ namespace TTMulti.Ui.Controls
 
         private static Cursor SearchCursor =>
             _searchCursor ?? (_searchCursor = new Cursor(new MemoryStream(Properties.Resources.searchw)));
+
+        // ── TileSize (the square tile's side; lets the compact layout use a smaller crosshair) ──
+
+        public static readonly DependencyProperty TileSizeProperty =
+            DependencyProperty.Register(nameof(TileSize), typeof(double), typeof(WindowCrosshair),
+                new PropertyMetadata(54.0, (d, e) => ((WindowCrosshair)d).ApplyTileSize()));
+
+        public double TileSize
+        {
+            get => (double)GetValue(TileSizeProperty);
+            set => SetValue(TileSizeProperty, value);
+        }
+
+        private void ApplyTileSize()
+        {
+            double s = TileSize;
+            rootBorder.Width = s;
+            rootBorder.Height = s;
+            rootBorder.CornerRadius = new CornerRadius(s * 0.18);
+            finderIcon.FontSize = System.Math.Round(s * 0.56);
+        }
 
         // ── SelectedWindowHandle ────────────────────────────────────────────────────
 

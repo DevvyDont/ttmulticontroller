@@ -52,6 +52,9 @@ namespace TTMulti.Ui.ViewModels
         public bool IsCompact => Properties.Settings.Default.compactUI;
         public bool IsNotCompact => !Properties.Settings.Default.compactUI;
 
+        /// <summary>Crosshair tile side: smaller in the compact layout.</summary>
+        public double CrosshairTileSize => Properties.Settings.Default.compactUI ? 44 : 54;
+
         private bool _isModeLocked;
         public bool IsModeLocked
         {
@@ -169,6 +172,7 @@ namespace TTMulti.Ui.ViewModels
             IsModeLocked = _controller.IsModeLockEngaged;
             OnPropertyChanged(nameof(IsCompact));
             OnPropertyChanged(nameof(IsNotCompact));
+            OnPropertyChanged(nameof(CrosshairTileSize));
 
             LeftAccentBrush = ToBrush(AccentColorFor(ControllerType.Left));
             RightAccentBrush = ToBrush(AccentColorFor(ControllerType.Right));

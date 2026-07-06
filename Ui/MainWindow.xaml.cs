@@ -191,21 +191,16 @@ namespace TTMulti.Ui
             ApplyModeHeight();
         }
 
-        // The window is a fixed size per layout mode — it isn't resizable (CanMinimize) and the UI isn't
-        // designed to reflow, so each mode gets a hard-locked height (measured content heights of each layout).
-        private const double DefaultWindowHeight = 254;
-        private const double CompactWindowHeight = 174;
-
         /// <summary>
-        /// Hard-lock the window height to the current mode's content height (Min = Max = Height), so it can't
-        /// be resized and switching compact ↔ normal snaps cleanly to the right size instead of clipping.
+        /// The window auto-fits its content height via <c>SizeToContent="Height"</c> (fixed width, CanMinimize
+        /// so the user can't resize). Each layout — compact vs normal — therefore snaps to exactly its own
+        /// content height with no dead space, and switching between them re-measures automatically. This clears
+        /// any inherited Min/Max so the auto-size is never clamped.
         /// </summary>
         private void ApplyModeHeight()
         {
-            double h = Properties.Settings.Default.compactUI ? CompactWindowHeight : DefaultWindowHeight;
-            MinHeight = h;
-            MaxHeight = h;
-            Height = h;
+            MinHeight = 0;
+            MaxHeight = double.PositiveInfinity;
         }
 
         /// <summary>The WinForms MulticontrollerWnd_Load equivalent (HWND already exists here).</summary>
