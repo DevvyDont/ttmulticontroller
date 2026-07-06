@@ -1,4 +1,4 @@
-using TTMulti.Forms;
+using TTMulti;
 using Xunit;
 
 namespace TTMulti.Tests
@@ -15,7 +15,7 @@ namespace TTMulti.Tests
         [InlineData("https://GitHub.com/Owner/Repo", "https://api.github.com/repos/Owner/Repo/releases/latest")]
         public void BuildReleasesApiUrl_maps_github_homepage(string homepage, string expected)
         {
-            Assert.Equal(expected, OptionsDlg.BuildReleasesApiUrl(homepage));
+            Assert.Equal(expected, UpdateChecker.BuildReleasesApiUrl(homepage));
         }
 
         [Theory]
@@ -27,7 +27,7 @@ namespace TTMulti.Tests
         [InlineData("https://github.com/owner/repo/extra")] // too many segments
         public void BuildReleasesApiUrl_rejects_non_release_urls(string homepage)
         {
-            Assert.Null(OptionsDlg.BuildReleasesApiUrl(homepage));
+            Assert.Null(UpdateChecker.BuildReleasesApiUrl(homepage));
         }
 
         [Theory]
@@ -38,7 +38,7 @@ namespace TTMulti.Tests
         [InlineData("  v1.2.3  ", 1, 2, 3)]
         public void ParseVersion_is_tolerant(string text, int major, int minor, int build)
         {
-            var v = OptionsDlg.ParseVersion(text);
+            var v = UpdateChecker.ParseVersion(text);
             Assert.NotNull(v);
             Assert.Equal(major, v.Major);
             Assert.Equal(minor, v.Minor);
@@ -51,7 +51,7 @@ namespace TTMulti.Tests
         [InlineData("not-a-version")]
         public void ParseVersion_returns_null_for_garbage(string text)
         {
-            Assert.Null(OptionsDlg.ParseVersion(text));
+            Assert.Null(UpdateChecker.ParseVersion(text));
         }
 
         [Theory]
@@ -60,15 +60,15 @@ namespace TTMulti.Tests
         [InlineData("v1.4.0", "1.4.0.0", false)]  // same version
         public void IsNewerVersion_compares_as_versions(string latest, string current, bool expected)
         {
-            Assert.Equal(expected, OptionsDlg.IsNewerVersion(latest, current));
+            Assert.Equal(expected, UpdateChecker.IsNewerVersion(latest, current));
         }
 
         [Fact]
         public void IsNewerVersion_falls_back_to_string_diff_when_unparseable()
         {
             // Neither side parses as a Version -> "different means newer" fallback.
-            Assert.True(OptionsDlg.IsNewerVersion("nightly-b", "nightly-a"));
-            Assert.False(OptionsDlg.IsNewerVersion("nightly-a", "nightly-a"));
+            Assert.True(UpdateChecker.IsNewerVersion("nightly-b", "nightly-a"));
+            Assert.False(UpdateChecker.IsNewerVersion("nightly-a", "nightly-a"));
         }
     }
 }

@@ -3,7 +3,6 @@ using System.IO;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 using TTMulti;
-using TTMulti.Controls;
 using Xunit;
 
 namespace TTMulti.Tests

@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using TTMulti;
-using TTMulti.Controls;
 using Xunit;
 
 namespace TTMulti.Tests

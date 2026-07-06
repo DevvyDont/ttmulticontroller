@@ -5,7 +5,6 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Threading;
 using TTMulti.Forms;
-using TTMulti.Controls;
 using System.Xml.Serialization;
 using System.IO;
 using System.Security.AccessControl;
@@ -26,9 +25,9 @@ namespace TTMulti
             // a belt-and-suspenders no-op when the manifest wins the race, and covers the case where it doesn't.
             // Per-monitor-v2 is intentionally deferred to the UI stage (needs overlay/border coordinate rework).
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
-            // Pin the classic WinForms default font. Modern .NET defaults to Segoe UI 9pt instead of the
-            // .NET Framework Microsoft Sans Serif 8.25pt this UI was laid out against; without the pin every
-            // form relayouts. The UI-redesign stage drops this and re-lays-out against Segoe UI deliberately.
+            // WinForms init is still needed for the kept overlays (BorderWnd / LayoutOverlayForm /
+            // MonitorPickerForm), which coexist with the WPF UI on this STA thread. The Microsoft Sans Serif
+            // pin keeps those overlays laid out as designed (modern .NET would default them to Segoe UI 9pt).
             Application.SetDefaultFont(new System.Drawing.Font("Microsoft Sans Serif", 8.25f));
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
@@ -43,16 +42,11 @@ namespace TTMulti
             // Force save once at startup so user.config is created next to the exe when missing (portable settings).
             Properties.Settings.Default.Save();
 
-            // Dual-shell period (R6–R9): the new WPF UI runs behind --newui; the WinForms UI stays the
-            // default. Computed before the elevation relaunch so the flag can be forwarded and the shell
-            // choice survives being restarted as administrator.
-            bool useNewUi = args.Any(a => string.Equals(a, "--newui", StringComparison.OrdinalIgnoreCase));
-
             if (Properties.Settings.Default.runAsAdministrator)
             {
                 if (args.Length == 0 || args[0] != "--runasadmin")
                 {
-                    if (TryRunAsAdmin(useNewUi))
+                    if (TryRunAsAdmin())
                     {
                         return;
                     }
@@ -61,19 +55,7 @@ namespace TTMulti
 
             WarnIfElevatedFromUserWritableLocation();
 
-            if (useNewUi)
-                RunWpfShell();
-            else
-                RunWinFormsShell();
-        }
-
-        private static void RunWinFormsShell()
-        {
-            MulticontrollerWnd mainWindow = new MulticontrollerWnd();
-
-            WindowWatcher.Instance.SynchronizingObject = mainWindow;
-
-            Application.Run(mainWindow);
+            RunWpfShell();
         }
 
         private static void RunWpfShell()
@@ -88,8 +70,8 @@ namespace TTMulti
             app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ThemesDictionary());
             app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ControlsDictionary());
 
-            // The engine marshals onto the UI thread through this adapter (the WinForms shell passes the main
-            // form directly). Assign it before any controller activity, matching the WinForms path.
+            // The engine marshals onto the UI thread through this adapter. Assign it before any controller
+            // activity (the setter installs the WinEvent watcher).
             WindowWatcher.Instance.SynchronizingObject =
                 new Threading.DispatcherSynchronizeInvoke(System.Windows.Threading.Dispatcher.CurrentDispatcher);
 
@@ -115,14 +97,14 @@ namespace TTMulti
                 if (string.IsNullOrEmpty(dir) || !IsDirectoryWritableByStandardUsers(dir))
                     return;
 
-                MessageBox.Show(
+                System.Windows.MessageBox.Show(
                     "This app is running as administrator from a folder that standard (non-administrator) users can " +
                     "modify:\n\n" + dir + "\n\n" +
                     "Its configuration files (user.config, custom-modes.json, layout-presets.json) are read by this " +
                     "elevated process, so a non-administrator could alter them to influence it. For better security, " +
                     "install the app to a protected location such as Program Files.",
                     "Running elevated from a writable location",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
             }
             catch
             {
@@ -167,11 +149,10 @@ namespace TTMulti
             return false;
         }
 
-        internal static bool TryRunAsAdmin(bool includeNewUi = false)
+        internal static bool TryRunAsAdmin()
         {
             ProcessStartInfo processInfo = new ProcessStartInfo(AppPaths.ExecutablePath);
-            // Preserve the active shell across the elevated relaunch (dual-shell period).
-            processInfo.Arguments = includeNewUi ? "--runasadmin --newui" : "--runasadmin";
+            processInfo.Arguments = "--runasadmin";
             processInfo.UseShellExecute = true;
             processInfo.Verb = "runas";
 

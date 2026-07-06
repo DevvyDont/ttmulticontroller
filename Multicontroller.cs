@@ -8,7 +8,6 @@ using System.Threading;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using TTMulti.Forms;
-using TTMulti.Controls;
 
 namespace TTMulti
 {
@@ -2543,7 +2542,7 @@ namespace TTMulti
         /// <summary>
         /// Re-arms the switching-mode mouse hook if we believe it is installed. Windows silently unhooks a
         /// low-level hook whose callback exceeds LowLevelHooksTimeout, with no notification, leaving the feature
-        /// dead mid-session; the watchdog (MulticontrollerWnd) calls this periodically after input to heal that.
+        /// dead mid-session; the watchdog (InputCaptureHost) calls this periodically after input to heal that.
         /// Unhook-then-reinstall is a no-op-then-fresh-install when the hook is already gone, and an atomic swap
         /// when it is healthy. Must run on the same (UI) thread that pumps the hook — the watchdog guarantees that.
         /// </summary>

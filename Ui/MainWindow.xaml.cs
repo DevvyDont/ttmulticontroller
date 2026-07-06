@@ -290,7 +290,7 @@ namespace TTMulti.Ui
                     Properties.Settings.Default.runAsAdministrator = true;
                     Properties.Settings.Default.Save();
 
-                    if (Program.TryRunAsAdmin(includeNewUi: true))
+                    if (Program.TryRunAsAdmin())
                         System.Windows.Application.Current.Shutdown();
                     else
                         System.Windows.MessageBox.Show(this, "Failed to re-launch as administrator.", "Error");
