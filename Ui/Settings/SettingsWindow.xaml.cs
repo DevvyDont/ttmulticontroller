@@ -51,13 +51,13 @@ namespace TTMulti.Ui.Settings
             {
                 { "General", pageGeneral },
                 { "Appearance", pageAppearance },
-                { "Multi-Mode Keys", pageKeyBindings },
+                { "Keybinds", pageKeyBindings },
                 { "Controller Modes", pageModes },
                 { "Custom Modes", pageCustomModes },
-                { "Hotkeys", pageHotkeys },
                 { "Multi-Click", pageMultiClick },
                 { "Auto-Find", pageAutoFind },
                 { "Layout Presets", pageLayoutPresets },
+                { "Window Management", pageWindowManagement },
             };
 
             // The rail's SelectionChanged fired during InitializeComponent (before _pages existed) and no-op'd,

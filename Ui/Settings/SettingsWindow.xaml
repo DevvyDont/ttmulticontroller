@@ -75,13 +75,13 @@
                 SelectionChanged="NavList_SelectionChanged">
                 <ListBoxItem Content="General" IsSelected="True" />
                 <ListBoxItem Content="Appearance" />
-                <ListBoxItem Content="Multi-Mode Keys" />
+                <ListBoxItem Content="Keybinds" />
                 <ListBoxItem Content="Controller Modes" />
                 <ListBoxItem Content="Custom Modes" />
-                <ListBoxItem Content="Hotkeys" />
                 <ListBoxItem Content="Multi-Click" />
                 <ListBoxItem Content="Auto-Find" />
                 <ListBoxItem Content="Layout Presets" />
+                <ListBoxItem Content="Window Management" />
             </ListBox>
 
             <!-- Page content -->
@@ -89,6 +89,22 @@
                 <Grid>
                     <!-- ── Multi-Mode Keys ───────────────────────────────────────── -->
                     <StackPanel x:Name="pageKeyBindings" Grid.IsSharedSizeScope="True">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Mode / Activate" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mode / activate key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding modeKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Global hotkey (works when other windows are focused)" IsChecked="{Binding modeHotkeyGlobal, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Start in Mirror mode on launch" IsChecked="{Binding defaultModeOnLaunch, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Multi-Mode key bindings" />
                         <TextBlock
                             Margin="2,0,0,8"
@@ -148,6 +164,22 @@
                             Click="AddBinding_Click"
                             Content="Add binding"
                             Icon="{ui:SymbolIcon Add24}" />
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Zero Power Throw" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Zero power throw key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding zeroPowerThrowKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding zeroPowerThrowHotkeyGlobal, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Enable focus mode" IsChecked="{Binding zeroPowerThrowEnableFocusMode, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- ── Controller Modes ──────────────────────────────────────── -->
@@ -235,39 +267,7 @@
                     </StackPanel>
 
                     <!-- ── Hotkeys ────────────────────────────────────────────────── -->
-                    <StackPanel x:Name="pageHotkeys" Visibility="Collapsed">
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Mode / Activate" />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mode / activate key" />
-                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding modeKeyCode, Mode=TwoWay}" />
-                                </Grid>
-                                <CheckBox Margin="0,3" Content="Global hotkey (works when other windows are focused)" IsChecked="{Binding modeHotkeyGlobal, Mode=TwoWay}" />
-                                <CheckBox Margin="0,3" Content="Start in Mirror mode on launch" IsChecked="{Binding defaultModeOnLaunch, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Zero Power Throw" />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Zero power throw key" />
-                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding zeroPowerThrowKeyCode, Mode=TwoWay}" />
-                                </Grid>
-                                <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding zeroPowerThrowHotkeyGlobal, Mode=TwoWay}" />
-                                <CheckBox Margin="0,3" Content="Enable focus mode" IsChecked="{Binding zeroPowerThrowEnableFocusMode, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Border>
-
+                    <StackPanel x:Name="pageWindowManagement" Visibility="Collapsed">
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Window management" />
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
