@@ -303,8 +303,12 @@ namespace TTMulti
             {
                 if (currentGroupIndex != value)
                 {
-                    // Release held keys before the active group changes (CORR-05).
-                    ReleaseAllHeldForwardedKeys();
+                    // Release held keys before the active group changes (CORR-05) — but only when the
+                    // "Sticky Controls" setting says to.  With it off (default), a key held across the switch
+                    // stays down on the windows you left, so they keep moving until you switch back and
+                    // release it.  With it on, held keys are force-released on switch (STICKY-01).
+                    if (Properties.Settings.Default.releaseKeysOnWindowFocus)
+                        ReleaseAllHeldForwardedKeys();
 
                     currentGroupIndex = value;
 
@@ -334,8 +338,10 @@ namespace TTMulti
             {
                 if (_currentPairIndex != value)
                 {
-                    // Release held keys before the active pair changes (CORR-05).
-                    ReleaseAllHeldForwardedKeys();
+                    // Release held keys before the active pair changes (CORR-05), gated on the
+                    // "Sticky Controls" setting so held keys persist across the switch when it's off (STICKY-01).
+                    if (Properties.Settings.Default.releaseKeysOnWindowFocus)
+                        ReleaseAllHeldForwardedKeys();
 
                     _currentPairIndex = value;
 
@@ -537,8 +543,10 @@ namespace TTMulti
                 {
                     // Release any keys currently held down in the games before the routing changes.  Otherwise the
                     // pending KEYUP is translated/targeted under the NEW mode and never reaches the key that is
-                    // actually held down under the old mode, leaving toons walking forever (CORR-05).
-                    ReleaseAllHeldForwardedKeys();
+                    // actually held down under the old mode, leaving toons walking forever (CORR-05).  Gated on the
+                    // "Sticky Controls" setting: off (default) intentionally leaves those keys held (STICKY-01).
+                    if (Properties.Settings.Default.releaseKeysOnWindowFocus)
+                        ReleaseAllHeldForwardedKeys();
 
                     _currentMode = value;
 

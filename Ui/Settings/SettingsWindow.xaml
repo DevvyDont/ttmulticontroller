@@ -318,7 +318,9 @@
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Input" />
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
-                                <CheckBox Margin="0,3" Content="Release held keys when a game window is focused" IsChecked="{Binding releaseKeysOnWindowFocus, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Release held keys when switching groups or focusing a game window"
+                                          ToolTip="On: movement keys held across a group/pair/mode switch (or when you click a game window to focus it) are released, so toons on the windows you left stop moving. Off (default): those keys stay held — the toons keep moving until you switch back and release the key."
+                                          IsChecked="{Binding releaseKeysOnWindowFocus, Mode=TwoWay}" />
                                 <CheckBox x:Name="keepAliveChk" Margin="0,3" Content="Enable Keep-Alive" IsChecked="{Binding disableKeepAlive, Converter={StaticResource InverseBool}, Mode=TwoWay}" />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
