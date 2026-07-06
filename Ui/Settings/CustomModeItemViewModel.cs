@@ -24,7 +24,7 @@ namespace TTMulti.Ui.Settings
 
         public ObservableCollection<CustomModeBindingViewModel> Bindings { get; }
 
-        internal CustomModeItemViewModel(CustomModeDefinition d)
+        internal CustomModeItemViewModel(CustomModeDefinition d, CustomModeEditContext ctx)
         {
             _id = d.Id;
             _name = d.Name;
@@ -38,18 +38,33 @@ namespace TTMulti.Ui.Settings
             _leftColor = d.LeftBorderColorArgb;
             _rightColor = d.RightBorderColorArgb;
             Bindings = new ObservableCollection<CustomModeBindingViewModel>(
-                (d.Bindings ?? new List<CustomModeBinding>()).Select(b => new CustomModeBindingViewModel(b)));
+                (d.Bindings ?? new List<CustomModeBinding>()).Select(b => new CustomModeBindingViewModel(b, ctx)));
+            Bindings.CollectionChanged += (s, e) => Changed(nameof(RuleCount));
         }
 
-        /// <summary>Shown in the modes list.</summary>
+        /// <summary>Shown in the mode selector.</summary>
         public string Name { get => _name; set { _name = value; Changed(); } }
 
-        public int ActivationKeyCode { get => (int)_actKey; set { _actKey = (WinFormsKeys)value; Changed(); } }
-        public bool ActAlt { get => _actAlt; set { _actAlt = value; Changed(); } }
-        public bool ActCtrl { get => _actCtrl; set { _actCtrl = value; Changed(); } }
-        public bool ActShift { get => _actShift; set { _actShift = value; Changed(); } }
+        /// <summary>Number of rules, for the selector subtitle.</summary>
+        public int RuleCount => Bindings.Count;
+
+        public int ActivationKeyCode { get => (int)_actKey; set { _actKey = (WinFormsKeys)value; Changed(); Changed(nameof(HotkeyDisplay)); } }
+        public bool ActAlt { get => _actAlt; set { _actAlt = value; Changed(); Changed(nameof(HotkeyDisplay)); } }
+        public bool ActCtrl { get => _actCtrl; set { _actCtrl = value; Changed(); Changed(nameof(HotkeyDisplay)); } }
+        public bool ActShift { get => _actShift; set { _actShift = value; Changed(); Changed(nameof(HotkeyDisplay)); } }
         public bool ActGlobal { get => _actGlobal; set { _actGlobal = value; Changed(); } }
         public bool IncludeInCycle { get => _includeInCycle; set { _includeInCycle = value; Changed(); } }
+
+        /// <summary>Friendly activation-hotkey text (e.g. "Alt+C") or empty when none is set.</summary>
+        public string HotkeyDisplay
+        {
+            get
+            {
+                if (_actKey == WinFormsKeys.None) return "";
+                string mods = (_actAlt ? "Alt+" : "") + (_actCtrl ? "Ctrl+" : "") + (_actShift ? "Shift+" : "");
+                return mods + _actKey;
+            }
+        }
 
         // Nullable in the model (null = use the Multi-mode default); the swatch always edits a concrete ARGB.
         public int LeftColorArgb

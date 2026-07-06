@@ -391,7 +391,7 @@ namespace TTMulti.Ui
 
         private void OptionsButton_Click(object sender, RoutedEventArgs e)
         {
-            var settings = new TTMulti.Ui.Settings.SettingsWindow { Owner = this };
+            var settings = new TTMulti.Ui.Settings.SettingsWindow(BuildToonOptions()) { Owner = this };
             _ignoreMessages = true;
             bool? result = settings.ShowDialog();
             _ignoreMessages = false;
@@ -401,6 +401,31 @@ namespace TTMulti.Ui
                 ReloadOptions();
                 _controller.EnsureValidActiveCustomModeId();
             }
+        }
+
+        /// <summary>
+        /// Builds the toon list (1-based index + "Toon N (Group G, Left/Right)" label) the Custom Modes target
+        /// dropdowns use, in controller order (group, pair, left then right). The indices line up with the
+        /// instant-multi-click / custom-mode order in the default (controller-order) sort.
+        /// </summary>
+        private System.Collections.Generic.IReadOnlyList<TTMulti.Ui.Settings.CustomModeToonOption> BuildToonOptions()
+        {
+            var list = new System.Collections.Generic.List<TTMulti.Ui.Settings.CustomModeToonOption>();
+            if (_controller == null)
+                return list;
+
+            int i = 1;
+            foreach (var group in _controller.ControllerGroups)
+            {
+                foreach (var pair in group.ControllerPairs)
+                {
+                    list.Add(new TTMulti.Ui.Settings.CustomModeToonOption(i, "Toon " + i + " (Group " + group.GroupNumber + ", Left)"));
+                    i++;
+                    list.Add(new TTMulti.Ui.Settings.CustomModeToonOption(i, "Toon " + i + " (Group " + group.GroupNumber + ", Right)"));
+                    i++;
+                }
+            }
+            return list;
         }
 
         private void GroupsButton_Click(object sender, RoutedEventArgs e)

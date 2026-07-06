@@ -15,6 +15,7 @@ namespace TTMulti.Ui.Settings
     internal sealed class CustomModesEditor : ISettingsEditor, INotifyPropertyChanged
     {
         private readonly CustomModeFile _file;
+        private readonly CustomModeEditContext _ctx;
         private CustomModeItemViewModel _selectedMode;
         private CustomModeBindingViewModel _selectedBinding;
 
@@ -23,14 +24,17 @@ namespace TTMulti.Ui.Settings
         /// <summary>Role choices for SendRole bindings: the Multi-Mode key titles plus "Zero Power Throw".</summary>
         public List<string> RoleTitles { get; }
 
-        internal CustomModesEditor()
+        /// <summary>True when at least one custom mode exists (drives the editor vs the empty-state prompt).</summary>
+        public bool HasModes => Modes.Count > 0;
+
+        /// <summary>Inverse of <see cref="HasModes"/>, for the empty-state prompt's visibility.</summary>
+        public bool NoModes => Modes.Count == 0;
+
+        internal CustomModesEditor(IReadOnlyList<CustomModeToonOption> toons = null)
         {
             _file = CustomModeStorage.Load();
             if (_file.Modes == null)
                 _file.Modes = new List<CustomModeDefinition>();
-
-            Modes = new ObservableCollection<CustomModeItemViewModel>(
-                _file.Modes.Select(m => new CustomModeItemViewModel(m)));
 
             RoleTitles = Properties.SerializedSettings.Default.Bindings
                 .Select(b => b.Title)
@@ -39,6 +43,12 @@ namespace TTMulti.Ui.Settings
                 .ToList();
             if (!RoleTitles.Contains(CustomModeWellKnownRoles.ZeroPowerThrow))
                 RoleTitles.Add(CustomModeWellKnownRoles.ZeroPowerThrow);
+
+            _ctx = new CustomModeEditContext(RoleTitles, toons);
+
+            Modes = new ObservableCollection<CustomModeItemViewModel>(
+                _file.Modes.Select(m => new CustomModeItemViewModel(m, _ctx)));
+            Modes.CollectionChanged += (s, e) => { Changed(nameof(HasModes)); Changed(nameof(NoModes)); };
 
             SelectedMode = Modes.FirstOrDefault();
         }
@@ -62,7 +72,7 @@ namespace TTMulti.Ui.Settings
 
         public void AddMode()
         {
-            var vm = new CustomModeItemViewModel(new CustomModeDefinition());
+            var vm = new CustomModeItemViewModel(new CustomModeDefinition(), _ctx);
             Modes.Add(vm);
             SelectedMode = vm;
         }
@@ -84,10 +94,9 @@ namespace TTMulti.Ui.Settings
             {
                 InputKey = (int)System.Windows.Forms.Keys.None,
                 Action = CustomModeBindingAction.SendRole,
-                TargetIndex = 1,
-                TargetKind = CustomModeTargetKind.Single,
+                TargetKind = CustomModeTargetKind.All,
                 RoleTitle = RoleTitles.FirstOrDefault() ?? "Forward",
-            });
+            }, _ctx);
             SelectedMode.Bindings.Add(b);
             SelectedBinding = b;
         }

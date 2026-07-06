@@ -6,7 +6,7 @@ using Wpf.Ui.Controls;
 namespace TTMulti.Ui.Settings
 {
     /// <summary>
-    /// The WPF Options window (R8) — a Windows-11-Settings-style rail + cards replacing the 9-tab WinForms
+    /// The WPF Options window (R8): a Windows-11-Settings-style rail + cards replacing the 9-tab WinForms
     /// OptionsDlg. Pages bind live to <c>Settings.Default</c>; OK commits (Save), Cancel/X reverts (Reload)
     /// through <see cref="SettingsSession"/>. R8a implements Controller Modes, Hotkeys, and General; the
     /// remaining pages (Multi-Click, Auto-Find, Colors, Custom Modes, Layout Presets) arrive in R8b/R8c.
@@ -17,11 +17,18 @@ namespace TTMulti.Ui.Settings
 
         private System.Collections.Generic.Dictionary<string, System.Windows.FrameworkElement> _pages;
         private readonly KeyBindingsEditor _keyBindings = new KeyBindingsEditor();
-        private readonly CustomModesEditor _customModes = new CustomModesEditor();
+        private readonly CustomModesEditor _customModes;
         private readonly LayoutPresetsEditor _layoutPresets = new LayoutPresetsEditor();
 
-        public SettingsWindow()
+        public SettingsWindow() : this(null) { }
+
+        /// <summary>
+        /// <paramref name="toons"/> is the current toon list (index + friendly label) used by the Custom Modes
+        /// target dropdowns; pass it from the main window so rules can target toons by name instead of a bare number.
+        /// </summary>
+        internal SettingsWindow(System.Collections.Generic.IReadOnlyList<CustomModeToonOption> toons)
         {
+            _customModes = new CustomModesEditor(toons);
             InitializeComponent();
             TTMulti.Ui.Controls.AppLogo.ApplyAppIcon(this, titleBar);
             // Every page binds directly to the live settings object (matching the old dialog's data-bindings).
@@ -98,8 +105,11 @@ namespace TTMulti.Ui.Settings
 
         private void CmAddBinding_Click(object sender, RoutedEventArgs e) => _customModes.AddBinding();
 
-        private void CmRemoveBinding_Click(object sender, RoutedEventArgs e) =>
-            _customModes.RemoveBinding(_customModes.SelectedBinding);
+        private void CmDeleteRule_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is CustomModeBindingViewModel rule)
+                _customModes.RemoveBinding(rule);
+        }
 
         // ── Layout presets (individual presets edited in the WPF LayoutPresetEditorWindow) ──
 

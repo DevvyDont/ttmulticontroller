@@ -756,205 +756,178 @@
 
                     <!-- ── Custom Modes ───────────────────────────────────────────── -->
                     <StackPanel x:Name="pageCustomModes" Visibility="Collapsed">
-                        <StackPanel.Resources>
-                            <!-- One aligned "label | control" row: fixed label column so every field lines up. -->
-                            <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource RowLabel}">
-                                <Setter Property="Width" Value="118" />
-                                <Setter Property="Margin" Value="0,0,10,0" />
-                            </Style>
-                        </StackPanel.Resources>
+                        <TextBlock Style="{StaticResource SectionHeader}" Margin="2,0,0,6" Text="Custom Modes" />
+                        <TextBlock Style="{StaticResource SectionDesc}" Margin="2,0,8,8"
+                            Text="A custom mode turns keys you press into actions on specific toons. Pick a mode below, then add rules that read like a sentence: press a key, send something, to a toon. The first rule that matches wins." />
 
-                        <TextBlock Style="{StaticResource SectionDesc}" Margin="2,8,8,8"
-                            Text="A custom mode routes keys you press to specific toons. Each binding sends a role from your Multi-Mode Keys (or Zero Power Throw), a raw key, or an instant click, to one toon, all toons, or a listed set (1-based, same order as instant multi-click). The first matching binding wins." />
-
-                        <!-- ═══ Modes ═══ -->
-                        <TextBlock Style="{StaticResource SectionHeader}" Margin="2,0,0,6" Text="Modes" />
+                        <!-- Mode selector -->
                         <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ListBox
-                                        x:Name="cmModesList"
-                                        Grid.Column="0"
-                                        Height="130"
-                                        ItemsSource="{Binding Modes}"
-                                        SelectedItem="{Binding SelectedMode, Mode=TwoWay}">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                        <ui:Button MinWidth="90" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Content="Add mode" Icon="{ui:SymbolIcon Add24}" Click="CmAddMode_Click" />
-                                        <ui:Button MinWidth="90" Margin="0,6,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Content="Remove" Icon="{ui:SymbolIcon Delete24}" Click="CmRemoveMode_Click" />
-                                    </StackPanel>
-                                </Grid>
-                                <CheckBox Margin="0,10,0,0"
-                                    Content="Allow custom modes in the mode-key cycle"
-                                    IsChecked="{Binding customModeCycleWithModeHotkey, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" VerticalAlignment="Center"
+                                    ItemsSource="{Binding Modes}"
+                                    SelectedItem="{Binding SelectedMode, Mode=TwoWay}"
+                                    DisplayMemberPath="Name" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="New" Icon="{ui:SymbolIcon Add24}" Click="CmAddMode_Click" />
+                                <ui:Button Grid.Column="2" Margin="6,0,0,0" Content="Delete" Icon="{ui:SymbolIcon Delete24}"
+                                    IsEnabled="{Binding HasModes}" Click="CmRemoveMode_Click" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Empty state -->
+                        <Border Style="{StaticResource Card}" Padding="14,20" Visibility="{Binding NoModes, Converter={StaticResource BoolToVis}}">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="You don't have any custom modes yet." Margin="0,0,0,10" />
+                                <ui:Button HorizontalAlignment="Center" Appearance="Primary"
+                                    Content="Create a custom mode" Icon="{ui:SymbolIcon Add24}" Click="CmAddMode_Click" />
                             </StackPanel>
                         </Border>
 
-                        <!-- ═══ Selected mode ═══ -->
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Selected mode" />
-                        <Border Style="{StaticResource Card}" DataContext="{Binding SelectedMode}">
-                            <StackPanel>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Name" />
-                                    <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </Grid>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Activation hotkey" />
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                        <ctrl:KeyPickerBox VerticalAlignment="Center" KeyCode="{Binding ActivationKeyCode, Mode=TwoWay}" />
-                                        <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" Content="Alt" IsChecked="{Binding ActAlt, Mode=TwoWay}" />
-                                        <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Ctrl" IsChecked="{Binding ActCtrl, Mode=TwoWay}" />
-                                        <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Shift" IsChecked="{Binding ActShift, Mode=TwoWay}" />
+                        <!-- Selected-mode editor -->
+                        <StackPanel Visibility="{Binding HasModes, Converter={StaticResource BoolToVis}}">
+                            <StackPanel DataContext="{Binding SelectedMode}">
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Name" />
+                                            <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </Grid>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Activation key" />
+                                            <WrapPanel Grid.Column="1">
+                                                <ctrl:KeyPickerBox VerticalAlignment="Center" KeyCode="{Binding ActivationKeyCode, Mode=TwoWay}" />
+                                                <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" Content="Alt" IsChecked="{Binding ActAlt, Mode=TwoWay}" />
+                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Ctrl" IsChecked="{Binding ActCtrl, Mode=TwoWay}" />
+                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Shift" IsChecked="{Binding ActShift, Mode=TwoWay}" />
+                                                <CheckBox Margin="16,0,0,0" VerticalAlignment="Center" Content="Global" IsChecked="{Binding ActGlobal, Mode=TwoWay}"
+                                                    ToolTip="On: the activation key works from any window. Off: only while the multicontroller is active." />
+                                            </WrapPanel>
+                                        </Grid>
                                     </StackPanel>
-                                </Grid>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Border colours" />
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                        <ctrl:ColorSwatch Width="70" VerticalAlignment="Center" ColorArgb="{Binding LeftColorArgb, Mode=TwoWay}" />
-                                        <TextBlock VerticalAlignment="Center" Margin="6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="left" />
-                                        <ctrl:ColorSwatch Width="70" Margin="8,0,0,0" VerticalAlignment="Center" ColorArgb="{Binding RightColorArgb, Mode=TwoWay}" />
-                                        <TextBlock VerticalAlignment="Center" Margin="6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="right" />
-                                    </StackPanel>
-                                </Grid>
-                                <CheckBox Margin="0,6,0,0" Content="Include this mode in the mode-key cycle" IsChecked="{Binding IncludeInCycle, Mode=TwoWay}" />
-                                <CheckBox Margin="0,4,0,0" Content="Global hotkey (activate from any window)" IsChecked="{Binding ActGlobal, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Border>
+                                </Border>
 
-                        <!-- ═══ Bindings ═══ -->
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Bindings" />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ListBox
-                                        x:Name="cmBindingsList"
-                                        Grid.Column="0"
-                                        Height="110"
-                                        ItemsSource="{Binding SelectedMode.Bindings}"
-                                        SelectedItem="{Binding SelectedBinding, Mode=TwoWay}">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding Summary}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                        <ui:Button MinWidth="90" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Content="Add" Icon="{ui:SymbolIcon Add24}" Click="CmAddBinding_Click" />
-                                        <ui:Button MinWidth="90" Margin="0,6,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Content="Remove" Icon="{ui:SymbolIcon Delete24}" Click="CmRemoveBinding_Click" />
-                                    </StackPanel>
-                                </Grid>
-                            </StackPanel>
-                        </Border>
+                                <!-- Rules -->
+                                <TextBlock Style="{StaticResource SectionHeader}" Text="Rules" />
+                                <TextBlock Style="{StaticResource SectionDesc}"
+                                    Text="Toon numbers match the big numbers shown on each window in Switching mode (hold Alt to see them)." />
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding Bindings}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,0,6" Padding="8,6" CornerRadius="6"
+                                                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                        <StackPanel>
+                                                            <WrapPanel>
+                                                                <!-- Each phrase is a non-wrapping group, so if the row wraps it breaks between phrases. -->
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Press" />
+                                                                    <ctrl:KeyPickerBox VerticalAlignment="Center" KeyCode="{Binding InputKeyCode, Mode=TwoWay}" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="send" />
+                                                                    <ComboBox VerticalAlignment="Center" MinWidth="140"
+                                                                        ItemsSource="{Binding SendOptions}"
+                                                                        SelectedItem="{Binding SelectedSendOption, Mode=TwoWay}"
+                                                                        DisplayMemberPath="Label" />
+                                                                    <ctrl:KeyPickerBox VerticalAlignment="Center" Margin="6,0,0,0"
+                                                                        Visibility="{Binding ShowRawKey, Converter={StaticResource BoolToVis}}"
+                                                                        KeyCode="{Binding RawKeyCode, Mode=TwoWay}" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="to" />
+                                                                    <ComboBox VerticalAlignment="Center" MinWidth="150"
+                                                                        ItemsSource="{Binding TargetOptions}"
+                                                                        SelectedItem="{Binding SelectedTargetOption, Mode=TwoWay}"
+                                                                        DisplayMemberPath="Label" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+                                                                    <ToggleButton VerticalAlignment="Center" Content="More"
+                                                                        IsChecked="{Binding IsMoreOpen, Mode=TwoWay}"
+                                                                        ToolTip="Modifier keys and pass-through" />
+                                                                    <ui:Button VerticalAlignment="Center" Margin="6,0,0,0"
+                                                                        Icon="{ui:SymbolIcon Dismiss24}" ToolTip="Delete rule" Click="CmDeleteRule_Click" />
+                                                                </StackPanel>
+                                                            </WrapPanel>
 
-                        <!-- ═══ Selected binding ═══ -->
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Selected binding" />
-                        <Border Style="{StaticResource Card}" DataContext="{Binding SelectedBinding}">
-                            <StackPanel>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Input key" />
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                        <ctrl:KeyPickerBox VerticalAlignment="Center" KeyCode="{Binding InputKeyCode, Mode=TwoWay}" />
-                                        <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" Content="Alt" IsChecked="{Binding RequireAlt, Mode=TwoWay}" />
-                                        <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Ctrl" IsChecked="{Binding RequireControl, Mode=TwoWay}" />
-                                        <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Shift" IsChecked="{Binding RequireShift, Mode=TwoWay}" />
+                                                            <!-- Several toons picker -->
+                                                            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding SeveralToons}"
+                                                                          Visibility="{Binding ShowSeveral, Converter={StaticResource BoolToVis}}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <CheckBox Margin="0,0,12,4" Content="{Binding Label}" IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+
+                                                            <!-- More: modifiers + pass-through -->
+                                                            <WrapPanel Margin="0,6,0,0" Visibility="{Binding IsMoreOpen, Converter={StaticResource BoolToVis}}">
+                                                                <TextBlock VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="only if holding:" />
+                                                                <CheckBox VerticalAlignment="Center" Content="Alt" IsChecked="{Binding RequireAlt, Mode=TwoWay}" />
+                                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Ctrl" IsChecked="{Binding RequireControl, Mode=TwoWay}" />
+                                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Shift" IsChecked="{Binding RequireShift, Mode=TwoWay}" />
+                                                                <CheckBox Margin="20,0,0,0" VerticalAlignment="Center" Content="Also send the key to the game"
+                                                                    IsChecked="{Binding PassThrough, Mode=TwoWay}" />
+                                                            </WrapPanel>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ui:Button HorizontalAlignment="Left" Content="Add rule" Icon="{ui:SymbolIcon Add24}" Click="CmAddBinding_Click" />
                                     </StackPanel>
-                                </Grid>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Action" />
-                                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="{Binding ActionIndex, Mode=TwoWay}">
-                                        <ComboBoxItem Content="Send role (from key bindings)" />
-                                        <ComboBoxItem Content="Send raw key" />
-                                        <ComboBoxItem Content="Instant click" />
-                                    </ComboBox>
-                                </Grid>
-                                <Grid Margin="0,3" Visibility="{Binding IsSendRole, Converter={StaticResource BoolToVis}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Role" />
-                                    <ComboBox
-                                        Grid.Column="1"
-                                        HorizontalAlignment="Stretch"
-                                        ItemsSource="{Binding DataContext.RoleTitles, ElementName=pageCustomModes}"
-                                        SelectedItem="{Binding RoleTitle, Mode=TwoWay}" />
-                                </Grid>
-                                <Grid Margin="0,3" Visibility="{Binding IsSendRawKey, Converter={StaticResource BoolToVis}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Raw key" />
-                                    <ctrl:KeyPickerBox Grid.Column="1" HorizontalAlignment="Left" KeyCode="{Binding RawKeyCode, Mode=TwoWay}" />
-                                </Grid>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Target(s)" />
-                                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="{Binding TargetKindIndex, Mode=TwoWay}">
-                                        <ComboBoxItem Content="One toon (# below)" />
-                                        <ComboBoxItem Content="All toons" />
-                                        <ComboBoxItem Content="Listed (comma-separated #s)" />
-                                    </ComboBox>
-                                </Grid>
-                                <Grid Margin="0,3" Visibility="{Binding IsSingle, Converter={StaticResource BoolToVis}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Toon #" />
-                                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Width="60" Text="{Binding TargetIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </Grid>
-                                <Grid Margin="0,3" Visibility="{Binding IsListed, Converter={StaticResource BoolToVis}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Indices" />
-                                    <TextBox Grid.Column="1" HorizontalAlignment="Stretch" Text="{Binding ListedIndicesText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </Grid>
-                                <CheckBox Margin="0,6,0,0" Content="Consume the input key (don't pass it through)" IsChecked="{Binding ConsumeInput, Mode=TwoWay}" />
+                                </Border>
+
+                                <!-- Advanced -->
+                                <Expander Margin="0,6,0,0" Header="Advanced">
+                                    <StackPanel Margin="0,6,0,0">
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Border colours" />
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <ctrl:ColorSwatch Width="70" VerticalAlignment="Center" ColorArgb="{Binding LeftColorArgb, Mode=TwoWay}" />
+                                                <TextBlock VerticalAlignment="Center" Margin="6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="left" />
+                                                <ctrl:ColorSwatch Width="70" Margin="8,0,0,0" VerticalAlignment="Center" ColorArgb="{Binding RightColorArgb, Mode=TwoWay}" />
+                                                <TextBlock VerticalAlignment="Center" Margin="6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="right" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <CheckBox Margin="0,6,0,0" Content="Show this mode in the mode-key cycle" IsChecked="{Binding IncludeInCycle, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </Expander>
                             </StackPanel>
-                        </Border>
+
+                            <!-- Mode-key cycle (global) -->
+                            <TextBlock Style="{StaticResource SectionHeader}" Text="Mode-key cycle" />
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <CheckBox Content="Rotate through custom modes when you tap the mode key"
+                                        IsChecked="{Binding customModeCycleWithModeHotkey, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
+                                    <TextBlock Style="{StaticResource SectionDesc}" Margin="0,6,0,0"
+                                        Text="When on, tapping your mode key cycles through custom modes too. To leave one mode out, turn off its 'Show this mode in the mode-key cycle' under Advanced." />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>
