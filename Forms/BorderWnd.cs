@@ -400,12 +400,16 @@ namespace TTMulti.Forms
             // Border as a ring: the outer rectangle minus an inner (optionally rounded) rectangle. The outer edge
             // stays square, flush with the game window; only the inner edge rounds. One even-odd fill lets the inner
             // curve anti-alias cleanly against the transparent interior.
+            // The outer rectangle bleeds 1px past every edge so its anti-aliased seam falls just off the surface
+            // (and is clipped away); otherwise AA would fade the boundary row into a faint transparent gap, most
+            // visible along the top edge. The inner edge keeps its AA. Border thickness is unchanged.
+            Rectangle outer = Rectangle.Inflate(clientRect, 1, 1);
             Rectangle inner = Rectangle.Inflate(clientRect, -BorderWidth, -BorderWidth);
             using (var ring = new System.Drawing.Drawing2D.GraphicsPath())
             using (var innerPath = RoundedRectPath(inner, CornerRadius))
             using (var brush = new SolidBrush(borderColor))
             {
-                ring.AddRectangle(clientRect);
+                ring.AddRectangle(outer);
                 if (innerPath.PointCount > 0)
                     ring.AddPath(innerPath, false); // FillMode.Alternate (default) punches the hole
                 g.FillPath(brush, ring);
