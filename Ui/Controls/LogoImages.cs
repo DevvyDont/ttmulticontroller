@@ -18,7 +18,11 @@ namespace TTMulti.Ui.Controls
     {
         private static readonly object _lock = new object();
         private static WMColor _cachedDark, _cachedLight;
-        private static Bitmap _recolored; // full-resolution recoloured source, cached by (dark, light)
+        private static Bitmap _recolored;        // full-resolution recoloured source, cached by (dark, light)
+        private static Rectangle _contentBounds;  // tight non-transparent bounds of the art (source has wide margins)
+
+        // Fraction of the icon left as breathing room around the artwork after cropping its transparent margins.
+        private const float Padding = 0.04f;
 
         /// <summary>
         /// A square <see cref="BitmapSource"/> of the logo recoloured with <paramref name="dark"/> (the black
@@ -31,6 +35,16 @@ namespace TTMulti.Ui.Controls
             lock (_lock)
             {
                 Bitmap src = EnsureRecolored(dark, light);
+
+                // Crop the source's wide transparent margins and scale the artwork to fill the icon (preserving
+                // aspect, centred, with a little padding) so it does not read tiny in a taskbar/title-bar slot.
+                Rectangle bb = _contentBounds;
+                int pad = (int)(size * Padding);
+                int avail = Math.Max(1, size - 2 * pad);
+                float scale = Math.Min((float)avail / bb.Width, (float)avail / bb.Height);
+                float dw = bb.Width * scale, dh = bb.Height * scale;
+                var dest = new RectangleF((size - dw) / 2f, (size - dh) / 2f, dw, dh);
+
                 using (var scaled = new Bitmap(size, size, PixelFormat.Format32bppArgb))
                 {
                     using (var g = Graphics.FromImage(scaled))
@@ -39,7 +53,7 @@ namespace TTMulti.Ui.Controls
                         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                         g.CompositingQuality = CompositingQuality.HighQuality;
                         g.Clear(Color.Transparent);
-                        g.DrawImage(src, new Rectangle(0, 0, size, size));
+                        g.DrawImage(src, dest, (RectangleF)bb, GraphicsUnit.Pixel);
                     }
                     return WpfImaging.ToBitmapSource(scaled); // returns a frozen BitmapSource
                 }
@@ -79,9 +93,11 @@ namespace TTMulti.Ui.Controls
             BitmapData dd = result.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
             try
             {
-                int bytes = Math.Abs(sd.Stride) * h;
+                int stride = Math.Abs(sd.Stride);
+                int bytes = stride * h;
                 byte[] buf = new byte[bytes];
                 Marshal.Copy(sd.Scan0, buf, 0, bytes);
+                int minX = w, minY = h, maxX = -1, maxY = -1;
                 for (int p = 0; p < bytes; p += 4)
                 {
                     // BGRA byte order; leave fully-transparent pixels as (0,0,0,0).
@@ -91,8 +107,18 @@ namespace TTMulti.Ui.Controls
                     buf[p + 1] = gTab[lum];
                     buf[p + 2] = rTab[lum];
                     // alpha (buf[p + 3]) preserved
+
+                    if (buf[p + 3] > 12) // track the tight content bounds (ignore near-transparent AA fringe)
+                    {
+                        int col = (p % stride) >> 2, row = p / stride;
+                        if (col < minX) minX = col; if (col > maxX) maxX = col;
+                        if (row < minY) minY = row; if (row > maxY) maxY = row;
+                    }
                 }
                 Marshal.Copy(buf, 0, dd.Scan0, bytes);
+                _contentBounds = (maxX >= minX && maxY >= minY)
+                    ? new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1)
+                    : new Rectangle(0, 0, w, h);
             }
             finally
             {
