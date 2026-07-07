@@ -32,7 +32,7 @@ namespace TTMulti.Forms
                 if (_borderColor == value)
                     return;
                 _borderColor = value;
-                this.Invalidate();
+                Redraw();
             }
         }
 
@@ -49,7 +49,7 @@ namespace TTMulti.Forms
                 if (_borderWidth == value)
                     return;
                 _borderWidth = value;
-                this.Invalidate();
+                Redraw();
             }
         }
 
@@ -64,19 +64,64 @@ namespace TTMulti.Forms
                 if (_cornerRadius == value)
                     return;
                 _cornerRadius = value;
-                this.Invalidate();
+                Redraw();
             }
         }
 
         private int groupNumber;
 
         /// <summary>
-        /// The window's group number. Used to derive the Switching Mode number; not drawn on its own.
+        /// The window's group number. Drawn on the overlay when <see cref="ShowGroupNumber"/> is set, and used to
+        /// derive the Switching Mode number.
         /// </summary>
         public int GroupNumber
         {
             get => groupNumber;
-            set => groupNumber = value;
+            set
+            {
+                if (groupNumber != value)
+                {
+                    groupNumber = value;
+                    Redraw();
+                }
+            }
+        }
+
+        private bool showGroupNumber = false;
+
+        /// <summary>
+        /// Whether to show the window group number or not.
+        /// </summary>
+        public bool ShowGroupNumber
+        {
+            get => showGroupNumber;
+            set
+            {
+                if (showGroupNumber != value)
+                {
+                    showGroupNumber = value;
+                    Redraw();
+                }
+            }
+        }
+
+        private bool _drawBorder = true;
+
+        /// <summary>
+        /// Whether to draw the coloured border. When false the overlay renders only the group number (used to
+        /// keep a window's group number visible while it isn't actively controlled), leaving the frame transparent.
+        /// </summary>
+        public bool DrawBorder
+        {
+            get => _drawBorder;
+            set
+            {
+                if (_drawBorder != value)
+                {
+                    _drawBorder = value;
+                    Redraw();
+                }
+            }
         }
 
         private const int CursorSize = 44; // arrow (36) + logo badge overlapping the bottom-right corner
@@ -427,22 +472,26 @@ namespace TTMulti.Forms
             }
             // Otherwise the stored BorderColor is used (set by ToontownController.Refresh()).
 
-            // Border as a ring: the outer rectangle minus an inner (optionally rounded) rectangle. The outer edge
-            // stays square, flush with the game window; only the inner edge rounds. One even-odd fill lets the inner
-            // curve anti-alias cleanly against the transparent interior.
-            // The outer rectangle bleeds 1px past every edge so its anti-aliased seam falls just off the surface
-            // (and is clipped away); otherwise AA would fade the boundary row into a faint transparent gap, most
-            // visible along the top edge. The inner edge keeps its AA. Border thickness is unchanged.
-            Rectangle outer = Rectangle.Inflate(clientRect, 1, 1);
-            Rectangle inner = Rectangle.Inflate(clientRect, -BorderWidth, -BorderWidth);
-            using (var ring = new System.Drawing.Drawing2D.GraphicsPath())
-            using (var innerPath = RoundedRectPath(inner, CornerRadius))
-            using (var brush = new SolidBrush(borderColor))
+            // Draw the coloured border only while actively controlling this window. DrawBorder is false for the
+            // number-only overlay (a switched-away group whose number is kept visible), which leaves the frame clear.
+            if (DrawBorder)
             {
-                ring.AddRectangle(outer);
-                if (innerPath.PointCount > 0)
-                    ring.AddPath(innerPath, false); // FillMode.Alternate (default) punches the hole
-                g.FillPath(brush, ring);
+                // Border as a ring: the outer rectangle minus an inner (optionally rounded) rectangle. The outer
+                // edge stays square, flush with the game window; only the inner edge rounds. One even-odd fill lets
+                // the inner curve anti-alias cleanly against the transparent interior. The outer rectangle bleeds
+                // 1px past every edge so its AA seam is clipped off-surface (otherwise AA fades the boundary row
+                // into a faint transparent gap, most visible along the top edge). Border thickness is unchanged.
+                Rectangle outer = Rectangle.Inflate(clientRect, 1, 1);
+                Rectangle inner = Rectangle.Inflate(clientRect, -BorderWidth, -BorderWidth);
+                using (var ring = new System.Drawing.Drawing2D.GraphicsPath())
+                using (var innerPath = RoundedRectPath(inner, CornerRadius))
+                using (var brush = new SolidBrush(borderColor))
+                {
+                    ring.AddRectangle(outer);
+                    if (innerPath.PointCount > 0)
+                        ring.AddPath(innerPath, false); // FillMode.Alternate (default) punches the hole
+                    g.FillPath(brush, ring);
+                }
             }
 
             if (SwitchingMode && SwitchingNumber > 0 && clientRect.Height > 4)
@@ -464,6 +513,26 @@ namespace TTMulti.Forms
                     g.TranslateTransform((clientRect.Width - b.Width) / 2f - b.X, (clientRect.Height - b.Height) / 2f - b.Y);
                     g.FillPath(brush, text);
                     g.Restore(state);
+                }
+            }
+
+            // Group number in the top-left corner, when the number-visibility feature asks for it and we are not
+            // showing the large Switching Mode number. Filled glyph path with a dark shadow so it stays legible on
+            // any game background.
+            if (ShowGroupNumber && !SwitchingMode && clientRect.Height > 4)
+            {
+                float emSize = Math.Max(14f, Math.Min(clientRect.Height / 6f, 40f));
+                int pad = BorderWidth + 6;
+                using (var text = new System.Drawing.Drawing2D.GraphicsPath())
+                using (var shadow = new SolidBrush(Color.FromArgb(170, 0, 0, 0)))
+                {
+                    text.AddString(GroupNumber.ToString(), FontFamily.GenericSansSerif, (int)FontStyle.Bold,
+                        emSize, new PointF(pad, pad), StringFormat.GenericDefault);
+                    var state = g.Save();
+                    g.TranslateTransform(1.5f, 1.5f);
+                    g.FillPath(shadow, text);
+                    g.Restore(state);
+                    g.FillPath(Brushes.White, text);
                 }
             }
 

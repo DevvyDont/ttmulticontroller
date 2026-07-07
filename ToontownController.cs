@@ -385,6 +385,8 @@ namespace TTMulti
         /// <summary>
         /// The border colour for this controller in the current state. Extracted so the caption-color and
         /// no-caption branches of <see cref="Refresh"/> share one implementation instead of duplicating it.
+        /// Also drives the group-number visibility (the feature's toggle / mode restrictions) for the non-switching
+        /// path, matching where it was set before the color logic was deduplicated.
         /// </summary>
         private Color ComputeBorderColor()
         {
@@ -396,6 +398,9 @@ namespace TTMulti
                 if (_borderWnd.SwitchingSwitched) return Colors.SwitchingSwitched;
                 return Colors.SwitchingMode;
             }
+
+            // Normal (non-switching) mode: honour the group-number visibility setting / mode restrictions.
+            _borderWnd.ShowGroupNumber = multicontroller.ShouldShowGroupNumber();
 
             if (!multicontroller.IsActive)
                 return _borderWnd.BorderColor; // keep current
@@ -453,9 +458,20 @@ namespace TTMulti
                 (multicontroller.IsActive && (isActiveController || multicontroller.ShowAllBorders || multicontroller.IsSwitchingMode))
                 || (multicontroller.IsControlledMulticlickMode && isActiveController));
 
+            // When enabled, keep a window's group number visible even while it isn't actively bordered (e.g. a
+            // group you've switched away from): the overlay is shown with only the number, no border. Still honours
+            // the group-number visibility setting (Hidden / mode restrictions) via ShouldShowGroupNumber().
+            bool showNumberOnly = HasWindow && !showBorderWindow
+                && Properties.Settings.Default.alwaysShowGroupNumber
+                && multicontroller.ShouldShowGroupNumber();
+            bool showOverlay = showBorderWindow || showNumberOnly;
+
+            // The coloured border is drawn only when actively controlled; the number-only overlay leaves it off.
+            _borderWnd.DrawBorder = showBorderWindow;
+
             bool showMouseOverlayWindow = false; // Feature removed
 
-            if (showBorderWindow && !_borderWnd.Visible)
+            if (showOverlay && !_borderWnd.Visible)
             {
                 // Sync position from Win32 before making the border visible so it
                 // never flashes at a stale location from the previous poll tick.
@@ -465,10 +481,15 @@ namespace TTMulti
                 // only forwards Location sets to SetWindowPos once the handle exists.
                 UpdateBorderPosition();
             }
-            else if (!showBorderWindow && _borderWnd.Visible)
+            else if (!showOverlay && _borderWnd.Visible)
             {
                 _borderWnd.Hide();
             }
+
+            // The border/caption branches below only set the group number for a real (showBorderWindow) border, so
+            // set it here for the number-only (inactive-window) overlay.
+            if (showNumberOnly)
+                _borderWnd.ShowGroupNumber = true;
 
             // Update caption color based on border visibility
             if (Properties.Settings.Default.enableCaptionColor && HasWindow)
