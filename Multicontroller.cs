@@ -1774,8 +1774,9 @@ namespace TTMulti
                     return false;
                 }
 
-                // Mode lock: inactive zero-power paths change MulticontrollerMode: block them entirely
-                if (_modeLockEngaged && !IsActive)
+                // Mode lock: the inactive zero-power paths that CHANGE MulticontrollerMode are blocked entirely.
+                // The no-activate path below only posts throws (no mode change / no activation), so it is exempt.
+                if (_modeLockEngaged && !IsActive && !Properties.Settings.Default.zeroPowerThrowNoActivate)
                 {
                     if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY)
                         return true;
@@ -1789,13 +1790,18 @@ namespace TTMulti
                 // Handle Zero Power Throw Hotkey
                 if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.HOTKEY)
                 {
-                    // Prevent key repeat - only trigger on initial press
-                    if (zeroPowerThrowKeyPressed)
+                    // Prevent auto-repeat only on the message (KEYDOWN) path, where the paired KEYUP re-arms the
+                    // latch. A registered global hotkey delivers WM_HOTKEY with NO matching KEYUP, so latching it
+                    // would leave the latch stuck after the first press and block every press after that (the
+                    // reported "second press does nothing"). Each WM_HOTKEY is already one discrete press, matching
+                    // how the app's other hotkeys behave.
+                    if (msg == Win32.WM.KEYDOWN)
                     {
-                        return true;
+                        if (zeroPowerThrowKeyPressed)
+                            return true;
+                        zeroPowerThrowKeyPressed = true;
                     }
-                    zeroPowerThrowKeyPressed = true;
-                    
+
                     // Find the Throw key from bindings
                     var keyBindings = Properties.SerializedSettings.Default.Bindings;
                     var throwBinding = keyBindings.FirstOrDefault(b => b.Title == "Throw");
@@ -1809,6 +1815,14 @@ namespace TTMulti
                             
                             // Send instant tap of the throw key to all active controllers
                             affectedControllers.ToList().ForEach(c => PostZeroPowerThrow(c, throwBinding));
+                        }
+                        else if (Properties.Settings.Default.zeroPowerThrowNoActivate)
+                        {
+                            // Not active + "no activate": fire the throw at every window without stealing focus
+                            // back to the multicontroller or changing the mode. Lets you throw to all windows while
+                            // you stay focused on (and keep playing) one of them, or from any other app.
+                            foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
+                                PostZeroPowerThrow(controller, throwBinding);
                         }
                         else
                         {

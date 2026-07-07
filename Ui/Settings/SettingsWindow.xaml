@@ -181,6 +181,9 @@
                                 </Grid>
                                 <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding zeroPowerThrowHotkeyGlobal, Mode=TwoWay}" />
                                 <CheckBox Margin="0,3" Content="Enable focus mode" IsChecked="{Binding zeroPowerThrowEnableFocusMode, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Throw to all windows without activating"
+                                    IsChecked="{Binding zeroPowerThrowNoActivate, Mode=TwoWay}"
+                                    ToolTip="When the multicontroller isn't active, pressing the throw key fires the throw on every window without pulling focus back or changing the mode, so you can keep playing the window you're on (or trigger it from any other app). Requires 'Global hotkey'. Takes priority over focus mode." />
                             </StackPanel>
                         </Border>
                     </StackPanel>

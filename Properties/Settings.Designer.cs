@@ -957,6 +957,18 @@ namespace TTMulti.Properties {
                 this["zeroPowerThrowEnableFocusMode"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool zeroPowerThrowNoActivate {
+            get {
+                return ((bool)(this["zeroPowerThrowNoActivate"]));
+            }
+            set {
+                this["zeroPowerThrowNoActivate"] = value;
+            }
+        }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
