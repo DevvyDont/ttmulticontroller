@@ -375,6 +375,52 @@ namespace TTMulti
             }
         }
 
+        /// <summary>Push the user's configurable border thickness / corner radius onto the border window.</summary>
+        private void ApplyBorderStyleFromSettings()
+        {
+            _borderWnd.BorderWidth = Math.Max(1, Properties.Settings.Default.borderWidth);
+            _borderWnd.CornerRadius = Math.Max(0, Properties.Settings.Default.borderCornerRadius);
+        }
+
+        /// <summary>
+        /// The border colour for this controller in the current state. Extracted so the caption-color and
+        /// no-caption branches of <see cref="Refresh"/> share one implementation instead of duplicating it.
+        /// Also sets <see cref="BorderWnd.ShowGroupNumber"/> for the non-switching path, exactly as before.
+        /// </summary>
+        private Color ComputeBorderColor()
+        {
+            if (_borderWnd.SwitchingMode)
+            {
+                // Priority: Selected > Marked for Removal > Switched > Normal.
+                if (_borderWnd.SwitchingSelected) return Colors.SwitchingSelected;
+                if (_borderWnd.SwitchingMarkedForRemoval) return Colors.SwitchingMarkedForRemoval;
+                if (_borderWnd.SwitchingSwitched) return Colors.SwitchingSwitched;
+                return Colors.SwitchingMode;
+            }
+
+            _borderWnd.ShowGroupNumber = multicontroller.IsActive
+                && (multicontroller.ShowAllBorders || multicontroller.ControllerGroups.Count > 1);
+
+            if (!multicontroller.IsActive)
+                return _borderWnd.BorderColor; // keep current
+
+            if (multicontroller.ShowAllBorders)
+                return multicontroller.CurrentMode == MulticontrollerMode.Custom
+                    ? multicontroller.GetActiveCustomModeBorderColorFor(Type)
+                    : (Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup);
+
+            switch (BorderColorPolicy.SourceFor(multicontroller.CurrentMode, Type, multicontroller.IsFocusedController(this)))
+            {
+                case BorderColorSource.Left: return Colors.LeftGroup;
+                case BorderColorSource.Right: return Colors.RightGroup;
+                case BorderColorSource.All: return Colors.AllGroups;
+                case BorderColorSource.Custom: return multicontroller.GetActiveCustomModeBorderColorFor(Type);
+                case BorderColorSource.Focused: return Colors.FocusedFocused;
+                case BorderColorSource.Unfocused: return Colors.FocusedUnfocused;
+                default: return _borderWnd.BorderColor; // keep current
+            }
+        }
+
         /// <summary>
         /// Darkens a color by multiplying RGB values by a factor (0.0 to 1.0).
         /// </summary>
@@ -436,83 +482,12 @@ namespace TTMulti
                     // TODO: why is this needed?
                     _borderWnd.WindowState = FormWindowState.Normal;
 
-                    Color borderColor;
-
-                    // Switching mode colors (handled by Multicontroller)
-                    if (_borderWnd.SwitchingMode)
-                    {
-                        // Priority: Selected > Marked for Removal > Switched > Normal
-                        if (_borderWnd.SwitchingSelected)
-                        {
-                            borderColor = Colors.SwitchingSelected;
-                        }
-                        else if (_borderWnd.SwitchingMarkedForRemoval)
-                        {
-                            borderColor = Colors.SwitchingMarkedForRemoval;
-                        }
-                        else if (_borderWnd.SwitchingSwitched)
-                        {
-                            borderColor = Colors.SwitchingSwitched;
-                        }
-                        else
-                        {
-                            borderColor = Colors.SwitchingMode;
-                        }
-                    }
-                    else
-                    {
-                        // Normal mode - set border colors based on mode
-                        _borderWnd.ShowGroupNumber = multicontroller.IsActive
-                            && (multicontroller.ShowAllBorders || multicontroller.ControllerGroups.Count > 1);
-
-                        if (multicontroller.ShowAllBorders && multicontroller.IsActive)
-                        {
-                            borderColor = multicontroller.CurrentMode == MulticontrollerMode.Custom
-                                ? multicontroller.GetActiveCustomModeBorderColorFor(Type)
-                                : (Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup);
-                        }
-                        else if (multicontroller.IsActive)
-                        {
-                            switch (multicontroller.CurrentMode)
-                            {
-                                case MulticontrollerMode.Group:
-                                case MulticontrollerMode.AllGroup:
-                                    borderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
-                                    break;
-                                case MulticontrollerMode.MirrorAll:
-                                    borderColor = Colors.AllGroups;
-                                    break;
-                                case MulticontrollerMode.Custom:
-                                    borderColor = multicontroller.GetActiveCustomModeBorderColorFor(Type);
-                                    break;
-                                case MulticontrollerMode.Focused:
-                                    // Use different colors for focused vs unfocused windows
-                                    if (multicontroller.IsFocusedController(this))
-                                    {
-                                        borderColor = Colors.FocusedFocused;
-                                    }
-                                    else
-                                    {
-                                        borderColor = Colors.FocusedUnfocused;
-                                    }
-                                    break;
-                                default:
-                                    borderColor = _borderWnd.BorderColor; // Keep current color
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            borderColor = _borderWnd.BorderColor; // Keep current color
-                        }
-                    }
-                    
-                    // Set border color
+                    ApplyBorderStyleFromSettings();
+                    Color borderColor = ComputeBorderColor();
                     _borderWnd.BorderColor = borderColor;
-                    
-                    // Darken the border color for caption (make it slightly darker)
-                    Color captionColor = DarkenColor(borderColor, 0.75f);
-                    ApplyCaptionColor(captionColor);
+
+                    // Darken the border color for the game window's caption bar.
+                    ApplyCaptionColor(DarkenColor(borderColor, 0.75f));
 
                     // Don't clear fake cursors while trigger-release is active or in controlled MC mode
                     if (!IsTriggerReleaseCursorActive && !multicontroller.IsControlledMulticlickMode)
@@ -529,78 +504,8 @@ namespace TTMulti
                 // TODO: why is this needed?
                 _borderWnd.WindowState = FormWindowState.Normal;
 
-                Color borderColor;
-                
-                // Switching mode colors (handled by Multicontroller)
-                if (_borderWnd.SwitchingMode)
-                {
-                    // Priority: Selected > Marked for Removal > Switched > Normal
-                    if (_borderWnd.SwitchingSelected)
-                    {
-                        borderColor = Colors.SwitchingSelected;
-                    }
-                    else if (_borderWnd.SwitchingMarkedForRemoval)
-                    {
-                        borderColor = Colors.SwitchingMarkedForRemoval;
-                    }
-                    else if (_borderWnd.SwitchingSwitched)
-                    {
-                        borderColor = Colors.SwitchingSwitched;
-                    }
-                    else
-                    {
-                        borderColor = Colors.SwitchingMode;
-                    }
-                }
-                else
-                {
-                    // Normal mode - set border colors based on mode
-                    _borderWnd.ShowGroupNumber = multicontroller.IsActive
-                        && (multicontroller.ShowAllBorders || multicontroller.ControllerGroups.Count > 1);
-
-                    if (multicontroller.ShowAllBorders && multicontroller.IsActive)
-                    {
-                        borderColor = multicontroller.CurrentMode == MulticontrollerMode.Custom
-                            ? multicontroller.GetActiveCustomModeBorderColorFor(Type)
-                            : (Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup);
-                    }
-                    else if (multicontroller.IsActive)
-                    {
-                        switch (multicontroller.CurrentMode)
-                        {
-                            case MulticontrollerMode.Group:
-                            case MulticontrollerMode.AllGroup:
-                                borderColor = Type == ControllerType.Left ? Colors.LeftGroup : Colors.RightGroup;
-                                break;
-                            case MulticontrollerMode.MirrorAll:
-                                borderColor = Colors.AllGroups;
-                                break;
-                            case MulticontrollerMode.Custom:
-                                borderColor = multicontroller.GetActiveCustomModeBorderColorFor(Type);
-                                break;
-                            case MulticontrollerMode.Focused:
-                                // Use different colors for focused vs unfocused windows
-                                if (multicontroller.IsFocusedController(this))
-                                {
-                                    borderColor = Colors.FocusedFocused;
-                                }
-                                else
-                                {
-                                    borderColor = Colors.FocusedUnfocused;
-                                }
-                                break;
-                            default:
-                                borderColor = _borderWnd.BorderColor; // Keep current color
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        borderColor = _borderWnd.BorderColor; // Keep current color
-                    }
-                }
-                
-                // Set border color
+                ApplyBorderStyleFromSettings();
+                Color borderColor = ComputeBorderColor();
                 _borderWnd.BorderColor = borderColor;
 
                 // Don't clear fake cursors while trigger-release is active or in controlled MC mode

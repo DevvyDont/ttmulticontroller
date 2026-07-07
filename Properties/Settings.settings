@@ -220,6 +220,12 @@
     <Setting Name="mirrorModeBorderColor" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">-1146130</Value>
     </Setting>
+    <Setting Name="borderWidth" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">5</Value>
+    </Setting>
+    <Setting Name="borderCornerRadius" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
     <Setting Name="multiModeLeftBorderColor" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">-13447886</Value>
     </Setting>

@@ -740,6 +740,39 @@
 
                                 <Separator Margin="0,12" />
 
+                                <!-- Border style -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Border style" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="Thickness and corner rounding of the border drawn around each game window. A corner radius of 0 keeps the border square." />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Thickness" />
+                                    <Slider x:Name="borderWidthSlider" Grid.Column="1" VerticalAlignment="Center"
+                                        Minimum="1" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding borderWidth, Mode=TwoWay}" />
+                                    <TextBlock Grid.Column="2" MinWidth="26" Margin="10,0,0,0" VerticalAlignment="Center" TextAlignment="Right"
+                                        Text="{Binding Value, ElementName=borderWidthSlider, StringFormat=0}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Corner radius" />
+                                    <Slider x:Name="borderCornerRadiusSlider" Grid.Column="1" VerticalAlignment="Center"
+                                        Minimum="0" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding borderCornerRadius, Mode=TwoWay}" />
+                                    <TextBlock Grid.Column="2" MinWidth="26" Margin="10,0,0,0" VerticalAlignment="Center" TextAlignment="Right"
+                                        Text="{Binding Value, ElementName=borderCornerRadiusSlider, StringFormat=0}" />
+                                </Grid>
+
+                                <Separator Margin="0,12" />
+
                                 <!-- Border colours -->
                                 <TextBlock FontSize="13" FontWeight="SemiBold" Text="Border colours" />
                                 <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"

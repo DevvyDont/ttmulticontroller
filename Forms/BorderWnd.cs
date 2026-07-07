@@ -53,6 +53,21 @@ namespace TTMulti.Forms
             }
         }
 
+        private int _cornerRadius;
+
+        /// <summary>Corner radius of the border, in pixels. 0 = square corners (the default look).</summary>
+        public int CornerRadius
+        {
+            get => _cornerRadius;
+            set
+            {
+                if (_cornerRadius == value)
+                    return;
+                _cornerRadius = value;
+                this.Invalidate();
+            }
+        }
+
         private int groupNumber;
 
         /// <summary>
@@ -194,7 +209,7 @@ namespace TTMulti.Forms
         private Bitmap fakeCursorImage = Properties.Resources.dupcursor,
             fakeCursorImageInvalid = Properties.Resources.dupcursorx;
 
-        private Font textFont = new Font(FontFamily.GenericSansSerif, 10, FontStyle.Regular);
+        private Font textFont = new Font(FontFamily.GenericSansSerif, 13, FontStyle.Bold);
 
         // Keep track of the last region where the cursor was draw so it can be invalidated quicker
         Rectangle fakeCursorRect;
@@ -318,11 +333,26 @@ namespace TTMulti.Forms
             // When not in switching mode, use stored BorderColor (normal mode); no persistence of selected/switched colors
             // (BorderColor is updated by ToontownController.Refresh() when exiting switching mode)
 
-            ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle,
-                borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                borderColor, BorderWidth, ButtonBorderStyle.Solid);
+            if (CornerRadius > 0)
+            {
+                // Rounded border: stroke a rounded-rectangle path inset by half the pen width so the stroke stays
+                // inside the client area. The interior stays chroma-key transparent (click-through overlay).
+                using (var pen = new Pen(borderColor, BorderWidth))
+                using (var path = RoundedRectPath(this.ClientRectangle, CornerRadius, BorderWidth))
+                {
+                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    e.Graphics.DrawPath(pen, path);
+                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+                }
+            }
+            else
+            {
+                ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle,
+                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
+                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
+                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
+                    borderColor, BorderWidth, ButtonBorderStyle.Solid);
+            }
 
             if (SwitchingMode && SwitchingNumber > 0)
             {
@@ -366,8 +396,16 @@ namespace TTMulti.Forms
             }
             else if (ShowGroupNumber)
             {
-                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixel;
-                e.Graphics.DrawString(GroupNumber.ToString(), textFont, Brushes.White, 12, 160);
+                // Anchor the number in the top-left corner just inside the border, with a shadow so it stays
+                // readable on any game background, regardless of window size or DPI.
+                int pad = BorderWidth + 6;
+                string label = GroupNumber.ToString();
+                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                using (var shadow = new SolidBrush(Color.FromArgb(170, 0, 0, 0)))
+                {
+                    e.Graphics.DrawString(label, textFont, shadow, pad + 1.5f, pad + 1.5f);
+                    e.Graphics.DrawString(label, textFont, Brushes.White, pad, pad);
+                }
             }
 
             if (ShowFakeCursor)
@@ -375,6 +413,28 @@ namespace TTMulti.Forms
                 var drawRect = new Rectangle(FakeCursorPosition.X, FakeCursorPosition.Y, CursorSize, CursorSize);
                 e.Graphics.DrawImage(FakeCursorIsInvalid ? fakeCursorImageInvalid : fakeCursorImage, drawRect);
             }
+        }
+
+        /// <summary>A rounded-rectangle path for the border stroke, inset by half the border width so the stroke
+        /// sits inside <paramref name="bounds"/>. Radius is clamped so it never exceeds the box.</summary>
+        private static System.Drawing.Drawing2D.GraphicsPath RoundedRectPath(Rectangle bounds, int radius, int borderWidth)
+        {
+            int half = borderWidth / 2;
+            var r = new Rectangle(bounds.X + half, bounds.Y + half,
+                Math.Max(1, bounds.Width - borderWidth), Math.Max(1, bounds.Height - borderWidth));
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            int d = Math.Min(radius * 2, Math.Min(r.Width, r.Height));
+            if (d <= 0)
+            {
+                path.AddRectangle(r);
+                return path;
+            }
+            path.AddArc(r.X, r.Y, d, d, 180, 90);
+            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
         }
     }
 }

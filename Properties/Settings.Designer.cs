@@ -898,6 +898,30 @@ namespace TTMulti.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5")]
+        public int borderWidth {
+            get {
+                return ((int)(this["borderWidth"]));
+            }
+            set {
+                this["borderWidth"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int borderCornerRadius {
+            get {
+                return ((int)(this["borderCornerRadius"]));
+            }
+            set {
+                this["borderCornerRadius"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("-13447886")]
         public int multiModeLeftBorderColor {
             get {
