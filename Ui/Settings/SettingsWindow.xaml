@@ -304,11 +304,21 @@
 
                     <!-- ── Window Management ──────────────────────────────────────── -->
                     <StackPanel x:Name="pageWindowManagement" Visibility="Collapsed">
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Auto Find" />
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Window Management" />
                         <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="Finds the listed game windows and pairs them into controllers automatically. Press the hotkey (with any modifiers) to run it." />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
+                            Text="Finding and pairing game windows, rearranging them, arranging them across monitors with layout presets, and a few extra hotkeys. Click a group to expand it." />
+
+                        <!-- ══ Auto Find ══ -->
+                        <ui:CardExpander IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Auto Find" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Finds the listed game windows and pairs them into controllers automatically. Press the hotkey (with any modifiers) to run it." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
                                 <TextBlock Style="{StaticResource RowLabel}" Margin="0,0,0,6"
                                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                     Text="Semicolon-separated list of game .exe names to auto-find and pair." />
@@ -328,13 +338,19 @@
                                     <CheckBox Content="Shift" IsChecked="{Binding Shift, Mode=TwoWay}" />
                                 </StackPanel>
                             </StackPanel>
-                        </Border>
+                        </ui:CardExpander>
 
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Switching Mode" />
-                        <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="A mode for rearranging which game window each controller slot points to: hold the switching-mode key (Alt by default) while the multicontroller is focused, click windows to swap their assignments, and use the remove key to drop a window from the swap. 'Place windows when the key is released' physically moves the swapped windows into their new left/right positions when you let go; with it off, only the app's grouping changes and you reposition the windows yourself (or with a Layout Presets hotkey)." />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
+                        <!-- ══ Switching Mode ══ -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Switching Mode" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="A mode for rearranging which game window each controller slot points to: hold the switching-mode key (Alt by default) while the multicontroller is focused, click windows to swap their assignments, and use the remove key to drop a window from the swap. 'Place windows when the key is released' physically moves the swapped windows into their new left/right positions when you let go; with it off, only the app's grouping changes and you reposition the windows yourself (or with a Layout Presets hotkey)." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
                                 <CheckBox Margin="0,3" Content="Enable Switching Mode" IsChecked="{Binding switchingModeEnabled, Mode=TwoWay}" />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
@@ -375,54 +391,64 @@
                                 </Grid>
                                 <CheckBox Margin="0,3" Content="Place windows when the switching-mode key is released" IsChecked="{Binding autoFindPlacementOnAltRelease, Mode=TwoWay}" />
                             </StackPanel>
-                        </Border>
+                        </ui:CardExpander>
 
-                        <!-- Layout presets bind to the LayoutPresetsEditor (DataContext set in code-behind). -->
-                        <StackPanel x:Name="layoutPresetsSection">
-                            <TextBlock Style="{StaticResource SectionHeader}" Text="Layout presets" />
-                            <TextBlock
-                                Margin="2,0,0,8"
-                                FontSize="12"
-                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                TextWrapping="Wrap"
-                                Text="Each preset's hotkey arranges the controller windows across your monitors." />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <ListBox
-                                    x:Name="layoutPresetsList"
-                                    Grid.Column="0"
-                                    Height="180"
-                                    DisplayMemberPath="Name"
-                                    ItemsSource="{Binding Presets}"
-                                    SelectedItem="{Binding SelectedPreset, Mode=TwoWay}" />
-                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <ui:Button MinWidth="80" Content="Add" Click="LpAdd_Click" />
-                                    <ui:Button MinWidth="80" Margin="0,6,0,0" Content="Edit" Click="LpEdit_Click" />
-                                    <ui:Button MinWidth="80" Margin="0,6,0,0" Content="Delete" Click="LpDelete_Click" />
-                                </StackPanel>
-                            </Grid>
-                            <Border Style="{StaticResource Card}" Margin="0,10,0,0">
-                                <StackPanel>
-                                    <CheckBox Content="Lefts first (controller order when applying a preset)"
-                                        IsChecked="{Binding layoutPriorityLeftsFirst, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="11"
+                        <!-- ══ Layout presets ══ Content keeps x:Name=layoutPresetsSection; its DataContext is the
+                             LayoutPresetsEditor (set in code-behind), so the header stays outside it (static text only). -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Layout presets" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
                                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                        TextWrapping="Wrap"
-                                        Text="Lefts first: G1P1L, G1P2L, G1P1R, G1P2R…   Pairs first: G1P1L, G1P1R, G1P2L, G1P2R…" />
+                                        Text="Each preset's hotkey arranges the controller windows across your monitors." />
                                 </StackPanel>
-                            </Border>
-                        </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel x:Name="layoutPresetsSection" Margin="0,2,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ListBox
+                                        x:Name="layoutPresetsList"
+                                        Grid.Column="0"
+                                        Height="180"
+                                        DisplayMemberPath="Name"
+                                        ItemsSource="{Binding Presets}"
+                                        SelectedItem="{Binding SelectedPreset, Mode=TwoWay}" />
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <ui:Button MinWidth="80" Content="Add" Click="LpAdd_Click" />
+                                        <ui:Button MinWidth="80" Margin="0,6,0,0" Content="Edit" Click="LpEdit_Click" />
+                                        <ui:Button MinWidth="80" Margin="0,6,0,0" Content="Delete" Click="LpDelete_Click" />
+                                    </StackPanel>
+                                </Grid>
+                                <Border Style="{StaticResource Card}" Margin="0,10,0,0">
+                                    <StackPanel>
+                                        <CheckBox Content="Lefts first (controller order when applying a preset)"
+                                            IsChecked="{Binding layoutPriorityLeftsFirst, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="11"
+                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                            TextWrapping="Wrap"
+                                            Text="Lefts first: G1P1L, G1P2L, G1P1R, G1P2R…   Pairs first: G1P1L, G1P1R, G1P2L, G1P2R…" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ui:CardExpander>
 
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Other hotkeys" />
-                        <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="Extra keybinds: minimize any windows not linked to a toon, lock the current mode so hotkeys can't change it, and suspend all global hotkeys." />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
+                        <!-- ══ Other hotkeys ══ -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Other hotkeys" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Extra keybinds: minimize any windows not linked to a toon, lock the current mode so hotkeys can't change it, and suspend all global hotkeys." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -455,7 +481,7 @@
                                     <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding suspendGlobalHotkeysToggleKeyCode, Mode=TwoWay}" />
                                 </Grid>
                             </StackPanel>
-                        </Border>
+                        </ui:CardExpander>
                     </StackPanel>
 
                     <!-- ── General ────────────────────────────────────────────────── -->
