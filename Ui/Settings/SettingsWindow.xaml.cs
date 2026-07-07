@@ -52,6 +52,11 @@ namespace TTMulti.Ui.Settings
             _session.Register(_layoutPresets);
             pageLayoutPresets.DataContext = _layoutPresets;
 
+            // Precise Click Mode Hold/Toggle radios are driven from code, not bound: two RadioButtons sharing a
+            // group and both bound to one bool (one via an inverse converter) save fine but don't reliably restore
+            // the correct checked radio on reopen (a WPF group + binding quirk). Seed from the setting instead.
+            InitActivateModeRadios();
+
             // Sub-panels whose controls need read-modify-write over a shared setting get their own DataContext.
             switchKeyPanel.DataContext = new SwitchKeyViewModel();
             autoFindModifiersPanel.DataContext = new ModifierFlagsViewModel(
@@ -95,6 +100,28 @@ namespace TTMulti.Ui.Settings
         {
             if ((sender as FrameworkElement)?.Tag is KeyMappingRowViewModel row)
                 _keyBindings.Remove(row);
+        }
+
+        // ── Precise Click Mode: Hold / Toggle activation radios (code-driven, see constructor note) ──
+
+        private bool _syncingActivateRadios;
+
+        private void InitActivateModeRadios()
+        {
+            _syncingActivateRadios = true;
+            bool hold = Properties.Settings.Default.controlledMulticlickActivateHold;
+            cmActivateHoldRadio.IsChecked = hold;
+            cmActivateToggleRadio.IsChecked = !hold;
+            _syncingActivateRadios = false;
+        }
+
+        private void CmActivateMode_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_syncingActivateRadios)
+                return; // seeding from the setting, not a user choice
+            // Use the radio that was just checked (the sender), not IsChecked reads, so this is correct regardless
+            // of the order in which the group checks one radio and unchecks the other.
+            Properties.Settings.Default.controlledMulticlickActivateHold = ReferenceEquals(sender, cmActivateHoldRadio);
         }
 
         private void CmAddMode_Click(object sender, RoutedEventArgs e) => _customModes.AddMode();

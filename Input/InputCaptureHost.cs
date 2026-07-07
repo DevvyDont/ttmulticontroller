@@ -1163,6 +1163,22 @@ namespace TTMulti.Input
 
             var hookStruct = (Win32.MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32.MSLLHOOKSTRUCT));
 
+            IntPtr hwndUnderCursor = Win32.WindowFromPoint(hookStruct.pt);
+            bool isGameWindow = host._controller.AllControllersWithWindows
+                .Any(c => c.WindowHandle == hwndUnderCursor);
+
+            // Clicking anywhere that isn't a controlled game window shouldn't trap the mouse. Leave Precise Click
+            // Mode (exactly as if the activation key was pressed) and let the click pass straight through to
+            // whatever was clicked, so the user never feels locked out of the rest of their desktop. The mirror /
+            // passthrough binds below only make sense over a game window anyway, so nothing useful is lost.
+            if (!isGameWindow)
+            {
+                if (isButtonDown)
+                    host._shell.BeginInvoke(() =>
+                        _controlledMcFocusBlockHookHost?._controller?.ExitControlledMulticlickMode());
+                return Win32.CallNextHookEx(_controlledMcFocusBlockHookHandle, nCode, wParam, lParam);
+            }
+
             // Resolve logical button index (0=Left,1=Right,2=Middle,3=X1,4=X2)
             int buttonIndex = -1;
             if (msg == (int)Win32.WM.LBUTTONDOWN || msg == (int)Win32.WM.LBUTTONUP) buttonIndex = 0;
@@ -1202,10 +1218,7 @@ namespace TTMulti.Input
             if (TryClickButton(s.controlledMulticlickRegularClickRightUseMouseButton, s.controlledMulticlickRegularClickRightMouseButton, s.controlledMulticlickRegularClickRightTriggerOnRelease, true,  false)) return (IntPtr)1;
 
             // Block left/right button down on game windows to prevent unwanted focus changes
-            IntPtr hwndUnderCursor = Win32.WindowFromPoint(hookStruct.pt);
-            bool isGameWindow = host._controller.AllControllersWithWindows
-                .Any(c => c.WindowHandle == hwndUnderCursor);
-            if (isGameWindow && isButtonDown && (buttonIndex == 0 || buttonIndex == 1))
+            if (isButtonDown && (buttonIndex == 0 || buttonIndex == 1))
                 return (IntPtr)1; // consume: prevents focus change
 
             return Win32.CallNextHookEx(_controlledMcFocusBlockHookHandle, nCode, wParam, lParam);

@@ -527,8 +527,8 @@
                                     <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding controlledMulticlickActivateKeyCode, Mode=TwoWay}" />
                                 </Grid>
                                 <StackPanel Margin="0,3" Orientation="Horizontal">
-                                    <RadioButton Content="Hold" GroupName="CmActivate" IsChecked="{Binding controlledMulticlickActivateHold, Mode=TwoWay}" />
-                                    <RadioButton Margin="16,0,0,0" Content="Toggle" GroupName="CmActivate" IsChecked="{Binding controlledMulticlickActivateHold, Converter={StaticResource InverseBool}, Mode=OneWay}" />
+                                    <RadioButton x:Name="cmActivateHoldRadio" Content="Hold" GroupName="CmActivate" Checked="CmActivateMode_Checked" />
+                                    <RadioButton x:Name="cmActivateToggleRadio" Margin="16,0,0,0" Content="Toggle" GroupName="CmActivate" Checked="CmActivateMode_Checked" />
                                 </StackPanel>
                                 <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding controlledMulticlickActivateGlobal, Mode=TwoWay}" />
 
