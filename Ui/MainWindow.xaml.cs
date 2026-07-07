@@ -393,7 +393,11 @@ namespace TTMulti.Ui
         {
             var settings = new TTMulti.Ui.Settings.SettingsWindow(BuildToonOptions()) { Owner = this };
             _ignoreMessages = true;
+            // Drop global hotkeys/hooks while Options is open so a key that is currently a global trigger (e.g. the
+            // Zero Power Throw key) can be captured by the key pickers to be re-bound instead of being swallowed.
+            _inputHost?.SuspendGlobalHotkeysForModal();
             bool? result = settings.ShowDialog();
+            _inputHost?.ResumeGlobalHotkeysAfterModal();
             _ignoreMessages = false;
 
             if (result == true)

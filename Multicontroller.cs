@@ -956,15 +956,14 @@ namespace TTMulti
                 return;
             }
 
-            // Check if Alt key is still pressed
-            // If Alt+Tab was used, Windows might consume the Alt key release event,
-            // so we need to check the actual key state
-            short altKeyState = Win32.GetAsyncKeyState(Keys.Menu);
-            bool altIsPressed = (altKeyState & 0x8000) != 0;
+            // Check if the switching-mode key is still pressed. If Alt+Tab was used (when the key is Alt), Windows
+            // might consume the key-release event, so poll the actual key state instead of relying on KEYUP.
+            var switchingKey = (Keys)Properties.Settings.Default.switchingModeKeyCode;
+            short keyState = Win32.GetAsyncKeyState(switchingKey);
+            bool keyIsPressed = (keyState & 0x8000) != 0;
 
-            // If Alt is no longer pressed, exit switching mode
-            // This handles the case where Alt+Tab consumes the Alt key release event
-            if (!altIsPressed)
+            // If the switching-mode key is no longer pressed, exit switching mode.
+            if (!keyIsPressed)
             {
                 ExitSwitchingMode();
                 return;
@@ -1512,12 +1511,13 @@ namespace TTMulti
                     return true;
                 }
             }
-            else if (keysPressed == Keys.Menu) // Alt key
+            else if (keysPressed == (Keys)Properties.Settings.Default.switchingModeKeyCode
+                && Properties.Settings.Default.switchingModeKeyCode != 0) // switching-mode key (Alt by default)
             {
-                // Handle Alt key for switching mode (only if enabled)
+                // Handle the switching-mode key (only if enabled)
                 if (!Properties.Settings.Default.switchingModeEnabled)
                 {
-                    return false; // Don't handle Alt if switching mode is disabled
+                    return false; // Don't handle it if switching mode is disabled
                 }
                 
                 if (msg == Win32.WM.SYSKEYDOWN || msg == Win32.WM.KEYDOWN)

@@ -211,6 +211,9 @@
     <Setting Name="switchingModeRemoveKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">88</Value>
     </Setting>
+    <Setting Name="switchingModeKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">18</Value>
+    </Setting>
     <Setting Name="switchingModeEnabled" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>

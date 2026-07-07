@@ -8,10 +8,12 @@ using WinFormsKeys = System.Windows.Forms.Keys;
 namespace TTMulti.Ui.Controls
 {
     /// <summary>
-    /// WPF port of the WinForms KeyPicker. Click to arm, then the next key press is captured; Esc cancels,
-    /// Delete/Backspace clears to "Disabled". The stored value (<see cref="KeyCode"/>) is the Win32 virtual-key
-    /// code, which equals the numeric value of <see cref="System.Windows.Forms.Keys"/> — the exact int the
-    /// settings persist (so values written here are byte-compatible with the old dialog). 0 = disabled.
+    /// WPF port of the WinForms KeyPicker. Click to arm, then the next key press is captured and stored; any key
+    /// can be bound (including Esc, Delete, Backspace, Tab, Enter). Click the armed button again to cancel, or
+    /// double-click to clear the binding to "Disabled". Left/right modifier variants are folded to the generic
+    /// key (LControl/RControl to Ctrl, etc.) so the binding matches a real modifier press. The stored value
+    /// (<see cref="KeyCode"/>) is the Win32 virtual-key code, which equals the numeric value of
+    /// <see cref="System.Windows.Forms.Keys"/> (byte-compatible with the persisted settings). 0 = disabled.
     /// </summary>
     public partial class KeyPickerBox : UserControl
     {
@@ -43,6 +45,20 @@ namespace TTMulti.Ui.Controls
                 Arm();
         }
 
+        // Double-click clears the binding (Delete/Backspace are captured as real keys now, so they can be bound).
+        // Handled on the tunneling preview so the second click doesn't fall through to PickerButton_Click and
+        // immediately re-arm.
+        private void PickerButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount >= 2)
+            {
+                _armed = false;
+                KeyCode = 0;
+                UpdateText();
+                e.Handled = true;
+            }
+        }
+
         private void Arm()
         {
             _armed = true;
@@ -67,21 +83,10 @@ namespace TTMulti.Ui.Controls
 
             Key key = e.Key == Key.System ? e.SystemKey : e.Key;
 
-            if (key == Key.Escape)
-            {
-                Disarm();
-                e.Handled = true;
-                return;
-            }
-            if (key == Key.Delete || key == Key.Back)
-            {
-                KeyCode = 0;
-                Disarm();
-                e.Handled = true;
-                return;
-            }
-
-            int vk = KeyInterop.VirtualKeyFromKey(key);
+            // Any key is bindable now (Esc / Delete / Backspace / Tab / Enter included). Cancel by clicking the
+            // armed button again or clicking away; clear with a double-click. Fold left/right modifier variants to
+            // the generic key so the binding matches a real Ctrl/Shift/Alt press.
+            int vk = (int)KeyRemap.NormalizeModifier((WinFormsKeys)KeyInterop.VirtualKeyFromKey(key));
             if (vk != 0)
             {
                 KeyCode = vk;
