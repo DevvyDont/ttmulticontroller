@@ -61,7 +61,7 @@ namespace TTMulti.Ui.Controls
 
         private static string UserIconPath() => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ToontownMulticontroller", "app-icon.ico");
+            "Multicontroller", "app-icon.ico");
 
         /// <summary>Point every pinned-taskbar shortcut that targets this exe at <paramref name="icoPath"/>.
         /// Returns true if any shortcut was changed.</summary>

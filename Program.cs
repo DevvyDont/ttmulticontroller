@@ -33,7 +33,7 @@ namespace TTMulti
             Application.SetCompatibleTextRenderingDefault(false);
 
             // Dev switch: render the cat logo to a multi-resolution .ico (the static exe/Explorer icon) and exit.
-            // e.g. ToontownMulticontroller.exe --export-icon Resources\icon.ico
+            // e.g. Multicontroller.exe --export-icon Resources\icon.ico
             if (args.Length >= 1 && string.Equals(args[0], "--export-icon", StringComparison.OrdinalIgnoreCase))
             {
                 string icoPath = args.Length >= 2 ? args[1] : "Resources\\icon.ico";

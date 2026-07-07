@@ -12,8 +12,11 @@ namespace TTMulti.Ui.Controls
     /// </summary>
     internal static class IconExporter
     {
-        private static readonly Brush DefaultLeft = new SolidColorBrush(Color.FromRgb(0x32, 0xCD, 0x32));   // green
-        private static readonly Brush DefaultRight = new SolidColorBrush(Color.FromRgb(0xEE, 0x85, 0xA0));  // pink
+        // The static exe / Explorer / file-properties icon stays plain black-and-white (not the user's live
+        // Multi/Mirror colours): the white cat stays white, the black cat stays black. RenderIcon maps
+        // left -> light (white cat) and right -> dark (black cat), so left = White, right = Black.
+        private static readonly Brush DefaultLeft = System.Windows.Media.Brushes.White;
+        private static readonly Brush DefaultRight = System.Windows.Media.Brushes.Black;
 
         private static readonly int[] Sizes = { 16, 24, 32, 48, 64, 128, 256 };
 

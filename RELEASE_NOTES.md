@@ -28,5 +28,5 @@ A ground-up rebuild and rebrand: a brand-new interface, sharper visuals, and a r
 - Sharper on high-DPI displays, with better keyboard accessibility throughout.
 
 ## How to update (First Timers)
-- Download `ToontownMulticontroller.exe` below and replace your existing copy. Your settings (keybinds, custom modes, layout presets) live next to the app and are kept automatically.
+- Download `Multicontroller.exe` below and replace your existing copy. Your settings (keybinds, custom modes, layout presets) live next to the app and are kept automatically.
 - For future updates, hopefully the "Check for updates" button in About will suffice!
