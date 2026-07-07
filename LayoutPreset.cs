@@ -335,6 +335,14 @@ namespace TTMulti
                     var r = work.Value;
                     return new Rectangle(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
                 }
+                // Stale monitor index (a monitor was removed/reordered): fall back to the primary monitor's work
+                // area rather than a hardcoded 1920x1080 box at (0,0), so the preset still lands somewhere sane.
+                var all = Win32.GetAllMonitorWorkAreas();
+                if (all.Count > 0)
+                {
+                    var r = all[0];
+                    return new Rectangle(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
+                }
                 return new Rectangle(0, 0, 1920, 1080);
             }
             return new Rectangle(region.CustomX, region.CustomY, region.CustomWidth, region.CustomHeight);

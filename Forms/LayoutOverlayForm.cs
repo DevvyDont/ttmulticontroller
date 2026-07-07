@@ -28,6 +28,8 @@ namespace TTMulti.Forms
         private int _draggingItemIndex = -1;
         private HandleKind _draggingHandle = HandleKind.None;
         private Point _dragStartScreen;
+        private int _movingItemIndex = -1;
+        private Point _moveGrabOffset;
 
         private enum HandleKind
         {
@@ -103,7 +105,7 @@ namespace TTMulti.Forms
             cancelBtn.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
             var hintLabel = new Label
             {
-                Text = "Drag the white handles to resize. Press Esc to cancel.",
+                Text = "Drag a box to move it, or drag the white handles to resize. Press Esc to cancel.",
                 AutoSize = true,
                 ForeColor = Color.White,
                 BackColor = Color.Transparent,
@@ -187,6 +189,15 @@ namespace TTMulti.Forms
             return (-1, HandleKind.None);
         }
 
+        /// <summary>Topmost item whose body contains the point (for move-dragging), or -1.</summary>
+        private int HitTestBody(Point screenPoint)
+        {
+            for (int i = _items.Count - 1; i >= 0; i--)
+                if (_items[i].Rect.Contains(screenPoint))
+                    return i;
+            return -1;
+        }
+
         private void ApplyResize(int itemIndex, HandleKind handle, Point currentScreen)
         {
             if (itemIndex < 0 || itemIndex >= _items.Count) return;
@@ -255,6 +266,14 @@ namespace TTMulti.Forms
                 _draggingHandle = handle;
                 _dragStartScreen = screenPt;
                 Cursor = CursorForHandle(handle);
+                return;
+            }
+            int bodyIndex = HitTestBody(screenPt);
+            if (bodyIndex >= 0)
+            {
+                _movingItemIndex = bodyIndex;
+                _moveGrabOffset = new Point(screenPt.X - _items[bodyIndex].Rect.X, screenPt.Y - _items[bodyIndex].Rect.Y);
+                Cursor = Cursors.SizeAll;
             }
         }
 
@@ -267,16 +286,27 @@ namespace TTMulti.Forms
                 Invalidate();
                 return;
             }
+            if (_movingItemIndex >= 0)
+            {
+                var item = _items[_movingItemIndex];
+                item.Rect = new Rectangle(screenPt.X - _moveGrabOffset.X, screenPt.Y - _moveGrabOffset.Y, item.Rect.Width, item.Rect.Height);
+                Invalidate();
+                return;
+            }
             var (_, handle) = HitTest(screenPt);
-            Cursor = handle == HandleKind.None ? Cursors.Default : CursorForHandle(handle);
+            if (handle != HandleKind.None)
+                Cursor = CursorForHandle(handle);
+            else
+                Cursor = HitTestBody(screenPt) >= 0 ? Cursors.SizeAll : Cursors.Default;
         }
 
         private void LayoutOverlayForm_MouseUp(object sender, MouseEventArgs e)
         {
-            if (_draggingHandle != HandleKind.None)
+            if (_draggingHandle != HandleKind.None || _movingItemIndex >= 0)
             {
                 _draggingItemIndex = -1;
                 _draggingHandle = HandleKind.None;
+                _movingItemIndex = -1;
                 Cursor = Cursors.Default;
             }
         }
