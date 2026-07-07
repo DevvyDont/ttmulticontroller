@@ -42,9 +42,9 @@ using System.Runtime.Versioning;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("2.0.0.0")]
-[assembly: AssemblyFileVersion("2.0.0.0")]
+[assembly: AssemblyVersion("2.0.1.0")]
+[assembly: AssemblyFileVersion("2.0.1.0")]
 // Pin the informational version too: Application.ProductVersion (what the update check and About window read)
 // comes from this attribute, and a single-file build can otherwise append a git-hash suffix that would break
 // the version comparison against the release tag.
-[assembly: AssemblyInformationalVersion("2.0.0.0")]
+[assembly: AssemblyInformationalVersion("2.0.1.0")]

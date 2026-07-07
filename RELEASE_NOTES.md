@@ -1,6 +1,8 @@
-# Multicontroller v2.0.0
+# Multicontroller v2.0.1
 
 A ground-up rebuild and rebrand: a brand-new interface, sharper visuals, and a reworked input engine. Coming from 1.x this is a big jump, and your existing settings carry over automatically. Let me know if they don't or if you have issues.
+
+> Note: this replaces the initial 2.0.0 build, which failed to launch (the download was missing some bundled files). 2.0.1 is a genuinely standalone single .exe.
 
 ## A whole new look
 - Completely redesigned, modern (Windows11-style) interface: a cleaner main window and an organized Settings window grouped into clear categories.
