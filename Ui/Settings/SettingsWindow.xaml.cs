@@ -175,6 +175,22 @@ namespace TTMulti.Ui.Settings
             public System.IntPtr Handle { get; }
         }
 
+        private TTMulti.Ui.LayoutPreviewWindow _previewWindow;
+
+        private void LpPopOutPreview_Click(object sender, RoutedEventArgs e)
+        {
+            if (_previewWindow == null)
+            {
+                _previewWindow = new TTMulti.Ui.LayoutPreviewWindow(_layoutPresets) { Owner = this };
+                _previewWindow.Closed += (s, ev) => _previewWindow = null;
+                _previewWindow.Show();
+            }
+            else
+            {
+                _previewWindow.Activate();
+            }
+        }
+
         private void About_Click(object sender, RoutedEventArgs e)
         {
             new AboutWindow { Owner = this }.ShowDialog();
@@ -197,6 +213,9 @@ namespace TTMulti.Ui.Settings
         protected override void OnClosing(CancelEventArgs e)
         {
             base.OnClosing(e);
+            // Close the pop-out preview along with Options so it doesn't linger.
+            _previewWindow?.Close();
+            _previewWindow = null;
             // Any close path that isn't OK (X button, Alt+F4) discards the live-bound edits, exactly like the
             // WinForms dialog's OnFormClosing Reload(). Commit/Discard are idempotent (guarded).
             if (DialogResult != true)

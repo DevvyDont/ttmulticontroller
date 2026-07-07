@@ -30,6 +30,7 @@ namespace TTMulti.Forms
         private Point _dragStartScreen;
         private int _movingItemIndex = -1;
         private Point _moveGrabOffset;
+        private Panel _toolbar;
 
         private enum HandleKind
         {
@@ -80,40 +81,56 @@ namespace TTMulti.Forms
             MouseUp += LayoutOverlayForm_MouseUp;
             KeyDown += LayoutOverlayForm_KeyDown;
 
+            _toolbar = BuildToolbar();
+            Controls.Add(_toolbar);
+            PositionToolbar();
+        }
+
+        /// <summary>A single floating toolbar (hint + Cancel + Done) so the controls stay together on the monitor
+        /// the user is actually editing, instead of at the far corners of the whole virtual desktop.</summary>
+        private Panel BuildToolbar()
+        {
+            var panel = new Panel { Size = new Size(700, 48), BackColor = Color.FromArgb(235, 32, 32, 32) };
+
             var doneBtn = new Button
             {
-                Text = "Done",
-                Size = new Size(100, 36),
-                Location = new Point(_virtualScreen.Width - 120, _virtualScreen.Height - 50),
-                Anchor = AnchorStyles.None,
-                BackColor = Color.FromArgb(70, 130, 180),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                Text = "Done", Size = new Size(100, 34), Location = new Point(panel.Width - 110, 7),
+                BackColor = Color.FromArgb(70, 130, 180), ForeColor = Color.White, FlatStyle = FlatStyle.Flat,
             };
             doneBtn.FlatAppearance.BorderSize = 0;
             doneBtn.Click += (s, e) => { DialogResult = DialogResult.OK; Close(); };
+
             var cancelBtn = new Button
             {
-                Text = "Cancel",
-                Size = new Size(100, 36),
-                Location = new Point(_virtualScreen.Width - 230, _virtualScreen.Height - 50),
-                BackColor = Color.FromArgb(80, 80, 80),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                Text = "Cancel", Size = new Size(100, 34), Location = new Point(panel.Width - 218, 7),
+                BackColor = Color.FromArgb(80, 80, 80), ForeColor = Color.White, FlatStyle = FlatStyle.Flat,
             };
             cancelBtn.FlatAppearance.BorderSize = 0;
             cancelBtn.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
-            var hintLabel = new Label
+
+            var hint = new Label
             {
-                Text = "Drag a box to move it, or drag the white handles to resize. Press Esc to cancel.",
-                AutoSize = true,
-                ForeColor = Color.White,
-                BackColor = Color.Transparent,
-                Location = new Point(20, _virtualScreen.Height - 46)
+                Text = "Drag a box to move it, or drag a white handle to resize. Press Esc to cancel.",
+                AutoSize = true, ForeColor = Color.White, BackColor = Color.Transparent, Location = new Point(14, 16),
             };
-            Controls.Add(doneBtn);
-            Controls.Add(cancelBtn);
-            Controls.Add(hintLabel);
+
+            panel.Controls.Add(hint);
+            panel.Controls.Add(cancelBtn);
+            panel.Controls.Add(doneBtn);
+            return panel;
+        }
+
+        /// <summary>Place the toolbar at the bottom-center of the monitor holding the region being edited.</summary>
+        private void PositionToolbar()
+        {
+            if (_toolbar == null) return;
+            Rectangle regionScreen = _items.Count > 0 ? _items[0].Rect : _virtualScreen;
+            Rectangle work = Screen.FromRectangle(regionScreen).WorkingArea;
+            Rectangle c = ScreenToClientRect(work);
+            int x = c.Left + Math.Max(0, (c.Width - _toolbar.Width) / 2);
+            int y = c.Bottom - _toolbar.Height - 14;
+            _toolbar.Location = new Point(x, y);
+            _toolbar.BringToFront();
         }
 
         protected override void OnShown(EventArgs e)
@@ -308,6 +325,7 @@ namespace TTMulti.Forms
                 _draggingHandle = HandleKind.None;
                 _movingItemIndex = -1;
                 Cursor = Cursors.Default;
+                PositionToolbar(); // follow the region if it was dragged onto another monitor
             }
         }
 
