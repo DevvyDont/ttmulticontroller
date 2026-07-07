@@ -70,5 +70,44 @@ namespace TTMulti.Tests
             Assert.True(UpdateChecker.IsNewerVersion("nightly-b", "nightly-a"));
             Assert.False(UpdateChecker.IsNewerVersion("nightly-a", "nightly-a"));
         }
+
+        [Fact]
+        public void PickExeAssetUrl_prefers_the_exact_named_asset()
+        {
+            string[] names = { "notes.txt", "Multicontroller.exe", "other.exe" };
+            string[] urls = { "u/notes", "u/mc", "u/other" };
+            Assert.Equal("u/mc", UpdateChecker.PickExeAssetUrl("Multicontroller.exe", names, urls));
+        }
+
+        [Fact]
+        public void PickExeAssetUrl_matches_the_name_case_insensitively()
+        {
+            string[] names = { "multicontroller.EXE" };
+            string[] urls = { "u/mc" };
+            Assert.Equal("u/mc", UpdateChecker.PickExeAssetUrl("Multicontroller.exe", names, urls));
+        }
+
+        [Fact]
+        public void PickExeAssetUrl_falls_back_to_the_first_exe_when_no_exact_match()
+        {
+            string[] names = { "readme.md", "SomethingElse.exe", "extra.exe" };
+            string[] urls = { "u/readme", "u/first", "u/second" };
+            Assert.Equal("u/first", UpdateChecker.PickExeAssetUrl("Multicontroller.exe", names, urls));
+        }
+
+        [Fact]
+        public void PickExeAssetUrl_returns_null_when_there_is_no_exe_asset()
+        {
+            string[] names = { "readme.md", "notes.txt" };
+            string[] urls = { "u/readme", "u/notes" };
+            Assert.Null(UpdateChecker.PickExeAssetUrl("Multicontroller.exe", names, urls));
+        }
+
+        [Fact]
+        public void PickExeAssetUrl_returns_null_for_empty_or_null_input()
+        {
+            Assert.Null(UpdateChecker.PickExeAssetUrl("Multicontroller.exe", null, null));
+            Assert.Null(UpdateChecker.PickExeAssetUrl("Multicontroller.exe", new string[0], new string[0]));
+        }
     }
 }

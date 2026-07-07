@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
 using Wpf.Ui.Controls;
@@ -58,14 +60,7 @@ namespace TTMulti.Ui
                         break;
 
                     case UpdateStatus.UpdateAvailable:
-                        string message = string.Format(
-                            "An update is available: {0} (you have {1}).\n\nWould you like to open the download page?",
-                            result.LatestTag, result.CurrentVersion);
-                        if (System.Windows.MessageBox.Show(this, message, "Update available",
-                                System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information) == System.Windows.MessageBoxResult.Yes)
-                        {
-                            OpenUrl(result.DownloadUrl);
-                        }
+                        await HandleUpdateAvailableAsync(result);
                         break;
                 }
             }
@@ -74,6 +69,75 @@ namespace TTMulti.Ui
                 checkUpdatesButton.IsEnabled = true;
             }
         }
+
+        private CancellationTokenSource _updateCts;
+
+        /// <summary>
+        /// Offer to install the update in place (download + swap + restart) when we can write next to the exe and the
+        /// release has an exe asset; otherwise fall back to opening the download page in a browser.
+        /// </summary>
+        private async Task HandleUpdateAvailableAsync(UpdateCheckResult result)
+        {
+            bool canSelfUpdate = !string.IsNullOrEmpty(result.AssetDownloadUrl) && SelfUpdater.CanWriteToExeDir();
+
+            string prompt = canSelfUpdate
+                ? string.Format("An update is available: {0} (you have {1}).\n\nDownload and install it now? The app will close and reopen.",
+                    result.LatestTag, result.CurrentVersion)
+                : string.Format("An update is available: {0} (you have {1}).\n\nWould you like to open the download page?",
+                    result.LatestTag, result.CurrentVersion);
+
+            if (System.Windows.MessageBox.Show(this, prompt, "Update available",
+                    System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information) != System.Windows.MessageBoxResult.Yes)
+                return;
+
+            if (!canSelfUpdate)
+            {
+                OpenUrl(result.DownloadUrl);
+                return;
+            }
+
+            await DownloadAndApplyAsync(result);
+        }
+
+        private async Task DownloadAndApplyAsync(UpdateCheckResult result)
+        {
+            _updateCts = new CancellationTokenSource();
+            updatePanel.Visibility = Visibility.Visible;
+            updateProgress.Value = 0;
+            updateStatusText.Text = "Downloading update...";
+
+            var progress = new Progress<double>(p =>
+            {
+                updateProgress.Value = p;
+                updateStatusText.Text = string.Format("Downloading update... {0:P0}", p);
+            });
+
+            try
+            {
+                string newExe = await SelfUpdater.DownloadAsync(result.AssetDownloadUrl, progress, _updateCts.Token);
+                updateStatusText.Text = "Installing and restarting...";
+                SelfUpdater.ApplyAndRestart(newExe); // does not return on success: the app shuts down and relaunches
+            }
+            catch (OperationCanceledException)
+            {
+                updatePanel.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                updatePanel.Visibility = Visibility.Collapsed;
+                System.Windows.MessageBox.Show(this,
+                    "Automatic update failed: " + ex.Message + "\n\nOpening the download page instead.",
+                    "Update", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                OpenUrl(result.DownloadUrl);
+            }
+            finally
+            {
+                _updateCts?.Dispose();
+                _updateCts = null;
+            }
+        }
+
+        private void UpdateCancel_Click(object sender, RoutedEventArgs e) => _updateCts?.Cancel();
 
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
 

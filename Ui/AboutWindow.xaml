@@ -65,6 +65,22 @@
                     Content="Close"
                     Click="Close_Click" />
             </StackPanel>
+
+            <!-- Shown only while an update is downloading. -->
+            <StackPanel x:Name="updatePanel" Margin="0,16,0,0" Visibility="Collapsed">
+                <TextBlock
+                    x:Name="updateStatusText"
+                    HorizontalAlignment="Center"
+                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                    Text="Downloading update..." />
+                <ProgressBar x:Name="updateProgress" Margin="0,8,0,0" Height="6" Minimum="0" Maximum="1" />
+                <ui:Button
+                    x:Name="updateCancelButton"
+                    Margin="0,10,0,0"
+                    HorizontalAlignment="Center"
+                    Content="Cancel"
+                    Click="UpdateCancel_Click" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </ui:FluentWindow>

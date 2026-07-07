@@ -25,6 +25,8 @@ namespace TTMulti
         public string CurrentVersion { get; set; }
         public string LatestTag { get; set; }
         public string DownloadUrl { get; set; }
+        /// <summary>Direct download URL of the release's exe asset (for the in-app self-updater); null if none.</summary>
+        public string AssetDownloadUrl { get; set; }
     }
 
     /// <summary>
@@ -63,10 +65,47 @@ namespace TTMulti
                     DownloadUrl = !string.IsNullOrEmpty(release.HtmlUrl)
                         ? release.HtmlUrl
                         : Properties.Settings.Default.homepageUrl,
+                    AssetDownloadUrl = SelectExeAssetUrl(release),
                 };
             }
 
             return new UpdateCheckResult { Status = UpdateStatus.UpToDate, CurrentVersion = current };
+        }
+
+        /// <summary>The download URL of the release's exe asset that matches the running exe name (falling back to
+        /// any .exe asset), or null. Split into the pure <see cref="PickExeAssetUrl"/> so it can be unit-tested.</summary>
+        private static string SelectExeAssetUrl(GitHubRelease release)
+        {
+            if (release?.Assets == null)
+                return null;
+
+            var names = new string[release.Assets.Length];
+            var urls = new string[release.Assets.Length];
+            for (int i = 0; i < release.Assets.Length; i++)
+            {
+                names[i] = release.Assets[i]?.Name;
+                urls[i] = release.Assets[i]?.BrowserDownloadUrl;
+            }
+            return PickExeAssetUrl(System.IO.Path.GetFileName(AppPaths.ExecutablePath), names, urls);
+        }
+
+        /// <summary>Pick the download URL for the asset named <paramref name="expectedName"/> (case-insensitive),
+        /// falling back to the first asset ending in ".exe". Returns null when there is no exe asset. Pure/testable.</summary>
+        internal static string PickExeAssetUrl(string expectedName, string[] assetNames, string[] assetUrls)
+        {
+            if (assetNames == null || assetUrls == null)
+                return null;
+
+            for (int i = 0; i < assetNames.Length; i++)
+                if (i < assetUrls.Length && string.Equals(assetNames[i], expectedName, StringComparison.OrdinalIgnoreCase))
+                    return assetUrls[i];
+
+            for (int i = 0; i < assetNames.Length; i++)
+                if (i < assetUrls.Length && assetNames[i] != null
+                    && assetNames[i].EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    return assetUrls[i];
+
+            return null;
         }
 
         private static async Task<GitHubRelease> FetchLatestReleaseAsync()
@@ -168,6 +207,19 @@ namespace TTMulti
 
             [DataMember(Name = "prerelease")]
             public bool Prerelease { get; set; }
+
+            [DataMember(Name = "assets")]
+            public GitHubAsset[] Assets { get; set; }
+        }
+
+        [DataContract]
+        private class GitHubAsset
+        {
+            [DataMember(Name = "name")]
+            public string Name { get; set; }
+
+            [DataMember(Name = "browser_download_url")]
+            public string BrowserDownloadUrl { get; set; }
         }
     }
 }
