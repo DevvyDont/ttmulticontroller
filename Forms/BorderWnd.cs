@@ -79,7 +79,7 @@ namespace TTMulti.Forms
             set => groupNumber = value;
         }
 
-        private const int CursorSize = 32;
+        private const int CursorSize = 44; // arrow (36) + logo badge overlapping the bottom-right corner
 
         private bool _showFakeCursor;
 
@@ -171,8 +171,43 @@ namespace TTMulti.Forms
         /// </summary>
         protected override bool ShowWithoutActivation => true;
 
-        private Bitmap fakeCursorImage = Properties.Resources.dupcursor,
-            fakeCursorImageInvalid = Properties.Resources.dupcursorx;
+        // The replicated-mouse cursor: the Toontown arrow (top-left, so its tip stays the hotspot) with the app
+        // logo badge in the bottom-right. Built once and shared; both PNGs already carry per-pixel alpha.
+        private static readonly Bitmap fakeCursorImage = BuildFakeCursor(invalid: false);
+        private static readonly Bitmap fakeCursorImageInvalid = BuildFakeCursor(invalid: true);
+
+        private static Bitmap BuildFakeCursor(bool invalid)
+        {
+            const int arrow = 36;   // toontown-cursor.png native size, drawn 1:1 at the top-left
+            const int badge = 22;   // logo badge in the bottom-right corner
+            var bmp = new Bitmap(CursorSize, CursorSize, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+
+                using (var arrowImg = Properties.Resources.toontowncursor)
+                    g.DrawImage(arrowImg, new Rectangle(0, 0, arrow, arrow));
+
+                var badgeRect = new Rectangle(CursorSize - badge, CursorSize - badge, badge, badge);
+                using (var logo = Properties.Resources.iconnew)
+                    g.DrawImage(logo, badgeRect);
+
+                if (invalid)
+                {
+                    // Red circle-slash over the badge to signal a source/target size mismatch (the old "x" cursor).
+                    using (var pen = new Pen(Color.FromArgb(235, 220, 30, 30), 3f))
+                    {
+                        g.DrawEllipse(pen, badgeRect.X + 1, badgeRect.Y + 1, badge - 3, badge - 3);
+                        g.DrawLine(pen, badgeRect.X + 4, badgeRect.Bottom - 4, badgeRect.Right - 4, badgeRect.Y + 4);
+                    }
+                }
+            }
+            return bmp;
+        }
 
         private bool _switchingMode = false;
         private int _switchingNumber = 0;
@@ -263,11 +298,6 @@ namespace TTMulti.Forms
         public BorderWnd()
         {
             InitializeComponent();
-
-            // The fake-cursor bitmaps carry a chroma-key (magenta) background that the old colour-key window used to
-            // key out. With per-pixel alpha we key it ourselves, once, so the cursor composites transparently.
-            fakeCursorImage.MakeTransparent(Colors.ChromaKey);
-            fakeCursorImageInvalid.MakeTransparent(Colors.ChromaKey);
         }
 
         // The overlay is a true per-pixel-alpha layered window: its pixels come entirely from UpdateLayeredWindow,

@@ -29,9 +29,7 @@ namespace TTMulti.Ui.Controls
             var pngs = new List<byte[]>();
             foreach (int size in Sizes)
             {
-                // Drop the face on the small frames (16 to 48) where it just smears; keep it on the large ones
-                // (64 to 256) that Explorer shows in its big-icon views.
-                BitmapSource bmp = AppLogo.RenderIcon(left, right, size, showFace: size >= AppLogo.FaceMinSize);
+                BitmapSource bmp = AppLogo.RenderIcon(left, right, size);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bmp));
                 using (var ms = new MemoryStream())

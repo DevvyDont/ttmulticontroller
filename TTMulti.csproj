@@ -19,7 +19,8 @@
     <Prefer32Bit>false</Prefer32Bit>
     <!-- Keep the hand-written Properties/AssemblyInfo.cs instead of SDK auto-generated attributes. -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
+    <!-- Regenerated from the new logo via the export-icon switch (see Program.cs). Used once Resources\icon.ico exists. -->
+    <ApplicationIcon Condition="Exists('Resources\icon.ico')">Resources\icon.ico</ApplicationIcon>
     <!-- With the WPF (WinFx) and ClickOnce manifest pipelines gone, this now embeds as the native Win32 manifest. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Deterministic>true</Deterministic>
