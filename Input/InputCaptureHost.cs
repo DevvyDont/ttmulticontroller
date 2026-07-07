@@ -917,12 +917,12 @@ namespace TTMulti.Input
         internal void RegisterControlledMulticlickHotkeys()
         {
             UnregisterControlledMulticlickHotkeys();
-            if (!Properties.Settings.Default.controlledMulticlickEnabled) return;
 
-            // One dispatcher hook covers the activation key (always, when configured) and the multi-click /
-            // regular-click keys (which the proc only acts on while the mode is active). Install it if an
-            // activation key is set, or if we're already in the mode (e.g. a settings reload happened
-            // mid-mode) so the click keys keep working. (PERF-02)
+            // Precise Click Mode has no separate on/off setting: it is "on" precisely when an activation key is
+            // bound (or we're already in the mode, e.g. a settings reload happened mid-mode, so the click keys
+            // keep working). One dispatcher hook covers the activation key and the multi-click / regular-click
+            // keys (which the proc only acts on while the mode is active). Leaving the activation key unset keeps
+            // the mode off. (PERF-02)
             if (Properties.Settings.Default.controlledMulticlickActivateKeyCode != 0 || _controller.IsControlledMulticlickMode)
                 InstallControlledMcKeyboardHook();
         }
