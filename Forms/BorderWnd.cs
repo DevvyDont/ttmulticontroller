@@ -80,7 +80,6 @@ namespace TTMulti.Forms
         }
 
         private const int CursorSize = 32;
-        private const int CursorPad = 12;
 
         private bool _showFakeCursor;
 
@@ -95,7 +94,7 @@ namespace TTMulti.Forms
                 if (_showFakeCursor != value)
                 {
                     _showFakeCursor = value;
-                    Invalidate(fakeCursorRect);
+                    Redraw();
                 }
             }
         }
@@ -112,19 +111,15 @@ namespace TTMulti.Forms
             {
                 if (_fakeCursorPosition != value)
                 {
-                    if (_showFakeCursor)
-                        Invalidate(fakeCursorRect); // erase from old position
                     _fakeCursorPosition = value;
-                    fakeCursorRect = new Rectangle(value.X - CursorPad, value.Y - CursorPad, CursorSize + CursorPad * 2, CursorSize + CursorPad * 2);
                     if (_showFakeCursor)
-                        Invalidate(fakeCursorRect); // draw at new position
+                        Redraw();
                 }
             }
         }
 
         /// <summary>
-        /// Atomically update both show-state and position in a single repaint cycle,
-        /// avoiding the flicker caused by two separate Invalidate calls.
+        /// Atomically update both show-state and position in a single repaint cycle.
         /// </summary>
         internal void UpdateFakeCursor(bool show, Point position)
         {
@@ -132,14 +127,9 @@ namespace TTMulti.Forms
             bool showChanged = _showFakeCursor != show;
             if (!posChanged && !showChanged) return;
 
-            Invalidate(fakeCursorRect); // erase old position
             _fakeCursorPosition = position;
             _showFakeCursor = show;
-            if (show)
-            {
-                fakeCursorRect = new Rectangle(position.X - CursorPad, position.Y - CursorPad, CursorSize + CursorPad * 2, CursorSize + CursorPad * 2);
-                Invalidate(fakeCursorRect); // draw at new position
-            }
+            Redraw();
         }
 
         private bool _fakeCursorIsInvalid;
@@ -156,7 +146,7 @@ namespace TTMulti.Forms
                 if (_fakeCursorIsInvalid != value)
                 {
                     _fakeCursorIsInvalid = value;
-                    Invalidate(fakeCursorRect);
+                    Redraw();
                 }
             }
         }
@@ -184,9 +174,6 @@ namespace TTMulti.Forms
         private Bitmap fakeCursorImage = Properties.Resources.dupcursor,
             fakeCursorImageInvalid = Properties.Resources.dupcursorx;
 
-        // Keep track of the last region where the cursor was draw so it can be invalidated quicker
-        Rectangle fakeCursorRect;
-
         private bool _switchingMode = false;
         private int _switchingNumber = 0;
         private bool _switchingSelected = false;
@@ -204,7 +191,7 @@ namespace TTMulti.Forms
                 if (_switchingMode != value)
                 {
                     _switchingMode = value;
-                    this.Invalidate();
+                    Redraw();
                 }
             }
         }
@@ -220,7 +207,7 @@ namespace TTMulti.Forms
                 if (_switchingNumber != value)
                 {
                     _switchingNumber = value;
-                    this.Invalidate();
+                    Redraw();
                 }
             }
         }
@@ -236,7 +223,7 @@ namespace TTMulti.Forms
                 if (_switchingSelected != value)
                 {
                     _switchingSelected = value;
-                    this.Invalidate();
+                    Redraw();
                 }
             }
         }
@@ -252,7 +239,7 @@ namespace TTMulti.Forms
                 if (_switchingSwitched != value)
                 {
                     _switchingSwitched = value;
-                    this.Invalidate();
+                    Redraw();
                 }
             }
         }
@@ -268,7 +255,7 @@ namespace TTMulti.Forms
                 if (_switchingMarkedForRemoval != value)
                 {
                     _switchingMarkedForRemoval = value;
-                    this.Invalidate();
+                    Redraw();
                 }
             }
         }
@@ -278,114 +265,155 @@ namespace TTMulti.Forms
             InitializeComponent();
         }
 
-        protected override void OnPaint(PaintEventArgs e)
+        // The overlay is a true per-pixel-alpha layered window: its pixels come entirely from UpdateLayeredWindow,
+        // not from WM_PAINT, so nothing is painted the normal way.
+        protected override void OnPaintBackground(PaintEventArgs e) { }
+
+        protected override void OnHandleCreated(EventArgs e)
         {
-            base.OnPaint(e);
+            base.OnHandleCreated(e);
+            Redraw();
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            Redraw();
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (Visible) Redraw();
+        }
+
+        private Bitmap _surface;
+
+        /// <summary>
+        /// Re-renders the overlay onto its alpha surface and pushes it to the screen via UpdateLayeredWindow.
+        /// This replaces Invalidate()/WM_PAINT: colour-key transparency cannot anti-alias (blended edge pixels
+        /// aren't exactly the key colour, so they leak as a fringe), whereas per-pixel alpha composites smooth
+        /// edges correctly. Cheap enough to redraw the whole surface on every change, including cursor moves.
+        /// </summary>
+        private void Redraw()
+        {
+            if (!IsHandleCreated || IsDisposed || Disposing) return;
+
+            int w = ClientSize.Width, h = ClientSize.Height;
+            if (w <= 0 || h <= 0) return;
+
+            if (_surface == null || _surface.Width != w || _surface.Height != h)
+            {
+                _surface?.Dispose();
+                _surface = new Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            }
+
+            using (var g = Graphics.FromImage(_surface))
+            {
+                g.Clear(Color.Transparent);
+                DrawContent(g, new Rectangle(0, 0, w, h));
+            }
+
+            PushLayeredSurface(_surface);
+        }
+
+        /// <summary>Blits the premultiplied ARGB surface onto this layered window, keeping its current position.</summary>
+        private void PushLayeredSurface(Bitmap bmp)
+        {
+            IntPtr screenDc = Win32.GetDC(IntPtr.Zero);
+            IntPtr memDc = Win32.CreateCompatibleDC(screenDc);
+            IntPtr hBitmap = IntPtr.Zero;
+            IntPtr oldBitmap = IntPtr.Zero;
+            try
+            {
+                hBitmap = bmp.GetHbitmap(Color.FromArgb(0)); // premultiplied ARGB, as ULW_ALPHA expects
+                oldBitmap = Win32.SelectObject(memDc, hBitmap);
+
+                Size size = new Size(bmp.Width, bmp.Height);
+                Point src = Point.Empty;
+                Point dst = this.Location; // keep the position ToontownController already set
+                var blend = new Win32.BLENDFUNCTION((byte)Win32.AC_SRC_OVER, 0, 255, (byte)Win32.AC_SRC_ALPHA);
+                Win32.UpdateLayeredWindow(this.Handle, screenDc, ref dst, ref size, memDc, ref src, 0, ref blend, (uint)Win32.ULW_ALPHA);
+            }
+            finally
+            {
+                if (oldBitmap != IntPtr.Zero) Win32.SelectObject(memDc, oldBitmap);
+                if (hBitmap != IntPtr.Zero) Win32.DeleteObject(hBitmap);
+                Win32.DeleteDC(memDc);
+                Win32.ReleaseDC(IntPtr.Zero, screenDc);
+            }
+        }
+
+        /// <summary>
+        /// Renders the border, the Switching Mode number, and the fake cursor onto <paramref name="g"/>, which draws
+        /// into a fully transparent alpha surface. Anti-aliasing is used freely: UpdateLayeredWindow composites the
+        /// result with real per-pixel alpha, so smooth edges blend against transparency without a colour-key fringe.
+        /// </summary>
+        private void DrawContent(Graphics g, Rectangle clientRect)
+        {
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
             Color borderColor = BorderColor;
             if (SwitchingMode)
             {
                 // Priority: Selected (Yellow) > Marked for Removal (Black) > Switched (Orange) > Normal (Red)
                 if (SwitchingSelected)
-                {
-                    borderColor = Colors.SwitchingSelected; // Yellow for selected windows
-                }
+                    borderColor = Colors.SwitchingSelected;
                 else if (SwitchingMarkedForRemoval)
-                {
-                    borderColor = Colors.SwitchingMarkedForRemoval; // Black for windows marked for removal
-                }
+                    borderColor = Colors.SwitchingMarkedForRemoval;
                 else if (SwitchingSwitched)
-                {
-                    borderColor = Colors.SwitchingSwitched; // Orange for switched windows
-                }
+                    borderColor = Colors.SwitchingSwitched;
                 else
-                {
-                    borderColor = Colors.SwitchingMode; // Red for normal switching mode
-                }
+                    borderColor = Colors.SwitchingMode;
             }
-            // When not in switching mode, use stored BorderColor (normal mode); no persistence of selected/switched colors
-            // (BorderColor is updated by ToontownController.Refresh() when exiting switching mode)
+            // Otherwise the stored BorderColor is used (set by ToontownController.Refresh()).
 
-            if (CornerRadius > 0)
+            // Border as a ring: the outer rectangle minus an inner (optionally rounded) rectangle. The outer edge
+            // stays square, flush with the game window; only the inner edge rounds. One even-odd fill lets the inner
+            // curve anti-alias cleanly against the transparent interior.
+            Rectangle inner = Rectangle.Inflate(clientRect, -BorderWidth, -BorderWidth);
+            using (var ring = new System.Drawing.Drawing2D.GraphicsPath())
+            using (var innerPath = RoundedRectPath(inner, CornerRadius))
+            using (var brush = new SolidBrush(borderColor))
             {
-                // Round the INNER edge only: fill the whole overlay with the border colour, then punch a rounded
-                // transparent hole. The outer edge stays square, flush with the game window's own square corners.
-                // No anti-aliasing on purpose: AA against the chroma-key background leaves a faint coloured fringe
-                // that lingers as a jarring outline, so we keep hard, fully-keyed edges instead.
-                Rectangle inner = Rectangle.Inflate(this.ClientRectangle, -BorderWidth, -BorderWidth);
-                var prevMode = e.Graphics.SmoothingMode;
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
-                using (var band = new SolidBrush(borderColor))
-                {
-                    e.Graphics.FillRectangle(band, this.ClientRectangle);
-                }
-                using (var hole = new SolidBrush(Colors.ChromaKey))
-                using (var holePath = RoundedRectPath(inner, CornerRadius))
-                {
-                    e.Graphics.FillPath(hole, holePath);
-                }
-                e.Graphics.SmoothingMode = prevMode;
-            }
-            else
-            {
-                ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle,
-                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                    borderColor, BorderWidth, ButtonBorderStyle.Solid);
+                ring.AddRectangle(clientRect);
+                if (innerPath.PointCount > 0)
+                    ring.AddPath(innerPath, false); // FillMode.Alternate (default) punches the hole
+                g.FillPath(brush, ring);
             }
 
-            if (SwitchingMode && SwitchingNumber > 0)
+            if (SwitchingMode && SwitchingNumber > 0 && clientRect.Height > 4)
             {
-                // Draw large number in center of window
-                // Font size is slightly larger than half of window height
-                // Account for DPI scaling to prevent oversized text on high-DPI displays
-                float dpiScale = e.Graphics.DpiX / 96.0f; // 96 is standard DPI
-                float fontSize = (this.ClientRectangle.Height / 1.7f) / dpiScale;
-                using (Font switchingModeFont = new Font(FontFamily.GenericSansSerif, fontSize, FontStyle.Bold))
+                // Large centred number identifying the window. Drawn as a filled glyph path so its edges get real
+                // anti-aliased alpha; plain text rendering does not composite cleanly onto a transparent surface.
+                float emSize = clientRect.Height / 1.3f;
+                Color numberColor = SwitchingSelected ? Colors.SwitchingSelected
+                    : SwitchingMarkedForRemoval ? Colors.SwitchingMarkedForRemoval
+                    : SwitchingSwitched ? Colors.SwitchingSwitched
+                    : Colors.SwitchingMode;
+                using (var text = new System.Drawing.Drawing2D.GraphicsPath())
+                using (var brush = new SolidBrush(numberColor))
                 {
-                    e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
-                    string numberText = SwitchingNumber.ToString();
-                    SizeF textSize = e.Graphics.MeasureString(numberText, switchingModeFont);
-                    float x = (this.ClientRectangle.Width - textSize.Width) / 2;
-                    float y = (this.ClientRectangle.Height - textSize.Height) / 2;
-                    
-                    // Text color matches border color using Colors properties
-                    Brush textBrush;
-                    if (SwitchingSelected)
-                    {
-                        textBrush = new SolidBrush(Colors.SwitchingSelected);
-                    }
-                    else if (SwitchingMarkedForRemoval)
-                    {
-                        textBrush = new SolidBrush(Colors.SwitchingMarkedForRemoval);
-                    }
-                    else if (SwitchingSwitched)
-                    {
-                        textBrush = new SolidBrush(Colors.SwitchingSwitched);
-                    }
-                    else
-                    {
-                        textBrush = new SolidBrush(Colors.SwitchingMode);
-                    }
-                    
-                    using (textBrush)
-                    {
-                        e.Graphics.DrawString(numberText, switchingModeFont, textBrush, x, y);
-                    }
+                    text.AddString(SwitchingNumber.ToString(), FontFamily.GenericSansSerif, (int)FontStyle.Bold,
+                        emSize, PointF.Empty, StringFormat.GenericDefault);
+                    RectangleF b = text.GetBounds();
+                    var state = g.Save();
+                    g.TranslateTransform((clientRect.Width - b.Width) / 2f - b.X, (clientRect.Height - b.Height) / 2f - b.Y);
+                    g.FillPath(brush, text);
+                    g.Restore(state);
                 }
             }
 
             if (ShowFakeCursor)
             {
                 var drawRect = new Rectangle(FakeCursorPosition.X, FakeCursorPosition.Y, CursorSize, CursorSize);
-                e.Graphics.DrawImage(FakeCursorIsInvalid ? fakeCursorImageInvalid : fakeCursorImage, drawRect);
+                g.DrawImage(FakeCursorIsInvalid ? fakeCursorImageInvalid : fakeCursorImage, drawRect);
             }
         }
 
-        /// <summary>A rounded-rectangle path over <paramref name="bounds"/> (the transparent interior to punch out).
-        /// Radius is clamped so it never exceeds the box; an empty box yields an empty path (nothing punched, so the
-        /// border simply fills the whole overlay).</summary>
+        /// <summary>A rounded-rectangle path over <paramref name="bounds"/> (the inner hole of the border ring).
+        /// Radius is clamped so it never exceeds the box; an empty box yields an empty path (no hole, so the border
+        /// simply fills the whole overlay).</summary>
         private static System.Drawing.Drawing2D.GraphicsPath RoundedRectPath(Rectangle bounds, int radius)
         {
             var path = new System.Drawing.Drawing2D.GraphicsPath();

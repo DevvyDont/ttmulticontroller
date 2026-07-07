@@ -17,6 +17,10 @@ namespace TTMulti.Forms
             {
                 components.Dispose();
             }
+            if (disposing)
+            {
+                _surface?.Dispose();
+            }
             base.Dispose(disposing);
         }
 
@@ -34,7 +38,7 @@ namespace TTMulti.Forms
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.BackColor = Colors.ChromaKey;
+            this.BackColor = System.Drawing.Color.Black;
             this.ClientSize = new System.Drawing.Size(400, 400);
             this.DoubleBuffered = true;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
@@ -44,7 +48,6 @@ namespace TTMulti.Forms
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.Text = "BorderWnd";
-            this.TransparencyKey = Colors.ChromaKey;
             this.ResumeLayout(false);
 
         }
