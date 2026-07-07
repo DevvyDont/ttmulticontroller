@@ -31,6 +31,12 @@ namespace TTMulti.Ui.Settings
             _customModes = new CustomModesEditor(toons);
             InitializeComponent();
             TTMulti.Ui.Controls.AppLogo.ApplyAppIcon(this, titleBar);
+
+            // The XAML sets a roomy 1080x720 default; clamp it to 90% of the display's work area so the window
+            // still opens fully on-screen on smaller monitors. MinWidth/MinHeight remain the floor.
+            System.Windows.Rect workArea = SystemParameters.WorkArea;
+            Width = System.Math.Min(Width, workArea.Width * 0.9);
+            Height = System.Math.Min(Height, workArea.Height * 0.9);
             // Every page binds directly to the live settings object (matching the old dialog's data-bindings).
             DataContext = Properties.Settings.Default;
 
@@ -78,7 +84,7 @@ namespace TTMulti.Ui.Settings
             if (_pages == null)
                 return; // still initializing
 
-            string selected = (navList.SelectedItem as ListBoxItem)?.Content as string;
+            string selected = (navList.SelectedItem as ListBoxItem)?.Tag as string;
             foreach (var kv in _pages)
                 kv.Value.Visibility = kv.Key == selected ? Visibility.Visible : Visibility.Collapsed;
         }

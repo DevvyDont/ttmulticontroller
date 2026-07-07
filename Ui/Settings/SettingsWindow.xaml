@@ -7,10 +7,10 @@
     xmlns:props="clr-namespace:TTMulti.Properties"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     Title="Options"
-    Width="760"
-    Height="600"
-    MinWidth="640"
-    MinHeight="480"
+    Width="1080"
+    Height="720"
+    MinWidth="720"
+    MinHeight="520"
     ExtendsContentIntoTitleBar="True"
     WindowBackdropType="Mica"
     WindowStartupLocation="CenterOwner">
@@ -63,25 +63,71 @@
 
         <Grid Grid.Row="1" Margin="12,0,12,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="188" />
+                <ColumnDefinition Width="212" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <!-- Navigation rail -->
+            <!-- Windows-Settings-style rail: each item is an icon + label. The page key lives in Tag (not Content,
+                 which is now a panel) — NavList_SelectionChanged reads Tag to pick the page. -->
             <ListBox
                 x:Name="navList"
                 Grid.Column="0"
                 Margin="0,0,10,0"
+                Padding="0,2"
                 BorderThickness="0"
                 Background="Transparent"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                 SelectionChanged="NavList_SelectionChanged">
-                <ListBoxItem Content="General" IsSelected="True" />
-                <ListBoxItem Content="Appearance" />
-                <ListBoxItem Content="Keybinds" />
-                <ListBoxItem Content="Controller Modes" />
-                <ListBoxItem Content="Multi-Click" />
-                <ListBoxItem Content="Window Management" />
-                <ListBoxItem Content="Custom Modes" />
+                <ListBox.Resources>
+                    <Style x:Key="NavIcon" TargetType="ui:SymbolIcon">
+                        <Setter Property="FontSize" Value="16" />
+                        <Setter Property="Margin" Value="0,0,12,0" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                    </Style>
+                </ListBox.Resources>
+                <ListBoxItem Tag="General" IsSelected="True">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Settings24" />
+                        <TextBlock VerticalAlignment="Center" Text="General" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Appearance">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Color24" />
+                        <TextBlock VerticalAlignment="Center" Text="Appearance" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Keybinds">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Keyboard24" />
+                        <TextBlock VerticalAlignment="Center" Text="Keybinds" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Controller Modes">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Games24" />
+                        <TextBlock VerticalAlignment="Center" Text="Controller Modes" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Multi-Click">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Cursor24" />
+                        <TextBlock VerticalAlignment="Center" Text="Multi-Click" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Window Management">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="WindowMultiple20" />
+                        <TextBlock VerticalAlignment="Center" Text="Window Management" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Custom Modes">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Wand24" />
+                        <TextBlock VerticalAlignment="Center" Text="Custom Modes" />
+                    </StackPanel>
+                </ListBoxItem>
             </ListBox>
 
             <!-- Page content -->
