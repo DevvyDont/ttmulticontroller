@@ -166,6 +166,57 @@ namespace TTMulti.Ui.Settings
             vm.RaiseAll();
         }
 
+        private void LpAdjustSlotsOnScreen_Click(object sender, RoutedEventArgs e)
+        {
+            var vm = _layoutPresets.SelectedPreset;
+            if (vm == null)
+                return;
+            var preset = vm.Preset;
+            var slots = LayoutPresetBuilder.BuildSlots(preset);
+            if (slots == null || slots.Count == 0)
+            {
+                System.Windows.MessageBox.Show(this, "Add at least one grid first, so there are windows to adjust.",
+                    "Layout Presets", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                return;
+            }
+
+            // One draggable/resizable numbered box per window slot.
+            var list = new System.Collections.Generic.List<TTMulti.Forms.LayoutOverlayForm.RegionOverlayItem>();
+            for (int i = 0; i < slots.Count; i++)
+                list.Add(new TTMulti.Forms.LayoutOverlayForm.RegionOverlayItem { Rect = slots[i].Rect, Rows = 1, Cols = 1, SlotIndex = i + 1 });
+
+            using (var overlay = new TTMulti.Forms.LayoutOverlayForm(list))
+            {
+                if (overlay.ShowDialog(WinFormsOwner()) != System.Windows.Forms.DialogResult.OK)
+                    return;
+
+                var existingBySlot = new System.Collections.Generic.Dictionary<int, SlotOverride>();
+                foreach (var o in preset.SlotOverrides ?? new System.Collections.Generic.List<SlotOverride>())
+                    existingBySlot[o.SlotIndex] = o;
+                var edited = new System.Collections.Generic.HashSet<int>();
+                var newOverrides = new System.Collections.Generic.List<SlotOverride>();
+                foreach (var it in list)
+                {
+                    if (it.SlotIndex < 1)
+                        continue;
+                    edited.Add(it.SlotIndex);
+                    existingBySlot.TryGetValue(it.SlotIndex, out var existing);
+                    newOverrides.Add(new SlotOverride
+                    {
+                        SlotIndex = it.SlotIndex,
+                        Rect = LayoutRect.FromRectangle(it.Rect),
+                        Minimized = existing?.Minimized, // preserve any minimize flag
+                    });
+                }
+                // Keep overrides for slots that weren't part of this edit (e.g. minimize-only rows beyond the grid).
+                foreach (var o in preset.SlotOverrides ?? new System.Collections.Generic.List<SlotOverride>())
+                    if (!edited.Contains(o.SlotIndex))
+                        newOverrides.Add(o);
+
+                vm.SetSlotOverridesAndRefresh(newOverrides);
+            }
+        }
+
         private System.Windows.Forms.IWin32Window WinFormsOwner() =>
             new WpfWin32Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle);
 
@@ -173,6 +224,23 @@ namespace TTMulti.Ui.Settings
         {
             public WpfWin32Owner(System.IntPtr handle) { Handle = handle; }
             public System.IntPtr Handle { get; }
+        }
+
+        private TTMulti.Ui.LayoutPreviewWindow _previewWindow;
+
+        private void LpPopOutPreview_Click(object sender, RoutedEventArgs e)
+        {
+            if (_previewWindow == null)
+            {
+                _previewWindow = new TTMulti.Ui.LayoutPreviewWindow(_layoutPresets) { Owner = this };
+                _previewWindow.Closed += (s, ev) => { _previewWindow = null; _layoutPresets.PreviewPoppedOut = false; };
+                _layoutPresets.PreviewPoppedOut = true; // hide the inline preview while it lives in the pop-out
+                _previewWindow.Show();
+            }
+            else
+            {
+                _previewWindow.Activate();
+            }
         }
 
         private void About_Click(object sender, RoutedEventArgs e)
@@ -197,6 +265,9 @@ namespace TTMulti.Ui.Settings
         protected override void OnClosing(CancelEventArgs e)
         {
             base.OnClosing(e);
+            // Close the pop-out preview along with Options so it doesn't linger.
+            _previewWindow?.Close();
+            _previewWindow = null;
             // Any close path that isn't OK (X button, Alt+F4) discards the live-bound edits, exactly like the
             // WinForms dialog's OnFormClosing Reload(). Commit/Discard are idempotent (guarded).
             if (DialogResult != true)

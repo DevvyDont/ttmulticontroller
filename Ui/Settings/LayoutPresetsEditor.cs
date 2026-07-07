@@ -25,6 +25,17 @@ namespace TTMulti.Ui.Settings
         public bool HasPresets => Presets.Count > 0;
         public bool NoPresets => Presets.Count == 0;
 
+        private bool _previewPoppedOut;
+        /// <summary>True while the preview is shown in the pop-out window, so the inline preview is hidden.</summary>
+        public bool PreviewPoppedOut
+        {
+            get => _previewPoppedOut;
+            set { _previewPoppedOut = value; Changed(); Changed(nameof(PreviewInline)); }
+        }
+
+        /// <summary>Inverse of <see cref="PreviewPoppedOut"/>: whether to show the inline preview on the page.</summary>
+        public bool PreviewInline => !_previewPoppedOut;
+
         internal LayoutPresetsEditor()
         {
             var file = LayoutPresetStorage.Load();

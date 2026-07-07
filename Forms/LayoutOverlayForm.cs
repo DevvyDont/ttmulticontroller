@@ -30,6 +30,10 @@ namespace TTMulti.Forms
         private Point _dragStartScreen;
         private int _movingItemIndex = -1;
         private Point _moveGrabOffset;
+        private Panel _toolbar;
+        // The box the user is editing. Only its handles are active, so shared grid-corner handles from other
+        // boxes can never steal the drag (you pick a box by clicking its body, then resize/move only it).
+        private int _selectedIndex = -1;
 
         private enum HandleKind
         {
@@ -62,6 +66,7 @@ namespace TTMulti.Forms
         public LayoutOverlayForm(List<RegionOverlayItem> items)
         {
             _items = items ?? new List<RegionOverlayItem>();
+            _selectedIndex = _items.Count > 0 ? 0 : -1;
             _virtualScreen = SystemInformation.VirtualScreen;
             FormBorderStyle = FormBorderStyle.None;
             Bounds = _virtualScreen;
@@ -80,40 +85,56 @@ namespace TTMulti.Forms
             MouseUp += LayoutOverlayForm_MouseUp;
             KeyDown += LayoutOverlayForm_KeyDown;
 
+            _toolbar = BuildToolbar();
+            Controls.Add(_toolbar);
+            PositionToolbar();
+        }
+
+        /// <summary>A single floating toolbar (hint + Cancel + Done) so the controls stay together on the monitor
+        /// the user is actually editing, instead of at the far corners of the whole virtual desktop.</summary>
+        private Panel BuildToolbar()
+        {
+            var panel = new Panel { Size = new Size(700, 48), BackColor = Color.FromArgb(235, 32, 32, 32) };
+
             var doneBtn = new Button
             {
-                Text = "Done",
-                Size = new Size(100, 36),
-                Location = new Point(_virtualScreen.Width - 120, _virtualScreen.Height - 50),
-                Anchor = AnchorStyles.None,
-                BackColor = Color.FromArgb(70, 130, 180),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                Text = "Done", Size = new Size(100, 34), Location = new Point(panel.Width - 110, 7),
+                BackColor = Color.FromArgb(70, 130, 180), ForeColor = Color.White, FlatStyle = FlatStyle.Flat,
             };
             doneBtn.FlatAppearance.BorderSize = 0;
             doneBtn.Click += (s, e) => { DialogResult = DialogResult.OK; Close(); };
+
             var cancelBtn = new Button
             {
-                Text = "Cancel",
-                Size = new Size(100, 36),
-                Location = new Point(_virtualScreen.Width - 230, _virtualScreen.Height - 50),
-                BackColor = Color.FromArgb(80, 80, 80),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                Text = "Cancel", Size = new Size(100, 34), Location = new Point(panel.Width - 218, 7),
+                BackColor = Color.FromArgb(80, 80, 80), ForeColor = Color.White, FlatStyle = FlatStyle.Flat,
             };
             cancelBtn.FlatAppearance.BorderSize = 0;
             cancelBtn.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
-            var hintLabel = new Label
+
+            var hint = new Label
             {
-                Text = "Drag a box to move it, or drag the white handles to resize. Press Esc to cancel.",
-                AutoSize = true,
-                ForeColor = Color.White,
-                BackColor = Color.Transparent,
-                Location = new Point(20, _virtualScreen.Height - 46)
+                Text = "Click a box to select it (gold outline), then drag it to move or drag a white handle to resize. Press Esc to cancel.",
+                AutoSize = true, ForeColor = Color.White, BackColor = Color.Transparent, Location = new Point(14, 16),
             };
-            Controls.Add(doneBtn);
-            Controls.Add(cancelBtn);
-            Controls.Add(hintLabel);
+
+            panel.Controls.Add(hint);
+            panel.Controls.Add(cancelBtn);
+            panel.Controls.Add(doneBtn);
+            return panel;
+        }
+
+        /// <summary>Place the toolbar at the bottom-center of the monitor holding the region being edited.</summary>
+        private void PositionToolbar()
+        {
+            if (_toolbar == null) return;
+            Rectangle regionScreen = _items.Count > 0 ? _items[0].Rect : _virtualScreen;
+            Rectangle work = Screen.FromRectangle(regionScreen).WorkingArea;
+            Rectangle c = ScreenToClientRect(work);
+            int x = c.Left + Math.Max(0, (c.Width - _toolbar.Width) / 2);
+            int y = c.Bottom - _toolbar.Height - 14;
+            _toolbar.Location = new Point(x, y);
+            _toolbar.BringToFront();
         }
 
         protected override void OnShown(EventArgs e)
@@ -175,18 +196,17 @@ namespace TTMulti.Forms
             HandleKind.TopLeft, HandleKind.TopRight, HandleKind.BottomLeft, HandleKind.BottomRight
         };
 
-        private (int itemIndex, HandleKind handle) HitTest(Point screenPoint)
+        /// <summary>Handle of the SELECTED box hit by the point. Only the selected box has active handles, so a
+        /// shared grid-corner handle belonging to a different box can never steal the drag.</summary>
+        private HandleKind HitTestSelectedHandle(Point screenPoint)
         {
-            for (int i = _items.Count - 1; i >= 0; i--)
-            {
-                var r = _items[i].Rect;
-                foreach (var kind in AllHandles)
-                {
-                    if (GetHandleRect(r, kind).Contains(screenPoint))
-                        return (i, kind);
-                }
-            }
-            return (-1, HandleKind.None);
+            if (_selectedIndex < 0 || _selectedIndex >= _items.Count)
+                return HandleKind.None;
+            var r = _items[_selectedIndex].Rect;
+            foreach (var kind in AllHandles)
+                if (GetHandleRect(r, kind).Contains(screenPoint))
+                    return kind;
+            return HandleKind.None;
         }
 
         /// <summary>Topmost item whose body contains the point (for move-dragging), or -1.</summary>
@@ -259,21 +279,25 @@ namespace TTMulti.Forms
         private void LayoutOverlayForm_MouseDown(object sender, MouseEventArgs e)
         {
             var screenPt = ClientToScreen(e.Location);
-            var (itemIndex, handle) = HitTest(screenPt);
+            // Resize only the selected box (its handles are the only active ones).
+            var handle = HitTestSelectedHandle(screenPt);
             if (handle != HandleKind.None)
             {
-                _draggingItemIndex = itemIndex;
+                _draggingItemIndex = _selectedIndex;
                 _draggingHandle = handle;
                 _dragStartScreen = screenPt;
                 Cursor = CursorForHandle(handle);
                 return;
             }
+            // Otherwise click a box to select it (its handles become active), and arm a move if dragged.
             int bodyIndex = HitTestBody(screenPt);
             if (bodyIndex >= 0)
             {
+                _selectedIndex = bodyIndex;
                 _movingItemIndex = bodyIndex;
                 _moveGrabOffset = new Point(screenPt.X - _items[bodyIndex].Rect.X, screenPt.Y - _items[bodyIndex].Rect.Y);
                 Cursor = Cursors.SizeAll;
+                Invalidate();
             }
         }
 
@@ -293,7 +317,7 @@ namespace TTMulti.Forms
                 Invalidate();
                 return;
             }
-            var (_, handle) = HitTest(screenPt);
+            var handle = HitTestSelectedHandle(screenPt);
             if (handle != HandleKind.None)
                 Cursor = CursorForHandle(handle);
             else
@@ -308,6 +332,7 @@ namespace TTMulti.Forms
                 _draggingHandle = HandleKind.None;
                 _movingItemIndex = -1;
                 Cursor = Cursors.Default;
+                PositionToolbar(); // follow the region if it was dragged onto another monitor
             }
         }
 
@@ -403,10 +428,18 @@ namespace TTMulti.Forms
                     }
                 }
 
+            }
+
+            // Handles + highlight for the SELECTED box only, drawn last so they sit on top. Because no other
+            // box draws handles, a shared grid-corner handle can never win the hit-test over the one you want.
+            if (_selectedIndex >= 0 && _selectedIndex < _items.Count)
+            {
+                var scr = ScreenToClientRect(_items[_selectedIndex].Rect);
+                using (var selPen = new Pen(Color.FromArgb(255, 255, 215, 0), 3))
+                    g.DrawRectangle(selPen, scr.X, scr.Y, scr.Width - 1, scr.Height - 1);
                 foreach (var kind in AllHandles)
                 {
-                    var hr = GetHandleRect(item.Rect, kind);
-                    var hcr = ScreenToClientRect(hr);
+                    var hcr = ScreenToClientRect(GetHandleRect(_items[_selectedIndex].Rect, kind));
                     using (var hBrush = new SolidBrush(HandleFillColor))
                         g.FillRectangle(hBrush, hcr);
                     using (var hPen = new Pen(HandleBorderColor, 2))

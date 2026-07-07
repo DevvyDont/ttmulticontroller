@@ -69,7 +69,7 @@
 
             <!-- Navigation rail -->
             <!-- Windows-Settings-style rail: each item is an icon + label. The page key lives in Tag (not Content,
-                 which is now a panel) — NavList_SelectionChanged reads Tag to pick the page. -->
+                 which is now a panel), NavList_SelectionChanged reads Tag to pick the page. -->
             <ListBox
                 x:Name="navList"
                 Grid.Column="0"
@@ -499,7 +499,7 @@
                     <StackPanel x:Name="pageMultiClick" Visibility="Collapsed">
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Multi-Click" />
                         <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="Two separate ways to click several game windows at once. Precise Click Mode is a mode you switch on to mirror your normal clicks onto every window; Instant Multi-Click is a one-shot hotkey that clicks every window once. The two groups below are independent — every setting inside a group belongs only to that group." />
+                            Text="Two separate ways to click several game windows at once. Precise Click Mode is a mode you switch on to mirror your normal clicks onto every window; Instant Multi-Click is a one-shot hotkey that clicks every window once. The two groups below are independent, and every setting inside a group belongs only to that group." />
 
                         <!-- ══ Precise Click Mode ══ No separate on/off switch: the mode is on precisely when an Activation
                              key is bound below. EVERY setting inside the card belongs to it, so the grouping is unambiguous. -->
@@ -509,7 +509,7 @@
                                     <TextBlock FontSize="14" FontWeight="SemiBold" Text="Precise Click Mode" />
                                     <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
                                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                        Text="Switch this mode on with a hotkey, then click normally: your left and right clicks are mirrored to every game window at the same spot, with no window stealing focus. A marker shows where each click will land, and your real clicks are held back from the games so nothing gets misclicked. Set an Activation key below to turn it on — leave it unset to keep the mode off. Defaults: left mouse mirrors a left click, right mouse mirrors a right click. Use a Passthrough bind to click only the window you're pointing at instead." />
+                                        Text="Switch this mode on with a hotkey, then click normally: your left and right clicks are mirrored to every game window at the same spot, with no window stealing focus. A marker shows where each click will land, and your real clicks are held back from the games so nothing gets misclicked. Set an Activation key below to turn it on; leave it unset to keep the mode off. Defaults: left mouse mirrors a left click, right mouse mirrors a right click. Use a Passthrough bind to click only the window you're pointing at instead." />
                                 </StackPanel>
                             </ui:CardExpander.Header>
 
@@ -931,13 +931,24 @@
                                     </StackPanel>
                                 </Border>
 
-                                <TextBlock Style="{StaticResource SectionHeader}" Text="Preview" />
-                                <Border Style="{StaticResource Card}">
-                                    <ctrl:LayoutPreview Height="220"
-                                        Preset="{Binding Preset}"
-                                        SelectedRegionIndex="{Binding SelectedRegionIndex}"
-                                        Rev="{Binding PreviewRev}" />
-                                </Border>
+                                <StackPanel Visibility="{Binding DataContext.PreviewInline, ElementName=pageLayoutPresets, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource SectionHeader}" Text="Preview" />
+                                        <ui:Button Grid.Column="1" VerticalAlignment="Bottom" Content="Pop out"
+                                            Icon="{ui:SymbolIcon WindowArrowUp20}" Click="LpPopOutPreview_Click"
+                                            ToolTip="Open the preview in a movable, always-on-top window so you can watch it while you adjust." />
+                                    </Grid>
+                                    <Border Style="{StaticResource Card}">
+                                        <ctrl:LayoutPreview Height="220"
+                                            Preset="{Binding Preset}"
+                                            SelectedRegionIndex="{Binding SelectedRegionIndex}"
+                                            Rev="{Binding PreviewRev}" />
+                                    </Border>
+                                </StackPanel>
 
                                 <TextBlock Style="{StaticResource SectionHeader}" Text="Grids" />
                                 <TextBlock Style="{StaticResource SectionDesc}"
@@ -995,10 +1006,13 @@
                                     </StackPanel>
                                 </Border>
 
-                                <Expander Margin="0,6,0,0" Header="Advanced: per-window overrides">
+                                <Expander Margin="0,6,0,0" Header="Fine-tune each window (overrides)">
                                     <StackPanel Margin="0,6,0,0">
                                         <TextBlock Style="{StaticResource SectionDesc}" Margin="0,0,0,6"
-                                            Text="Override a specific window's position, or minimize it, by slot number." />
+                                            Text="Give a specific window its own position, or minimize it, instead of using its grid slot. Drag each window's box on screen, or type exact values below by slot number." />
+                                        <ui:Button HorizontalAlignment="Left" Margin="0,0,0,8" Content="Adjust each window on screen"
+                                            Icon="{ui:SymbolIcon ResizeLarge24}" Click="LpAdjustSlotsOnScreen_Click"
+                                            ToolTip="Show every window as a numbered box you can drag and resize on the actual screen; each becomes a per-window override." />
                                         <DataGrid ItemsSource="{Binding SlotRows}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="220">
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="Slot" Binding="{Binding Slot}" IsReadOnly="True" />
