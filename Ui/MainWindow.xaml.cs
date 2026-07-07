@@ -128,8 +128,42 @@ namespace TTMulti.Ui
             if (_ignoreMessages || _inputHost == null)
                 return;
 
+            // Compact-UI toggle keybind. Handled here in the preprocess filter (NOT OnPreviewKeyDown, which never
+            // runs — the window denies WPF keyboard focus) so it fires whenever this controller window is the
+            // foreground window, and ahead of the game-forwarding filter so it works while actively controlling too.
+            if ((msg.message == (int)Win32.WM.KEYDOWN || msg.message == (int)Win32.WM.SYSKEYDOWN)
+                && TryHandleCompactToggleKey(msg.wParam, msg.lParam))
+            {
+                handled = true;
+                return;
+            }
+
             if (_inputHost.PreFilterMessage(msg.message, msg.wParam, msg.lParam))
                 handled = true;
+        }
+
+        /// <summary>
+        /// Toggles Compact UI when the bound key is pressed while THIS controller window is foreground (so it's a
+        /// window-scoped shortcut, not a global hotkey). Returns true when the key was ours and should be consumed;
+        /// only the initial press flips the mode (autorepeat is swallowed but ignored).
+        /// </summary>
+        private bool TryHandleCompactToggleKey(IntPtr wParam, IntPtr lParam)
+        {
+            int compactKey = Properties.Settings.Default.compactUIToggleKeyCode;
+            if (compactKey == 0 || (int)wParam != compactKey)
+                return false;
+            if (Win32.GetForegroundWindow() != _hwnd)
+                return false; // not focused on us — let the key pass through
+
+            bool isAutoRepeat = (lParam.ToInt64() & (1L << 30)) != 0;
+            if (!isAutoRepeat)
+            {
+                Properties.Settings.Default.compactUI = !Properties.Settings.Default.compactUI;
+                Properties.Settings.Default.Save();
+                ApplyModeHeight();
+                _viewModel?.ForceRefresh();
+            }
+            return true;
         }
 
         /// <summary>
@@ -200,9 +234,18 @@ namespace TTMulti.Ui
         // Each layout is a fixed size; the window isn't resizable (ResizeMode=NoResize) and the UI doesn't
         // reflow, so its width and height are hard-locked (Min = Max) to the active layout's content box.
         private const double DefaultWindowWidth = 264;
-        private const double DefaultWindowHeight = 158;
+        private const double DefaultWindowHeight = 144;
         private const double CompactWindowWidth = 180;
-        private const double CompactWindowHeight = 110;
+        private const double CompactWindowHeight = 96;
+
+        // The controllerUIScaleIndex setting (Options → Appearance → Size) picks one of these whole-window scales.
+        private static readonly double[] UiScales = { 0.5, 0.75, 1.0, 1.25, 1.5 };
+
+        private static double ScaleFactor()
+        {
+            int i = Properties.Settings.Default.controllerUIScaleIndex;
+            return (i >= 0 && i < UiScales.Length) ? UiScales[i] : 1.0;
+        }
 
         /// <summary>
         /// Snap the window to the active layout: hard-lock the width and height (so it can't be dragged and
@@ -214,19 +257,28 @@ namespace TTMulti.Ui
         {
             bool compact = Properties.Settings.Default.compactUI;
 
-            double w = compact ? CompactWindowWidth : DefaultWindowWidth;
+            // Global UI scale: a LayoutTransform scales the whole window's visuals, and the hard-locked width /
+            // height are multiplied by the same factor so the window frame stays snug around the scaled content.
+            double scale = ScaleFactor();
+            rootGrid.LayoutTransform = scale == 1.0 ? System.Windows.Media.Transform.Identity
+                                                    : new System.Windows.Media.ScaleTransform(scale, scale);
+
+            double w = (compact ? CompactWindowWidth : DefaultWindowWidth) * scale;
             MinWidth = w;
             MaxWidth = w;
             Width = w;
 
-            double h = compact ? CompactWindowHeight : DefaultWindowHeight;
+            double h = (compact ? CompactWindowHeight : DefaultWindowHeight) * scale;
             MinHeight = h;
             MaxHeight = h;
             Height = h;
 
             centerColumn.Width = compact ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
             crosshairRow.HorizontalAlignment = compact ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
-            contentRoot.Margin = compact ? new Thickness(8, 2, 8, 10) : new Thickness(16, 2, 16, 10);
+            // Top = 6 leaves a little breathing room below the (faded) title-bar tint so the colour shift doesn't
+            // butt right up against the first row of controls; bottom = 6 keeps the mode label + action buttons
+            // snug against the window's bottom edge (the locked window heights are sized to this content box).
+            contentRoot.Margin = compact ? new Thickness(8, 6, 8, 6) : new Thickness(16, 6, 16, 6);
         }
 
         /// <summary>The WinForms MulticontrollerWnd_Load equivalent (HWND already exists here).</summary>

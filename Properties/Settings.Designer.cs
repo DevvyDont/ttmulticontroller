@@ -94,7 +94,43 @@ namespace TTMulti.Properties {
                 this["enableCaptionColor"] = value;
             }
         }
-        
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool tintControllerTitleBar {
+            get {
+                return ((bool)(this["tintControllerTitleBar"]));
+            }
+            set {
+                this["tintControllerTitleBar"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int compactUIToggleKeyCode {
+            get {
+                return ((int)(this["compactUIToggleKeyCode"]));
+            }
+            set {
+                this["compactUIToggleKeyCode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
+        public int controllerUIScaleIndex {
+            get {
+                return ((int)(this["controllerUIScaleIndex"]));
+            }
+            set {
+                this["controllerUIScaleIndex"] = value;
+            }
+        }
+
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1")]

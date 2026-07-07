@@ -131,6 +131,20 @@ namespace TTMulti.Ui.ViewModels
             private set => Set(ref _mirrorModeBrush, value);
         }
 
+        /// <summary>
+        /// A subtle wash for the main window's own title bar, driven by the "tint controller title bar" setting
+        /// (its own toggle, separate from the game-window caption tint). The old WinForms shell tinted its
+        /// caption via DWM; the WPF-UI FluentWindow draws a custom title bar, so we tint that element instead.
+        /// A left→right gradient of the two toon colours (solid when both sides match, e.g. Mirror mode) at a low
+        /// alpha keeps the title text and caption buttons legible over the Mica backdrop. Transparent when off.
+        /// </summary>
+        private Brush _titleBarBrush = Brushes.Transparent;
+        public Brush TitleBarBrush
+        {
+            get => _titleBarBrush;
+            private set => Set(ref _titleBarBrush, value);
+        }
+
         // ── Crosshair drops ─────────────────────────────────────────────────────────
 
         public void AssignLeftWindow(IntPtr handle) => AssignWindow(left: true, handle);
@@ -178,6 +192,7 @@ namespace TTMulti.Ui.ViewModels
             RightAccentBrush = ToBrush(AccentColorFor(ControllerType.Right));
             MultiModeBrush = ToBrush(Colors.LeftGroup);
             MirrorModeBrush = ToBrush(Colors.AllGroups);
+            TitleBarBrush = BuildTitleBarBrush();
 
             OnPropertyChanged(nameof(IsMultiMode));
             OnPropertyChanged(nameof(IsMirrorMode));
@@ -274,6 +289,35 @@ namespace TTMulti.Ui.ViewModels
             var brush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(c.A, c.R, c.G, c.B));
             brush.Freeze();
             return brush;
+        }
+
+        // Alpha for the title-bar wash: low enough that the Mica backdrop and white/dark caption text stay legible
+        // under any mode colour (including the light Mirror pink), high enough that the tint reads at a glance.
+        private const byte TitleTintAlpha = 0x6E; // ~43%
+
+        /// <summary>Builds <see cref="TitleBarBrush"/> from the current mode's left/right colours, or Transparent
+        /// when the title-bar tint setting is off. Left→right gradient, collapsing to a solid when both match.</summary>
+        private Brush BuildTitleBarBrush()
+        {
+            if (!Properties.Settings.Default.tintControllerTitleBar)
+                return Brushes.Transparent;
+
+            System.Drawing.Color left = AccentColorFor(ControllerType.Left);
+            System.Drawing.Color right = AccentColorFor(ControllerType.Right);
+            Color l = Color.FromArgb(TitleTintAlpha, left.R, left.G, left.B);
+            Color r = Color.FromArgb(TitleTintAlpha, right.R, right.G, right.B);
+
+            if (l == r)
+            {
+                var solid = new SolidColorBrush(l);
+                solid.Freeze();
+                return solid;
+            }
+
+            var gradient = new LinearGradientBrush(l, r,
+                new System.Windows.Point(0, 0.5), new System.Windows.Point(1, 0.5));
+            gradient.Freeze();
+            return gradient;
         }
 
         // ── INotifyPropertyChanged ──────────────────────────────────────────────────

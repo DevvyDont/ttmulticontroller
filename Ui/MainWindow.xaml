@@ -55,20 +55,36 @@
         </Style>
     </ui:FluentWindow.Resources>
 
-    <Grid>
+    <Grid x:Name="rootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar
-            x:Name="titleBar"
-            Grid.Row="0"
-            Title="Multicontroller"
-            ShowMaximize="False"
-            ShowMinimize="False" />
+        <Grid Grid.Row="0">
+            <!-- Mode-colour wash sits behind the title bar and fades to transparent toward the bottom (vertical
+                 OpacityMask) so it melts into the window background instead of butting up against the content
+                 below. It's a separate element from the TitleBar, so the fade never dims the title text or the
+                 caption buttons. -->
+            <Border Background="{Binding TitleBarBrush}">
+                <Border.OpacityMask>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Offset="0.0" Color="#FFFFFFFF" />
+                        <GradientStop Offset="0.5" Color="#FFFFFFFF" />
+                        <GradientStop Offset="1.0" Color="#00FFFFFF" />
+                    </LinearGradientBrush>
+                </Border.OpacityMask>
+            </Border>
+            <ui:TitleBar
+                x:Name="titleBar"
+                Height="30"
+                VerticalAlignment="Top"
+                Title="Multicontroller"
+                ShowMaximize="False"
+                ShowMinimize="False" />
+        </Grid>
 
-        <StackPanel Grid.Row="1" x:Name="contentRoot" Margin="16,2,16,10">
+        <StackPanel Grid.Row="1" x:Name="contentRoot" Margin="16,6,16,10">
 
             <!-- Toon window pairing with the centre column between the two toon pickers. The centre holds the
                  Multi/Mirror mode selector (default) OR the Options/Groups action buttons (compact). The row's

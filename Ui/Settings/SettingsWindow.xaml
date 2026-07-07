@@ -732,21 +732,31 @@
 
                     <!-- ── Appearance ─────────────────────────────────────────────── -->
                     <StackPanel x:Name="pageAppearance" Visibility="Collapsed">
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Interface" />
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Appearance" />
                         <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="The overall look of the controller window." />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <CheckBox Margin="0,3" Content="Compact UI" IsChecked="{Binding compactUI, Mode=TwoWay}" />
-                                <CheckBox Margin="0,3" Content="Tint the title bar with the current mode colour" IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Border>
+                            Text="Colours for the game-window borders and where the current mode colour is shown, plus the controller window's size. Click a group to expand it." />
 
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Border colours" />
-                        <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="The colour drawn around each game window in Multi and Mirror modes, so you can tell your left and right toons apart at a glance." />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
+                        <!-- ══ Colours ══ mode/border colours plus the two independent 'tint with mode colour' toggles
+                             (kept separate so a user can enable one without the other). -->
+                        <ui:CardExpander IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Colours" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Border colours for each mode, and where the current mode colour is applied." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <CheckBox Margin="0,3" Content="Tint controller title bar with the current mode colour" IsChecked="{Binding tintControllerTitleBar, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Tint game windows with the current mode colour" IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" />
+
+                                <Separator Margin="0,12" />
+
+                                <!-- Border colours -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Border colours" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="The colour drawn around each game window in Multi and Mirror modes, so you can tell your left and right toons apart at a glance." />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -771,14 +781,13 @@
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Mirror Mode" />
                                     <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding mirrorModeBorderColor, Mode=TwoWay}" />
                                 </Grid>
-                            </StackPanel>
-                        </Border>
 
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Focused mode" />
-                        <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="Border colours used in Focused mode: the window you've focused versus the others." />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
+                                <Separator Margin="0,12" />
+
+                                <!-- Focused mode -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Focused mode" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="Border colours used in Focused mode: the window you've focused versus the others." />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -795,14 +804,13 @@
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Unfocused window" />
                                     <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding focusedModeUnfocusedColor, Mode=TwoWay}" />
                                 </Grid>
-                            </StackPanel>
-                        </Border>
 
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Switching mode" />
-                        <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="Border colours shown while rearranging windows in Switching Mode (configured under Window Management)." />
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
+                                <Separator Margin="0,12" />
+
+                                <!-- Switching mode -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Switching mode" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="Border colours shown while rearranging windows in Switching Mode (configured under Window Management)." />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -836,7 +844,44 @@
                                     <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingRemovedColor, Mode=TwoWay}" />
                                 </Grid>
                             </StackPanel>
-                        </Border>
+                        </ui:CardExpander>
+
+                        <!-- ══ Size ══ compact layout, its (controller-focused) toggle key, and the overall window scale. -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Size" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Compact layout and the overall scale of the controller window." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <CheckBox Margin="0,3" Content="Compact UI" IsChecked="{Binding compactUI, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Toggle Compact UI key (only while the controller window is focused)" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding compactUIToggleKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Window scale" />
+                                    <ComboBox Grid.Column="1" MinWidth="120" SelectedIndex="{Binding controllerUIScaleIndex, Mode=TwoWay}">
+                                        <ComboBoxItem Content="50%" />
+                                        <ComboBoxItem Content="75%" />
+                                        <ComboBoxItem Content="100%" />
+                                        <ComboBoxItem Content="125%" />
+                                        <ComboBoxItem Content="150%" />
+                                    </ComboBox>
+                                </Grid>
+                            </StackPanel>
+                        </ui:CardExpander>
                     </StackPanel>
 
                     <!-- ── Custom Modes ───────────────────────────────────────────── -->
