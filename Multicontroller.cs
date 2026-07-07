@@ -1990,14 +1990,26 @@ namespace TTMulti
 
             bool isKeyUp = msg == Win32.WM.KEYUP || msg == Win32.WM.SYSKEYUP;
 
-            // A KEYUP releases exactly what the matching KEYDOWN forwarded, taken from the ledger, regardless of
-            // the current mode / active set / IsActive / minimize state. This is what stops a physically released
-            // key from being stranded on a window whose routing changed while the key was held: the old code
-            // recomputed the target set at UP-time, so the KEYUP could miss the windows that got the DOWN. Custom
-            // mode does its own equivalent in the branch above.
+            // A KEYUP releases what the matching KEYDOWN forwarded, taken from the ledger so the release lands on
+            // the windows that actually got the DOWN regardless of how the routing moved while the key was held
+            // (the old code recomputed the target set at UP-time and could miss them). Custom mode does its own
+            // equivalent in the branch above.
             if (isKeyUp)
             {
-                var released = _forwardedKeys.TakeUp(keysPressed);
+                IReadOnlyList<(ToontownController Controller, Keys PostedKey)> released = _forwardedKeys.TakeUp(keysPressed);
+
+                // "Sticky Controls" off (releaseKeysOnWindowFocus == false): a key held across a group / pair /
+                // mode switch is intentionally left down on the windows you switched away from, so they keep
+                // moving until you come back and release it (STICKY-01). The ledger, however, records every window
+                // the key ever pressed, so releasing everything it returns would send the KEYUP to those left-
+                // behind windows too — the exact "the key up got sent to group 1 after I switched to group 2" bug.
+                // Honor sticky-off by only sending the KEYUP to windows currently receiving input; the rest keep
+                // holding it. Each controller's own held-key ledger still tracks the key, so a full-release path
+                // (a sticky-on switch, going to background) still frees it. With the setting on, the switch already
+                // force-released and cleared the ledger, so this releases only what remains — no change there.
+                if (!Properties.Settings.Default.releaseKeysOnWindowFocus)
+                    released = released.Where(o => IsActive && IsActiveController(o.Controller)).ToList();
+
                 foreach (var o in released)
                     o.Controller.PostMessage(Win32.WM.KEYUP, (IntPtr)o.PostedKey, Win32.MakePostedKeyLParam(o.PostedKey, true));
 
