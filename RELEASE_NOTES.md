@@ -1,8 +1,8 @@
-# Multicontroller v2.0.1
+# Multicontroller v2.0.2
 
 A ground-up rebuild and rebrand: a brand-new interface, sharper visuals, and a reworked input engine. Coming from 1.x this is a big jump, and your existing settings carry over automatically. Let me know if they don't or if you have issues.
 
-> Note: this replaces the initial 2.0.0 build, which failed to launch (the download was missing some bundled files). 2.0.1 is a genuinely standalone single .exe.
+> Note: the initial 2.0.0 build failed to launch (the download was missing some bundled files); it is now a genuinely standalone single .exe.
 
 ## A whole new look
 - Completely redesigned, modern (Windows11-style) interface: a cleaner main window and an organized Settings window grouped into clear categories.
@@ -26,9 +26,9 @@ A ground-up rebuild and rebrand: a brand-new interface, sharper visuals, and a r
 
 ## Also in 2.0
 - Single portable `.exe`, no installer and no separate .NET download required.
-- Attempted to rework the built-in "check for updates" to actually work with our fork.
+- One-click updates: "Check for updates" now downloads and installs the new version for you, then restarts (no more manual download).
 - Sharper on high-DPI displays, with better keyboard accessibility throughout.
 
 ## How to update (First Timers)
 - Download `Multicontroller.exe` below and replace your existing copy. Your settings (keybinds, custom modes, layout presets) live next to the app and are kept automatically.
-- For future updates, hopefully the "Check for updates" button in About will suffice!
+- For future updates, just hit "Check for updates" in About: it downloads and installs the update for you and reopens on the new version.
