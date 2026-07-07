@@ -134,7 +134,20 @@ namespace TTMulti.Ui.ViewModels
         {
             // Sync any pending row edits into the preset first, then regenerate rows from the current slots.
             SyncSlotOverrides();
+            RegenerateSlotRows();
+        }
 
+        /// <summary>Apply overrides captured from the on-screen per-window editor, then refresh the rows and
+        /// preview WITHOUT the usual pre-sync (which would overwrite them from the now-stale rows).</summary>
+        public void SetSlotOverridesAndRefresh(List<SlotOverride> overrides)
+        {
+            Preset.SlotOverrides = overrides;
+            RegenerateSlotRows();
+            BumpPreview();
+        }
+
+        private void RegenerateSlotRows()
+        {
             foreach (var r in SlotRows) r.Changed = null;
             SlotRows.Clear();
 

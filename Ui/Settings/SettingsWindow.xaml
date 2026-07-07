@@ -984,10 +984,13 @@
                                     </StackPanel>
                                 </Border>
 
-                                <Expander Margin="0,6,0,0" Header="Advanced: per-window overrides">
+                                <Expander Margin="0,6,0,0" Header="Fine-tune each window (overrides)">
                                     <StackPanel Margin="0,6,0,0">
                                         <TextBlock Style="{StaticResource SectionDesc}" Margin="0,0,0,6"
-                                            Text="Override a specific window's position, or minimize it, by slot number." />
+                                            Text="Give a specific window its own position, or minimize it, instead of using its grid slot. Drag each window's box on screen, or type exact values below by slot number." />
+                                        <ui:Button HorizontalAlignment="Left" Margin="0,0,0,8" Content="Adjust each window on screen"
+                                            Icon="{ui:SymbolIcon ResizeLarge24}" Click="LpAdjustSlotsOnScreen_Click"
+                                            ToolTip="Show every window as a numbered box you can drag and resize on the actual screen; each becomes a per-window override." />
                                         <DataGrid ItemsSource="{Binding SlotRows}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="220">
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="Slot" Binding="{Binding Slot}" IsReadOnly="True" />

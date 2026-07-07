@@ -166,6 +166,57 @@ namespace TTMulti.Ui.Settings
             vm.RaiseAll();
         }
 
+        private void LpAdjustSlotsOnScreen_Click(object sender, RoutedEventArgs e)
+        {
+            var vm = _layoutPresets.SelectedPreset;
+            if (vm == null)
+                return;
+            var preset = vm.Preset;
+            var slots = LayoutPresetBuilder.BuildSlots(preset);
+            if (slots == null || slots.Count == 0)
+            {
+                System.Windows.MessageBox.Show(this, "Add at least one grid first, so there are windows to adjust.",
+                    "Layout Presets", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                return;
+            }
+
+            // One draggable/resizable numbered box per window slot.
+            var list = new System.Collections.Generic.List<TTMulti.Forms.LayoutOverlayForm.RegionOverlayItem>();
+            for (int i = 0; i < slots.Count; i++)
+                list.Add(new TTMulti.Forms.LayoutOverlayForm.RegionOverlayItem { Rect = slots[i].Rect, Rows = 1, Cols = 1, SlotIndex = i + 1 });
+
+            using (var overlay = new TTMulti.Forms.LayoutOverlayForm(list))
+            {
+                if (overlay.ShowDialog(WinFormsOwner()) != System.Windows.Forms.DialogResult.OK)
+                    return;
+
+                var existingBySlot = new System.Collections.Generic.Dictionary<int, SlotOverride>();
+                foreach (var o in preset.SlotOverrides ?? new System.Collections.Generic.List<SlotOverride>())
+                    existingBySlot[o.SlotIndex] = o;
+                var edited = new System.Collections.Generic.HashSet<int>();
+                var newOverrides = new System.Collections.Generic.List<SlotOverride>();
+                foreach (var it in list)
+                {
+                    if (it.SlotIndex < 1)
+                        continue;
+                    edited.Add(it.SlotIndex);
+                    existingBySlot.TryGetValue(it.SlotIndex, out var existing);
+                    newOverrides.Add(new SlotOverride
+                    {
+                        SlotIndex = it.SlotIndex,
+                        Rect = LayoutRect.FromRectangle(it.Rect),
+                        Minimized = existing?.Minimized, // preserve any minimize flag
+                    });
+                }
+                // Keep overrides for slots that weren't part of this edit (e.g. minimize-only rows beyond the grid).
+                foreach (var o in preset.SlotOverrides ?? new System.Collections.Generic.List<SlotOverride>())
+                    if (!edited.Contains(o.SlotIndex))
+                        newOverrides.Add(o);
+
+                vm.SetSlotOverridesAndRefresh(newOverrides);
+            }
+        }
+
         private System.Windows.Forms.IWin32Window WinFormsOwner() =>
             new WpfWin32Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle);
 
