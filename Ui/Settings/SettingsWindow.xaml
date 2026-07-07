@@ -869,6 +869,38 @@
                                 </Grid>
                             </StackPanel>
                         </ui:CardExpander>
+
+                        <!-- ══ Visuals ══ overlays drawn on the game windows. -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Visuals" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="On-screen overlays drawn on the game windows." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,0,0,6"
+                                    Text="When the group number is drawn in the corner of each game window. 'Multi mode' is the per-group control mode; 'All Groups mode' controls every group at once." />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Group number display" />
+                                    <ComboBox Grid.Column="1" MinWidth="240" SelectedIndex="{Binding groupNumberVisibility, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Always visible" />
+                                        <ComboBoxItem Content="Multi mode and All Groups mode" />
+                                        <ComboBoxItem Content="All Groups mode only" />
+                                        <ComboBoxItem Content="Hidden" />
+                                    </ComboBox>
+                                </Grid>
+                                <CheckBox Margin="0,6,0,0" Content="Show the group number even when a window is inactive"
+                                    IsChecked="{Binding alwaysShowGroupNumber, Mode=TwoWay}"
+                                    ToolTip="Off (default): the number only shows on windows that currently have a border (i.e. the group you're controlling). On: the number is also drawn — with no border — on windows that aren't currently active, so you can still tell which group they belong to. The 'Group number display' choice above is still respected (e.g. Hidden shows nothing)." />
+                            </StackPanel>
+                        </ui:CardExpander>
                     </StackPanel>
 
                     <!-- ── Custom Modes ───────────────────────────────────────────── -->

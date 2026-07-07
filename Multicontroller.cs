@@ -54,6 +54,22 @@ namespace TTMulti
     Custom
 }
 
+    /// <summary>
+    /// When the per-window group number overlay is drawn (Options → Appearance → Visuals). The values are the
+    /// ComboBox indices persisted in <c>Settings.groupNumberVisibility</c>, so their order must match the combo.
+    /// </summary>
+    internal enum GroupNumberVisibility
+    {
+        /// <summary>Whenever a window border is shown.</summary>
+        Always = 0,
+        /// <summary>Only in Multi (Group) mode and All Groups mode.</summary>
+        MultiAndAllGroup = 1,
+        /// <summary>Only in All Groups mode (default).</summary>
+        AllGroupOnly = 2,
+        /// <summary>Never.</summary>
+        Hidden = 3,
+    }
+
     class Multicontroller
     {
         private static Multicontroller _instance = null;
@@ -519,6 +535,33 @@ namespace TTMulti
 
                     SettingChanged?.Invoke(this, EventArgs.Empty);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Whether the per-window group number overlay should currently be drawn, honoring the user's
+        /// "Group number display" setting (Options → Appearance → Visuals). The Groups-management overlay
+        /// (<see cref="ShowAllBorders"/>) still forces the numbers on so windows can be told apart while they're
+        /// being arranged — except when the user has chosen to hide them entirely.
+        /// </summary>
+        internal bool ShouldShowGroupNumber()
+        {
+            if (!IsActive)
+                return false;
+
+            switch ((GroupNumberVisibility)Properties.Settings.Default.groupNumberVisibility)
+            {
+                case GroupNumberVisibility.Always:
+                    return true;
+                case GroupNumberVisibility.MultiAndAllGroup:
+                    return ShowAllBorders
+                        || CurrentMode == MulticontrollerMode.Group
+                        || CurrentMode == MulticontrollerMode.AllGroup;
+                case GroupNumberVisibility.Hidden:
+                    return false;
+                case GroupNumberVisibility.AllGroupOnly:
+                default:
+                    return ShowAllBorders || CurrentMode == MulticontrollerMode.AllGroup;
             }
         }
 

@@ -256,6 +256,12 @@
     <Setting Name="controllerUIScaleIndex" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">2</Value>
     </Setting>
+    <Setting Name="groupNumberVisibility" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">2</Value>
+    </Setting>
+    <Setting Name="alwaysShowGroupNumber" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
     <Setting Name="minimizeUnconnectedKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>

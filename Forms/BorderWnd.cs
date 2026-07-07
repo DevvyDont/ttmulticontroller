@@ -89,6 +89,25 @@ namespace TTMulti.Forms
             }
         }
 
+        private bool _drawBorder = true;
+
+        /// <summary>
+        /// Whether to draw the coloured border. When false the overlay renders only the group number (used to
+        /// keep a window's group number visible while it isn't actively controlled), leaving the frame transparent.
+        /// </summary>
+        public bool DrawBorder
+        {
+            get => _drawBorder;
+            set
+            {
+                if (_drawBorder != value)
+                {
+                    _drawBorder = value;
+                    this.Invalidate();
+                }
+            }
+        }
+
         private const int CursorSize = 32;
         private const int CursorPad = 12;
 
@@ -318,11 +337,14 @@ namespace TTMulti.Forms
             // When not in switching mode, use stored BorderColor (normal mode); no persistence of selected/switched colors
             // (BorderColor is updated by ToontownController.Refresh() when exiting switching mode)
 
-            ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle,
-                borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                borderColor, BorderWidth, ButtonBorderStyle.Solid,
-                borderColor, BorderWidth, ButtonBorderStyle.Solid);
+            if (DrawBorder)
+            {
+                ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle,
+                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
+                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
+                    borderColor, BorderWidth, ButtonBorderStyle.Solid,
+                    borderColor, BorderWidth, ButtonBorderStyle.Solid);
+            }
 
             if (SwitchingMode && SwitchingNumber > 0)
             {

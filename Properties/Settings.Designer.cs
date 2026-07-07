@@ -131,6 +131,30 @@ namespace TTMulti.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
+        public int groupNumberVisibility {
+            get {
+                return ((int)(this["groupNumberVisibility"]));
+            }
+            set {
+                this["groupNumberVisibility"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool alwaysShowGroupNumber {
+            get {
+                return ((bool)(this["alwaysShowGroupNumber"]));
+            }
+            set {
+                this["alwaysShowGroupNumber"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1")]
         public int numberOfGroups {
             get {
