@@ -39,7 +39,7 @@ namespace TTMulti
         private static HttpClient CreateClient()
         {
             var client = new HttpClient();
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("ToontownMulticontroller");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Multicontroller");
             return client;
         }
 

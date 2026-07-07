@@ -27,7 +27,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: bin/Release/win-x64/publish/ToontownMulticontroller.exe
+          files: bin/Release/win-x64/publish/Multicontroller.exe
           body_path: RELEASE_NOTES.md
           generate_release_notes: false
           fail_on_unmatched_files: true

@@ -26,7 +26,7 @@ namespace TTMulti
                         return path;
                 }
                 catch { }
-                return Path.Combine(BaseDirectory, "ToontownMulticontroller.exe");
+                return Path.Combine(BaseDirectory, "Multicontroller.exe");
             }
         }
 

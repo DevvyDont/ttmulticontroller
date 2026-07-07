@@ -3,7 +3,7 @@
      Declares system-DPI awareness, supportedOS, and longPathAware. Per-Monitor V2 is staged below but not enabled
      (still gated on mixed-DPI testing — BUILD-03 / WIN32-06). -->
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity version="1.0.0.0" name="ToontownMulticontroller.app" />
+  <assemblyIdentity version="1.0.0.0" name="Multicontroller.app" />
 
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
