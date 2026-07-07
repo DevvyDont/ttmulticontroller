@@ -32,6 +32,9 @@ namespace TTMulti
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            // Delete any leftover "...old.exe" from a self-update that just replaced this exe. Best-effort.
+            SelfUpdater.CleanupOldExe();
+
             // Dev switch: render the cat logo to a multi-resolution .ico (the static exe/Explorer icon) and exit.
             // e.g. Multicontroller.exe --export-icon Resources\icon.ico
             if (args.Length >= 1 && string.Equals(args[0], "--export-icon", StringComparison.OrdinalIgnoreCase))
