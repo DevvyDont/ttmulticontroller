@@ -182,7 +182,8 @@ namespace TTMulti.Ui.Settings
             if (_previewWindow == null)
             {
                 _previewWindow = new TTMulti.Ui.LayoutPreviewWindow(_layoutPresets) { Owner = this };
-                _previewWindow.Closed += (s, ev) => _previewWindow = null;
+                _previewWindow.Closed += (s, ev) => { _previewWindow = null; _layoutPresets.PreviewPoppedOut = false; };
+                _layoutPresets.PreviewPoppedOut = true; // hide the inline preview while it lives in the pop-out
                 _previewWindow.Show();
             }
             else

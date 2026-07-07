@@ -909,22 +909,24 @@
                                     </StackPanel>
                                 </Border>
 
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource SectionHeader}" Text="Preview" />
-                                    <ui:Button Grid.Column="1" VerticalAlignment="Bottom" Content="Pop out"
-                                        Icon="{ui:SymbolIcon WindowArrowUp20}" Click="LpPopOutPreview_Click"
-                                        ToolTip="Open the preview in a movable, always-on-top window so you can watch it while you adjust." />
-                                </Grid>
-                                <Border Style="{StaticResource Card}">
-                                    <ctrl:LayoutPreview Height="220"
-                                        Preset="{Binding Preset}"
-                                        SelectedRegionIndex="{Binding SelectedRegionIndex}"
-                                        Rev="{Binding PreviewRev}" />
-                                </Border>
+                                <StackPanel Visibility="{Binding DataContext.PreviewInline, ElementName=pageLayoutPresets, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource SectionHeader}" Text="Preview" />
+                                        <ui:Button Grid.Column="1" VerticalAlignment="Bottom" Content="Pop out"
+                                            Icon="{ui:SymbolIcon WindowArrowUp20}" Click="LpPopOutPreview_Click"
+                                            ToolTip="Open the preview in a movable, always-on-top window so you can watch it while you adjust." />
+                                    </Grid>
+                                    <Border Style="{StaticResource Card}">
+                                        <ctrl:LayoutPreview Height="220"
+                                            Preset="{Binding Preset}"
+                                            SelectedRegionIndex="{Binding SelectedRegionIndex}"
+                                            Rev="{Binding PreviewRev}" />
+                                    </Border>
+                                </StackPanel>
 
                                 <TextBlock Style="{StaticResource SectionHeader}" Text="Grids" />
                                 <TextBlock Style="{StaticResource SectionDesc}"
