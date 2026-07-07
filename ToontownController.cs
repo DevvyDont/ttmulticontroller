@@ -385,7 +385,6 @@ namespace TTMulti
         /// <summary>
         /// The border colour for this controller in the current state. Extracted so the caption-color and
         /// no-caption branches of <see cref="Refresh"/> share one implementation instead of duplicating it.
-        /// Also sets <see cref="BorderWnd.ShowGroupNumber"/> for the non-switching path, exactly as before.
         /// </summary>
         private Color ComputeBorderColor()
         {
@@ -397,9 +396,6 @@ namespace TTMulti
                 if (_borderWnd.SwitchingSwitched) return Colors.SwitchingSwitched;
                 return Colors.SwitchingMode;
             }
-
-            _borderWnd.ShowGroupNumber = multicontroller.IsActive
-                && (multicontroller.ShowAllBorders || multicontroller.ControllerGroups.Count > 1);
 
             if (!multicontroller.IsActive)
                 return _borderWnd.BorderColor; // keep current
