@@ -22,7 +22,8 @@ namespace TTMulti.Ui.Controls
         private static Rectangle _contentBounds;  // tight non-transparent bounds of the art (source has wide margins)
 
         // Fraction of the icon left as breathing room around the artwork after cropping its transparent margins.
-        private const float Padding = 0.04f;
+        // Kept at zero so the (already tightly-cropped) source fills the icon; the art carries its own margin.
+        private const float Padding = 0f;
 
         /// <summary>
         /// A square <see cref="BitmapSource"/> of the logo recoloured with <paramref name="dark"/> (the black
