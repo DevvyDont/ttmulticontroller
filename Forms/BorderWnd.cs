@@ -263,6 +263,11 @@ namespace TTMulti.Forms
         public BorderWnd()
         {
             InitializeComponent();
+
+            // The fake-cursor bitmaps carry a chroma-key (magenta) background that the old colour-key window used to
+            // key out. With per-pixel alpha we key it ourselves, once, so the cursor composites transparently.
+            fakeCursorImage.MakeTransparent(Colors.ChromaKey);
+            fakeCursorImageInvalid.MakeTransparent(Colors.ChromaKey);
         }
 
         // The overlay is a true per-pixel-alpha layered window: its pixels come entirely from UpdateLayeredWindow,
@@ -288,14 +293,38 @@ namespace TTMulti.Forms
         }
 
         private Bitmap _surface;
+        private volatile bool _renderQueued;
 
         /// <summary>
-        /// Re-renders the overlay onto its alpha surface and pushes it to the screen via UpdateLayeredWindow.
-        /// This replaces Invalidate()/WM_PAINT: colour-key transparency cannot anti-alias (blended edge pixels
-        /// aren't exactly the key colour, so they leak as a fringe), whereas per-pixel alpha composites smooth
-        /// edges correctly. Cheap enough to redraw the whole surface on every change, including cursor moves.
+        /// Requests a re-render. Marshals onto the UI thread and coalesces a burst of state changes into a single
+        /// render on the next message-loop iteration, mirroring how Invalidate()/WM_PAINT used to behave. This
+        /// matters because the border's appearance comes from two independently-set sources (the stored BorderColor
+        /// and the switching-mode flags), and the switching flags are driven from a background timer thread. Doing
+        /// the UpdateLayeredWindow render synchronously in each setter would touch GDI/window state off the UI
+        /// thread (so it would not composite) and would paint half-settled intermediate states, which is what left
+        /// stale borders on screen. Deferring to one render that reads the final settled state fixes both.
         /// </summary>
         private void Redraw()
+        {
+            if (!IsHandleCreated || IsDisposed || Disposing) return;
+            if (_renderQueued) return;
+            _renderQueued = true;
+            try
+            {
+                BeginInvoke((Action)(() =>
+                {
+                    _renderQueued = false;
+                    RenderNow();
+                }));
+            }
+            catch
+            {
+                _renderQueued = false; // handle went away between the guard and BeginInvoke
+            }
+        }
+
+        /// <summary>Renders the overlay onto its alpha surface and pushes it via UpdateLayeredWindow. UI thread only.</summary>
+        private void RenderNow()
         {
             if (!IsHandleCreated || IsDisposed || Disposing) return;
 
