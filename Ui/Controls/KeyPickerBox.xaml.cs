@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using WinFormsKeys = System.Windows.Forms.Keys;
 
 namespace TTMulti.Ui.Controls
@@ -35,6 +36,35 @@ namespace TTMulti.Ui.Controls
         {
             get => (int)GetValue(KeyCodeProperty);
             set => SetValue(KeyCodeProperty, value);
+        }
+
+        public static readonly DependencyProperty AccentBrushProperty =
+            DependencyProperty.Register(nameof(AccentBrush), typeof(Brush), typeof(KeyPickerBox),
+                new PropertyMetadata(null, (d, e) => ((KeyPickerBox)d).ApplyAccent()));
+
+        /// <summary>Optional colour drawn around the picker's border. Used on the Keybinds page to tint each
+        /// column with its mode colour (in-game / left toon / right toon). Null leaves the default themed border.</summary>
+        public Brush AccentBrush
+        {
+            get => (Brush)GetValue(AccentBrushProperty);
+            set => SetValue(AccentBrushProperty, value);
+        }
+
+        private void ApplyAccent()
+        {
+            if (pickerButton == null)
+                return;
+
+            if (AccentBrush != null)
+            {
+                pickerButton.BorderBrush = AccentBrush;
+                pickerButton.BorderThickness = new Thickness(1.5);
+            }
+            else
+            {
+                pickerButton.ClearValue(Control.BorderBrushProperty);
+                pickerButton.ClearValue(Control.BorderThicknessProperty);
+            }
         }
 
         private void PickerButton_Click(object sender, RoutedEventArgs e)
