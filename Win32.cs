@@ -158,6 +158,18 @@ namespace TTMulti
         /// </summary>
         public static RECT? GetMonitorWorkAreaByIndex(int displayIndex)
         {
+            var workAreas = GetAllMonitorWorkAreas();
+            if (displayIndex < 0 || displayIndex >= workAreas.Count)
+                return null;
+            return workAreas[displayIndex];
+        }
+
+        /// <summary>
+        /// All monitors' work areas (usable desktop excluding taskbar) in enumeration order, same coordinate space
+        /// as GetWindowRect/SetWindowPos. Index i is the monitor a layout region's 0-based MonitorIndex targets.
+        /// </summary>
+        public static List<RECT> GetAllMonitorWorkAreas()
+        {
             var workAreas = new List<RECT>();
             MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
             {
@@ -167,9 +179,7 @@ namespace TTMulti
                 return true;
             };
             EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
-            if (displayIndex < 0 || displayIndex >= workAreas.Count)
-                return null;
-            return workAreas[displayIndex];
+            return workAreas;
         }
 
         [DllImport("dwmapi.dll")]
@@ -203,7 +213,7 @@ namespace TTMulti
         [DllImport("user32.dll")]
         internal static extern short GetKeyState(int nVirtKey);
 
-        /// <summary>Cursor position in screen (physical) coordinates — UI-framework-neutral replacement for Control.MousePosition.</summary>
+        /// <summary>Cursor position in screen (physical) coordinates: UI-framework-neutral replacement for Control.MousePosition.</summary>
         internal static Point GetCursorPosition()
         {
             GetCursorPos(out Point p);
@@ -211,7 +221,7 @@ namespace TTMulti
         }
 
         /// <summary>
-        /// Currently pressed Shift/Ctrl/Alt as <see cref="System.Windows.Forms.Keys"/> modifier flags —
+        /// Currently pressed Shift/Ctrl/Alt as <see cref="System.Windows.Forms.Keys"/> modifier flags,
         /// UI-framework-neutral replacement for Control.ModifierKeys with matching semantics (GetKeyState-based,
         /// same three modifiers).
         /// </summary>
@@ -323,7 +333,7 @@ namespace TTMulti
 
         /// <summary>
         /// Packs a client-relative point into the lParam of a WM_*BUTTON* mouse message: the low word is X, the
-        /// high word is Y. X is masked to 16 bits; Y is shifted as-is — matching the exact packing the click
+        /// high word is Y. X is masked to 16 bits; Y is shifted as-is, matching the exact packing the click
         /// forwarding has always used (client coords are small and non-negative, so the asymmetry is immaterial).
         /// </summary>
         internal static IntPtr MakeMouseLParam(int x, int y)
@@ -476,7 +486,7 @@ namespace TTMulti
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         internal static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        // Last system-wide input time — used by the hook watchdog to skip re-arming while the machine is idle
+        // Last system-wide input time, used by the hook watchdog to skip re-arming while the machine is idle
         // (a low-level hook can only be silently dropped by Windows when it is invoked, i.e. when input occurs).
         [StructLayout(LayoutKind.Sequential)]
         internal struct LASTINPUTINFO
@@ -613,7 +623,7 @@ namespace TTMulti
         internal enum WindowAttributeTypes : uint
         {
             /// <summary>
-            /// DWMWA_NCRENDERING_POLICY — controls the non-client area rendering policy (NOT the drop shadow; this
+            /// DWMWA_NCRENDERING_POLICY: controls the non-client area rendering policy (NOT the drop shadow; this
             /// was previously mislabeled "DropShadow"). Use with a <see cref="WindowAttributeValues"/> DWMNCRP_* value.
             /// </summary>
             NcRenderingPolicy = 2,
@@ -646,7 +656,7 @@ namespace TTMulti
             /// </summary>
             DWMWCP_DONOTROUND = 1,
             /// <summary>
-            /// DWMNCRP_ENABLED — value for <see cref="WindowAttributeTypes.NcRenderingPolicy"/>. Enables (the
+            /// DWMNCRP_ENABLED: value for <see cref="WindowAttributeTypes.NcRenderingPolicy"/>. Enables (the
             /// default) non-client rendering. NOTE: DWMNCRP_DISABLED is 1, but disabling NC rendering also removes
             /// the caption color, so it is intentionally not offered here.
             /// </summary>
@@ -1241,11 +1251,11 @@ namespace TTMulti
             /// </summary>
             SYSKEYUP = 0x0105,
             /// <summary>
-            /// The WM_SYSCHAR message is posted to the window with the keyboard focus when a WM_SYSKEYDOWN message is translated by the TranslateMessage function. It specifies the character code of a system character key — that is, a character key that is pressed while the ALT key is down. 
+            /// The WM_SYSCHAR message is posted to the window with the keyboard focus when a WM_SYSKEYDOWN message is translated by the TranslateMessage function. It specifies the character code of a system character key, that is, a character key that is pressed while the ALT key is down. 
             /// </summary>
             SYSCHAR = 0x0106,
             /// <summary>
-            /// The WM_SYSDEADCHAR message is sent to the window with the keyboard focus when a WM_SYSKEYDOWN message is translated by the TranslateMessage function. WM_SYSDEADCHAR specifies the character code of a system dead key — that is, a dead key that is pressed while holding down the ALT key. 
+            /// The WM_SYSDEADCHAR message is sent to the window with the keyboard focus when a WM_SYSKEYDOWN message is translated by the TranslateMessage function. WM_SYSDEADCHAR specifies the character code of a system dead key, that is, a dead key that is pressed while holding down the ALT key. 
             /// </summary>
             SYSDEADCHAR = 0x0107,
             /// <summary>

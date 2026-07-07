@@ -50,8 +50,7 @@ namespace TTMulti.Ui.Settings
 
             // The layout-presets editor owns the layout-presets JSON file, committed inside the transaction.
             _session.Register(_layoutPresets);
-            // Layout presets now live inside the Window Management page; scope just that section to the editor.
-            layoutPresetsSection.DataContext = _layoutPresets;
+            pageLayoutPresets.DataContext = _layoutPresets;
 
             // Sub-panels whose controls need read-modify-write over a shared setting get their own DataContext.
             switchKeyPanel.DataContext = new SwitchKeyViewModel();
@@ -71,6 +70,7 @@ namespace TTMulti.Ui.Settings
                 { "Custom Modes", pageCustomModes },
                 { "Multi-Click", pageMultiClick },
                 { "Window Management", pageWindowManagement },
+                { "Layout Presets", pageLayoutPresets },
             };
 
             // The rail's SelectionChanged fired during InitializeComponent (before _pages existed) and no-op'd,
@@ -117,42 +117,62 @@ namespace TTMulti.Ui.Settings
                 _customModes.RemoveBinding(rule);
         }
 
-        // ── Layout presets (individual presets edited in the WPF LayoutPresetEditorWindow) ──
+        // ── Layout presets (inline editor on the Layout Presets page) ──
 
-        private void LpAdd_Click(object sender, RoutedEventArgs e)
-        {
-            var editor = new LayoutPresetEditorWindow(LayoutPresetsEditor.NewDefault()) { Owner = this };
-            if (editor.ShowDialog() == true)
-                _layoutPresets.Add(editor.Preset);
-        }
+        private void LpAddPreset_Click(object sender, RoutedEventArgs e) => _layoutPresets.AddPreset();
 
-        private void LpEdit_Click(object sender, RoutedEventArgs e)
+        private void LpDeletePreset_Click(object sender, RoutedEventArgs e)
         {
             var selected = _layoutPresets.SelectedPreset;
             if (selected == null)
-            {
-                System.Windows.MessageBox.Show(this, "Select a preset to edit.", "Layout Presets");
                 return;
-            }
-            var editor = new LayoutPresetEditorWindow(LayoutPresetsEditor.Clone(selected)) { Owner = this };
-            if (editor.ShowDialog() == true)
-                _layoutPresets.Replace(selected, editor.Preset);
-        }
-
-        private void LpDelete_Click(object sender, RoutedEventArgs e)
-        {
-            var selected = _layoutPresets.SelectedPreset;
-            if (selected == null)
-            {
-                System.Windows.MessageBox.Show(this, "Select a preset to delete.", "Layout Presets");
-                return;
-            }
-            string name = string.IsNullOrEmpty(selected.Name) ? "this preset" : selected.Name;
+            string name = string.IsNullOrWhiteSpace(selected.Name) ? "this preset" : selected.Name;
             if (System.Windows.MessageBox.Show(this, "Delete layout preset \"" + name + "\"?", "Delete Preset",
                     System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning) == System.Windows.MessageBoxResult.Yes)
+                _layoutPresets.RemovePreset(selected);
+        }
+
+        private void LpAddRegion_Click(object sender, RoutedEventArgs e) =>
+            _layoutPresets.SelectedPreset?.AddRegion();
+
+        private void LpDeleteRegion_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is TTMulti.Ui.ViewModels.LayoutRegionViewModel region)
+                _layoutPresets.SelectedPreset?.RemoveRegion(region);
+        }
+
+        private void LpAdjustOnScreen_Click(object sender, RoutedEventArgs e)
+        {
+            if (!((sender as FrameworkElement)?.DataContext is TTMulti.Ui.ViewModels.LayoutRegionViewModel vm))
+                return;
+            var region = vm.Region;
+            var item = new TTMulti.Forms.LayoutOverlayForm.RegionOverlayItem
             {
-                _layoutPresets.Remove(selected);
+                Rect = LayoutPresetBuilder.GetRegionRect(region),
+                Rows = System.Math.Max(1, region.Rows),
+                Cols = System.Math.Max(1, region.Cols),
+            };
+            using (var overlay = new TTMulti.Forms.LayoutOverlayForm(
+                new System.Collections.Generic.List<TTMulti.Forms.LayoutOverlayForm.RegionOverlayItem> { item }))
+            {
+                if (overlay.ShowDialog(WinFormsOwner()) != System.Windows.Forms.DialogResult.OK)
+                    return;
+                region.Source = LayoutRegionSource.Custom;
+                region.CustomX = item.Rect.X;
+                region.CustomY = item.Rect.Y;
+                region.CustomWidth = item.Rect.Width;
+                region.CustomHeight = item.Rect.Height;
             }
+            vm.RaiseAll();
+        }
+
+        private System.Windows.Forms.IWin32Window WinFormsOwner() =>
+            new WpfWin32Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+
+        private sealed class WpfWin32Owner : System.Windows.Forms.IWin32Window
+        {
+            public WpfWin32Owner(System.IntPtr handle) { Handle = handle; }
+            public System.IntPtr Handle { get; }
         }
 
         private void About_Click(object sender, RoutedEventArgs e)

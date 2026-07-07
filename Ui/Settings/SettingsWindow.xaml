@@ -122,6 +122,12 @@
                         <TextBlock VerticalAlignment="Center" Text="Window Management" />
                     </StackPanel>
                 </ListBoxItem>
+                <ListBoxItem Tag="Layout Presets">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Grid24" />
+                        <TextBlock VerticalAlignment="Center" Text="Layout Presets" />
+                    </StackPanel>
+                </ListBoxItem>
                 <ListBoxItem Tag="Custom Modes">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Wand24" />
@@ -393,52 +399,7 @@
                             </StackPanel>
                         </ui:CardExpander>
 
-                        <!-- ══ Layout presets ══ Content keeps x:Name=layoutPresetsSection; its DataContext is the
-                             LayoutPresetsEditor (set in code-behind), so the header stays outside it (static text only). -->
-                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
-                            <ui:CardExpander.Header>
-                                <StackPanel Margin="0,0,12,0">
-                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Layout presets" />
-                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
-                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                        Text="Each preset's hotkey arranges the controller windows across your monitors." />
-                                </StackPanel>
-                            </ui:CardExpander.Header>
-                            <StackPanel x:Name="layoutPresetsSection" Margin="0,2,0,0">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ListBox
-                                        x:Name="layoutPresetsList"
-                                        Grid.Column="0"
-                                        Height="180"
-                                        DisplayMemberPath="Name"
-                                        ItemsSource="{Binding Presets}"
-                                        SelectedItem="{Binding SelectedPreset, Mode=TwoWay}" />
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                        <ui:Button MinWidth="80" Content="Add" Click="LpAdd_Click" />
-                                        <ui:Button MinWidth="80" Margin="0,6,0,0" Content="Edit" Click="LpEdit_Click" />
-                                        <ui:Button MinWidth="80" Margin="0,6,0,0" Content="Delete" Click="LpDelete_Click" />
-                                    </StackPanel>
-                                </Grid>
-                                <Border Style="{StaticResource Card}" Margin="0,10,0,0">
-                                    <StackPanel>
-                                        <CheckBox Content="Lefts first (controller order when applying a preset)"
-                                            IsChecked="{Binding layoutPriorityLeftsFirst, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
-                                        <TextBlock
-                                            Margin="0,4,0,0"
-                                            FontSize="11"
-                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                            TextWrapping="Wrap"
-                                            Text="Lefts first: G1P1L, G1P2L, G1P1R, G1P2R…   Pairs first: G1P1L, G1P1R, G1P2L, G1P2R…" />
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-                        </ui:CardExpander>
-
-                        <!-- ══ Other hotkeys ══ -->
+                        <!-- ══ Other hotkeys ══ (Layout presets moved to its own top-level tab.) -->
                         <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
                             <ui:CardExpander.Header>
                                 <StackPanel Margin="0,0,12,0">
@@ -911,6 +872,160 @@
                     </StackPanel>
 
                     <!-- ── Custom Modes ───────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageLayoutPresets" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Margin="2,0,0,6" Text="Layout Presets" />
+                        <TextBlock Style="{StaticResource SectionDesc}" Margin="2,0,8,8"
+                            Text="A layout preset arranges your controlled windows into a grid across your monitors. Pick or create a preset, set its grid, and the diagram shows exactly where each numbered window lands. Bind a hotkey to apply it." />
+
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" VerticalAlignment="Center"
+                                    ItemsSource="{Binding Presets}"
+                                    SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
+                                    DisplayMemberPath="Name" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="New" Icon="{ui:SymbolIcon Add24}" Click="LpAddPreset_Click" />
+                                <ui:Button Grid.Column="2" Margin="6,0,0,0" Content="Delete" Icon="{ui:SymbolIcon Delete24}"
+                                    IsEnabled="{Binding HasPresets}" Click="LpDeletePreset_Click" />
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Padding="14,20" Visibility="{Binding NoPresets, Converter={StaticResource BoolToVis}}">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="You don't have any layout presets yet." Margin="0,0,0,10" />
+                                <ui:Button HorizontalAlignment="Center" Appearance="Primary"
+                                    Content="Create a layout preset" Icon="{ui:SymbolIcon Add24}" Click="LpAddPreset_Click" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Visibility="{Binding HasPresets, Converter={StaticResource BoolToVis}}">
+                            <StackPanel DataContext="{Binding SelectedPreset}">
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Name" />
+                                            <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </Grid>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Apply hotkey" />
+                                            <WrapPanel Grid.Column="1">
+                                                <ctrl:KeyPickerBox VerticalAlignment="Center" KeyCode="{Binding HotkeyCode, Mode=TwoWay}" />
+                                                <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" Content="Alt" IsChecked="{Binding HkAlt, Mode=TwoWay}" />
+                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Ctrl" IsChecked="{Binding HkCtrl, Mode=TwoWay}" />
+                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Shift" IsChecked="{Binding HkShift, Mode=TwoWay}" />
+                                            </WrapPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Style="{StaticResource SectionHeader}" Text="Preview" />
+                                <Border Style="{StaticResource Card}">
+                                    <ctrl:LayoutPreview Height="220"
+                                        Preset="{Binding Preset}"
+                                        SelectedRegionIndex="{Binding SelectedRegionIndex}"
+                                        Rev="{Binding PreviewRev}" />
+                                </Border>
+
+                                <TextBlock Style="{StaticResource SectionHeader}" Text="Grids" />
+                                <TextBlock Style="{StaticResource SectionDesc}"
+                                    Text="Each grid fills with windows left-to-right, top-to-bottom; extra grids continue the numbering. Select a grid to highlight it in the preview." />
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <ListBox ItemsSource="{Binding Regions}" SelectedItem="{Binding SelectedRegion, Mode=TwoWay}"
+                                                 BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="Margin" Value="0,0,0,6" />
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Padding="8,6" CornerRadius="6"
+                                                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                        <StackPanel>
+                                                            <WrapPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Grid" />
+                                                                    <TextBox VerticalAlignment="Center" Width="40" Text="{Binding Rows, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                    <TextBlock VerticalAlignment="Center" Margin="4,0" Text="x" />
+                                                                    <TextBox VerticalAlignment="Center" Width="40" Text="{Binding Cols, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="on" />
+                                                                    <ComboBox VerticalAlignment="Center" MinWidth="170"
+                                                                        ItemsSource="{Binding MonitorOptions}"
+                                                                        SelectedItem="{Binding SelectedMonitor, Mode=TwoWay}"
+                                                                        DisplayMemberPath="Label" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+                                                                    <ToggleButton VerticalAlignment="Center" Content="More" IsChecked="{Binding IsMoreOpen, Mode=TwoWay}" ToolTip="Row/column weights" />
+                                                                    <ui:Button VerticalAlignment="Center" Margin="6,0,0,0" Content="Adjust on screen" Click="LpAdjustOnScreen_Click" />
+                                                                    <ui:Button VerticalAlignment="Center" Margin="6,0,0,0" Icon="{ui:SymbolIcon Dismiss24}" ToolTip="Remove grid" Click="LpDeleteRegion_Click" />
+                                                                </StackPanel>
+                                                            </WrapPanel>
+                                                            <WrapPanel Margin="0,6,0,0" Visibility="{Binding IsMoreOpen, Converter={StaticResource BoolToVis}}">
+                                                                <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Row weights" />
+                                                                <TextBox VerticalAlignment="Center" Width="120" Text="{Binding RowWeightsText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" ToolTip="Comma-separated, e.g. 2, 1" />
+                                                                <TextBlock VerticalAlignment="Center" Margin="16,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Col weights" />
+                                                                <TextBox VerticalAlignment="Center" Width="120" Text="{Binding ColWeightsText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" ToolTip="Comma-separated, e.g. 2, 1" />
+                                                            </WrapPanel>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <ui:Button HorizontalAlignment="Left" Content="Add grid" Icon="{ui:SymbolIcon Add24}" Click="LpAddRegion_Click" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Expander Margin="0,6,0,0" Header="Advanced: per-window overrides">
+                                    <StackPanel Margin="0,6,0,0">
+                                        <TextBlock Style="{StaticResource SectionDesc}" Margin="0,0,0,6"
+                                            Text="Override a specific window's position, or minimize it, by slot number." />
+                                        <DataGrid ItemsSource="{Binding SlotRows}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="220">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Slot" Binding="{Binding Slot}" IsReadOnly="True" />
+                                                <DataGridCheckBoxColumn Header="Custom pos" Binding="{Binding OverrideRect, UpdateSourceTrigger=PropertyChanged}" />
+                                                <DataGridTextColumn Header="X" Binding="{Binding X}" />
+                                                <DataGridTextColumn Header="Y" Binding="{Binding Y}" />
+                                                <DataGridTextColumn Header="W" Binding="{Binding Width}" />
+                                                <DataGridTextColumn Header="H" Binding="{Binding Height}" />
+                                                <DataGridCheckBoxColumn Header="Minimize" Binding="{Binding Minimized, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+
+                            <TextBlock Style="{StaticResource SectionHeader}" Text="Fill order" />
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <CheckBox Content="Lefts first"
+                                        IsChecked="{Binding layoutPriorityLeftsFirst, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
+                                    <TextBlock Style="{StaticResource SectionDesc}" Margin="0,6,0,0"
+                                        Text="Which order windows fill the slots. Lefts first: all left toons, then all right toons. Off: pair by pair (left then right within each group)." />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+
                     <StackPanel x:Name="pageCustomModes" Visibility="Collapsed">
                         <TextBlock Style="{StaticResource SectionHeader}" Margin="2,0,0,6" Text="Custom Modes" />
                         <TextBlock Style="{StaticResource SectionDesc}" Margin="2,0,8,8"
