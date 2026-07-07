@@ -9,6 +9,7 @@
         HorizontalAlignment="Stretch"
         HorizontalContentAlignment="Center"
         Click="PickerButton_Click"
+        PreviewMouseLeftButtonDown="PickerButton_PreviewMouseLeftButtonDown"
         Content="Disabled"
-        ToolTip="Click to set a key. While armed: press a key, Esc cancels, Delete clears." />
+        ToolTip="Click, then press any key to bind it. Click again to cancel. Double-click to clear." />
 </UserControl>

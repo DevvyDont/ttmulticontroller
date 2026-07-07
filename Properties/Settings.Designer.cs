@@ -837,6 +837,18 @@ namespace TTMulti.Properties {
                 this["switchingModeEnabled"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("18")]
+        public int switchingModeKeyCode {
+            get {
+                return ((int)(this["switchingModeKeyCode"]));
+            }
+            set {
+                this["switchingModeKeyCode"] = value;
+            }
+        }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]

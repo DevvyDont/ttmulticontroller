@@ -272,10 +272,19 @@
 
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Switching Mode" />
                         <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="A mode for rearranging which game window each controller slot points to: click windows to swap their assignments, and use the remove key to drop a window from the swap. 'Place windows when Alt is released' physically moves the swapped windows into their new left/right positions when you let go of Alt; with it off, only the app's grouping changes and you reposition the windows yourself (or with a Layout Presets hotkey)." />
+                            Text="A mode for rearranging which game window each controller slot points to: hold the switching-mode key (Alt by default) while the multicontroller is focused, click windows to swap their assignments, and use the remove key to drop a window from the swap. 'Place windows when the key is released' physically moves the swapped windows into their new left/right positions when you let go; with it off, only the app's grouping changes and you reposition the windows yourself (or with a Layout Presets hotkey)." />
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
                                 <CheckBox Margin="0,3" Content="Enable Switching Mode" IsChecked="{Binding switchingModeEnabled, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Hold this key to enter switching mode" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding switchingModeKeyCode, Mode=TwoWay}"
+                                        ToolTip="Hold this key while the multicontroller is focused to enter switching mode. A modifier like Alt (default), Ctrl, or Shift works best." />
+                                </Grid>
                                 <Grid x:Name="switchKeyPanel" Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -304,7 +313,7 @@
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Remove-from-switch key" />
                                     <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding switchingModeRemoveKeyCode, Mode=TwoWay}" />
                                 </Grid>
-                                <CheckBox Margin="0,3" Content="Place windows when Alt is released" IsChecked="{Binding autoFindPlacementOnAltRelease, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Place windows when the switching-mode key is released" IsChecked="{Binding autoFindPlacementOnAltRelease, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
 

@@ -69,5 +69,31 @@ namespace TTMulti.Tests
             Assert.Empty(left);
             Assert.Empty(right);
         }
+
+        [Theory]
+        [InlineData(Keys.LControlKey, Keys.ControlKey)]
+        [InlineData(Keys.RControlKey, Keys.ControlKey)]
+        [InlineData(Keys.LShiftKey, Keys.ShiftKey)]
+        [InlineData(Keys.RShiftKey, Keys.ShiftKey)]
+        [InlineData(Keys.LMenu, Keys.Menu)]
+        [InlineData(Keys.RMenu, Keys.Menu)]
+        [InlineData(Keys.W, Keys.W)]                 // non-modifier unchanged
+        [InlineData(Keys.ControlKey, Keys.ControlKey)]
+        public void NormalizeModifier_folds_side_specific_modifiers(Keys input, Keys expected)
+        {
+            Assert.Equal(expected, KeyRemap.NormalizeModifier(input));
+        }
+
+        [Fact]
+        public void Side_specific_modifier_toon_key_is_matchable_by_the_generic_key()
+        {
+            // A right-toon jump bound to the right Ctrl key must fire when a Ctrl press (generic VK_CONTROL) arrives.
+            var bindings = new List<KeyMapping> { KM(Keys.Up, Keys.None, Keys.RControlKey) };
+            KeyRemap.Build(bindings, out _, out var right);
+
+            Assert.True(right.ContainsKey(Keys.ControlKey));
+            Assert.Equal(new[] { Keys.Up }, right[Keys.ControlKey]);
+            Assert.False(right.ContainsKey(Keys.RControlKey));
+        }
     }
 }

@@ -14,7 +14,7 @@ namespace TTMulti.Input
     /// hooks, the hook-death watchdog, the activation thread, the CMC fake-cursor ticker, and the
     /// admin-rights error polling. The hosting shell (WinForms today, WPF behind --newui) supplies only an
     /// HWND, UI-thread marshalling/timers, and user-facing notifications via <see cref="IInputShell"/>.
-    /// Behavior contract: BEHAVIOR.md "Hotkeys &amp; triggers" — every consume/pass-through condition here
+    /// Behavior contract: BEHAVIOR.md "Hotkeys &amp; triggers": every consume/pass-through condition here
     /// must match it.
     /// </summary>
     internal sealed class InputCaptureHost : IDisposable
@@ -103,7 +103,7 @@ namespace TTMulti.Input
                     break;
                 case Win32.WM.HOTKEY:
                     // Let these hotkeys pass through to the window procedure (see HandleWindowMessage).
-                    // Custom mode activation uses IDs CustomModeActivationStart..End — must not go through ProcessInput alone.
+                    // Custom mode activation uses IDs CustomModeActivationStart..End, must not go through ProcessInput alone.
                     int hotkeyId = (int)wParam.ToInt64();
                     if (hotkeyId == HotkeyIds.ModeLockToggle || hotkeyId == HotkeyIds.SuspendGlobalsToggle
                         || hotkeyId == HotkeyIds.AutoFind || hotkeyId == HotkeyIds.MinimizeUnconnected
@@ -208,7 +208,7 @@ namespace TTMulti.Input
             }
             else if (hotkeyId == HotkeyIds.Mode)
             {
-                // Modifier passthrough: with Shift/Ctrl/Alt held, don't switch modes — convert the HOTKEY into
+                // Modifier passthrough: with Shift/Ctrl/Alt held, don't switch modes, convert the HOTKEY into
                 // a synthetic KEYDOWN so the key forwards to the games instead.
                 if (AreModifiersHeld())
                 {
@@ -426,7 +426,7 @@ namespace TTMulti.Input
             if (newFailures.Count == 0)
                 return;
 
-            string message = "These global hotkeys or input hooks could not be registered — another program may "
+            string message = "These global hotkeys or input hooks could not be registered; another program may "
                 + "already be using them, or two features are assigned the same key:\n\n  "
                 + string.Join("\n  ", newFailures)
                 + "\n\nOpen Options and pick different keys to fix this.";
@@ -530,7 +530,7 @@ namespace TTMulti.Input
             Win32.UnregisterHotKey(_shell.Handle, HotkeyIds.SuspendGlobalsToggle);
             UnregisterCustomModeActivationHotkeys();
 
-            // Suspend-global toggle (ID 4) — always registered when configured, including while suspended,
+            // Suspend-global toggle (ID 4): always registered when configured, including while suspended,
             // so the user can turn globals back on.
             if (Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode != 0)
                 TryRegisterGlobalHotKey(HotkeyIds.SuspendGlobalsToggle, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.suspendGlobalHotkeysToggleKeyCode, "Suspend global hotkeys toggle");
@@ -578,7 +578,7 @@ namespace TTMulti.Input
                 }
             }
 
-            // Mode lock toggle (ID 3) — always registered when set so it works from game windows
+            // Mode lock toggle (ID 3): always registered when set so it works from game windows
             if (Properties.Settings.Default.modeLockToggleKeyCode != 0)
                 TryRegisterGlobalHotKey(HotkeyIds.ModeLockToggle, Win32.KeyModifiers.None, (Keys)Properties.Settings.Default.modeLockToggleKeyCode, "Mode lock toggle");
             // Note: ID 7 (auto-find), ID 10-25 (layout presets) handled separately
@@ -625,6 +625,34 @@ namespace TTMulti.Input
         internal void RefreshGlobalHotkeyRegistration()
         {
             RegisterFocusHotkeys(force: true);
+        }
+
+        private bool _modalHotkeySuspendPrev;
+
+        /// <summary>
+        /// Unregister the global hotkeys and input hooks for the duration of a modal dialog (Options), so a key
+        /// that is currently a global trigger (e.g. the Zero Power Throw key bound to Scroll Lock) reaches the
+        /// key pickers to be re-bound instead of being swallowed by RegisterHotKey / the LL hooks. Pairs with
+        /// <see cref="ResumeGlobalHotkeysAfterModal"/>; restores whatever suspend state was in effect before.
+        /// </summary>
+        internal void SuspendGlobalHotkeysForModal()
+        {
+            _modalHotkeySuspendPrev = _globalHotkeysSuspended;
+            if (!_globalHotkeysSuspended)
+            {
+                _globalHotkeysSuspended = true;
+                RefreshGlobalHotkeyRegistration();
+            }
+        }
+
+        /// <summary>Restore the pre-modal hotkey suspend state (see <see cref="SuspendGlobalHotkeysForModal"/>).</summary>
+        internal void ResumeGlobalHotkeysAfterModal()
+        {
+            if (_globalHotkeysSuspended != _modalHotkeySuspendPrev)
+            {
+                _globalHotkeysSuspended = _modalHotkeySuspendPrev;
+                RefreshGlobalHotkeyRegistration();
+            }
         }
 
         private void UnregisterHotkey()
@@ -1178,7 +1206,7 @@ namespace TTMulti.Input
             bool isGameWindow = host._controller.AllControllersWithWindows
                 .Any(c => c.WindowHandle == hwndUnderCursor);
             if (isGameWindow && isButtonDown && (buttonIndex == 0 || buttonIndex == 1))
-                return (IntPtr)1; // consume — prevents focus change
+                return (IntPtr)1; // consume: prevents focus change
 
             return Win32.CallNextHookEx(_controlledMcFocusBlockHookHandle, nCode, wParam, lParam);
         }
@@ -1226,7 +1254,7 @@ namespace TTMulti.Input
             }
 
             // Phase 2: broadcast that local position to every other active window; hide fake cursors on all
-            // non-active controllers. (activeControllers already filtered to non-minimized — PERF-02.)
+            // non-active controllers. (activeControllers already filtered to non-minimized, PERF-02.)
             var activeSet = new HashSet<ToontownController>(activeControllers);
             foreach (var c in _controller.AllControllersWithWindows)
             {
