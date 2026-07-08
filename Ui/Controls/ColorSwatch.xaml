@@ -11,7 +11,7 @@
         VerticalContentAlignment="Stretch"
         Click="SwatchButton_Click"
         Cursor="Hand"
-        ToolTip="Click to choose a colour">
+        ToolTip="Click to choose a color">
         <Border
             x:Name="fill"
             MinWidth="90"

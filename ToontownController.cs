@@ -65,7 +65,8 @@ namespace TTMulti
                 if (_windowHandle != value)
                 {
                     // If we're removing the window handle, reset caption color to default before disconnecting
-                    if (value == IntPtr.Zero && _windowHandle != IntPtr.Zero && Properties.Settings.Default.enableCaptionColor)
+                    if (value == IntPtr.Zero && _windowHandle != IntPtr.Zero
+                        && (Properties.Settings.Default.enableCaptionColor || Properties.Settings.Default.tintGameWindowsWithAccentColor))
                     {
                         Win32.SetWindowCaptionColor(_windowHandle, null);
                     }
@@ -433,6 +434,16 @@ namespace TTMulti
             return Color.FromArgb(color.A, Math.Max(0, Math.Min(255, r)), Math.Max(0, Math.Min(255, g)), Math.Max(0, Math.Min(255, b)));
         }
 
+        /// <summary>
+        /// The PC's accent colour (as themed by the OS) for use on a game window's caption bar. Read from the same
+        /// source WPF-UI themes the app with, so it tracks live OS accent changes picked up by the theme watcher.
+        /// </summary>
+        private static Color GetAccentCaptionColor()
+        {
+            System.Windows.Media.Color a = Wpf.Ui.Appearance.ApplicationAccentColorManager.SystemAccent;
+            return Color.FromArgb(a.R, a.G, a.B);
+        }
+
         // Guards redundant cross-process DWM caption-color updates during refresh storms (PERF-05).
         // Reset whenever WindowHandle changes so a new window always gets its caption color re-applied.
         private bool _captionColorApplied;
@@ -491,8 +502,13 @@ namespace TTMulti
             if (showNumberOnly)
                 _borderWnd.ShowGroupNumber = true;
 
-            // Update caption color based on border visibility
-            if (Properties.Settings.Default.enableCaptionColor && HasWindow)
+            // Update caption color based on border visibility. Two mutually-exclusive sources can tint the active
+            // window's title bar: the current mode colour (enableCaptionColor) or the PC accent colour
+            // (tintGameWindowsWithAccentColor). Only one is ever set at a time (enforced in the Options UI), but
+            // guard with an explicit precedence here so a stale both-on config still resolves to accent.
+            bool tintWithModeColor = Properties.Settings.Default.enableCaptionColor;
+            bool tintWithAccentColor = Properties.Settings.Default.tintGameWindowsWithAccentColor;
+            if ((tintWithModeColor || tintWithAccentColor) && HasWindow)
             {
                 if (showBorderWindow)
                 {
@@ -503,8 +519,9 @@ namespace TTMulti
                     Color borderColor = ComputeBorderColor();
                     _borderWnd.BorderColor = borderColor;
 
-                    // Darken the border color for the game window's caption bar.
-                    ApplyCaptionColor(DarkenColor(borderColor, 0.75f));
+                    // Accent tint uses the OS accent colour as-is (Windows draws title bars with it undarkened);
+                    // mode tint darkens the border colour so the brighter mode colours read well on the caption.
+                    ApplyCaptionColor(tintWithAccentColor ? GetAccentCaptionColor() : DarkenColor(borderColor, 0.75f));
 
                     // Don't clear fake cursors while trigger-release is active or in controlled MC mode
                     if (!IsTriggerReleaseCursorActive && !multicontroller.IsControlledMulticlickMode)
@@ -742,7 +759,7 @@ namespace TTMulti
             // 60s keep-alive into the live game window and left a stale handle in the WindowWatcher poll list (CORR-06).
             if (_windowHandle != IntPtr.Zero)
             {
-                if (Properties.Settings.Default.enableCaptionColor)
+                if (Properties.Settings.Default.enableCaptionColor || Properties.Settings.Default.tintGameWindowsWithAccentColor)
                     Win32.SetWindowCaptionColor(_windowHandle, null);
                 WindowWatcher.Instance.StopWatchingWindow(_windowHandle);
                 _windowHandle = IntPtr.Zero;

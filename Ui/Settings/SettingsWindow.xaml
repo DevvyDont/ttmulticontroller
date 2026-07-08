@@ -721,22 +721,27 @@
                     <StackPanel x:Name="pageAppearance" Visibility="Collapsed">
                         <TextBlock Style="{StaticResource SectionHeader}" Text="Appearance" />
                         <TextBlock Style="{StaticResource SectionDesc}"
-                            Text="Colours for the game-window borders and where the current mode colour is shown, plus the controller window's size. Click a group to expand it." />
+                            Text="Colors for the game-window borders and where the current mode color is shown, plus the controller window's size. Click a group to expand it." />
 
-                        <!-- ══ Colours ══ mode/border colours plus the two independent 'tint with mode colour' toggles
-                             (kept separate so a user can enable one without the other). -->
+                        <!-- ══ Colors ══ mode/border colors plus the tint toggles: an independent controller-title-bar
+                             tint, and the two mutually-exclusive game-window caption tints (mode color vs PC accent color). -->
                         <ui:CardExpander IsExpanded="False">
                             <ui:CardExpander.Header>
                                 <StackPanel Margin="0,0,12,0">
-                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Colours" />
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Colors" />
                                     <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
                                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                        Text="Border colours for each mode, and where the current mode colour is applied." />
+                                        Text="Border colors for each mode, and where the current mode color is applied." />
                                 </StackPanel>
                             </ui:CardExpander.Header>
                             <StackPanel Margin="0,2,0,0">
-                                <CheckBox Margin="0,3" Content="Tint controller title bar with the current mode colour" IsChecked="{Binding tintControllerTitleBar, Mode=TwoWay}" />
-                                <CheckBox Margin="0,3" Content="Tint game windows with the current mode colour" IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Tint controller title bar with the current mode color" IsChecked="{Binding tintControllerTitleBar, Mode=TwoWay}" />
+                                <!-- The two game-window caption tints (mode color vs PC accent color) write the same title bar, so they
+                                     are mutually exclusive: the Checked handlers clear the other. Both may be off (no game-window tint). -->
+                                <CheckBox x:Name="tintGameModeCheck" Margin="0,3" Content="Tint game windows with the current mode color"
+                                    IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" Checked="TintGameModeCheck_Checked" />
+                                <CheckBox x:Name="tintGameAccentCheck" Margin="0,3" Content="Tint game windows with the PC accent color"
+                                    IsChecked="{Binding tintGameWindowsWithAccentColor, Mode=TwoWay}" Checked="TintGameAccentCheck_Checked" />
 
                                 <Separator Margin="0,12" />
 
@@ -774,9 +779,9 @@
                                 <Separator Margin="0,12" />
 
                                 <!-- Border colours -->
-                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Border colours" />
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Border colors" />
                                 <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
-                                    Text="The colour drawn around each game window in Multi and Mirror modes, so you can tell your left and right toons apart at a glance." />
+                                    Text="The color drawn around each game window in Multi and Mirror modes, so you can tell your left and right toons apart at a glance." />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -807,7 +812,7 @@
                                 <!-- Focused mode -->
                                 <TextBlock FontSize="13" FontWeight="SemiBold" Text="Focused mode" />
                                 <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
-                                    Text="Border colours used in Focused mode: the window you've focused versus the others." />
+                                    Text="Border colors used in Focused mode: the window you've focused versus the others." />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -830,7 +835,7 @@
                                 <!-- Switching mode -->
                                 <TextBlock FontSize="13" FontWeight="SemiBold" Text="Switching mode" />
                                 <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
-                                    Text="Border colours shown while rearranging windows in Switching Mode (configured under Window Management)." />
+                                    Text="Border colors shown while rearranging windows in Switching Mode (configured under Window Management)." />
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -1254,7 +1259,7 @@
                                                 <ColumnDefinition Width="110" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Style="{StaticResource RowLabel}" Text="Border colours" />
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Border colors" />
                                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                 <ctrl:ColorSwatch Width="70" VerticalAlignment="Center" ColorArgb="{Binding LeftColorArgb, Mode=TwoWay}" />
                                                 <TextBlock VerticalAlignment="Center" Margin="6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="left" />

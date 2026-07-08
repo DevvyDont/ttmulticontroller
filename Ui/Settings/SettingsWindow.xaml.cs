@@ -102,6 +102,21 @@ namespace TTMulti.Ui.Settings
                 _keyBindings.Remove(row);
         }
 
+        // ── Game-window caption tint: mode colour vs PC accent colour are mutually exclusive ──
+        // Both write the same title bar, so checking one clears the other (each checkbox is TwoWay-bound to its
+        // setting, which raises PropertyChanged, so unticking the sibling here updates its checkbox live). Both
+        // may be left unchecked. Only Checked is handled, so unticking a box never re-toggles the other.
+
+        private void TintGameModeCheck_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.tintGameWindowsWithAccentColor = false;
+        }
+
+        private void TintGameAccentCheck_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.enableCaptionColor = false;
+        }
+
         // ── Precise Click Mode: Hold / Toggle activation radios (code-driven, see constructor note) ──
 
         private bool _syncingActivateRadios;

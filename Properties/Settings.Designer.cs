@@ -107,6 +107,18 @@ namespace TTMulti.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool tintGameWindowsWithAccentColor {
+            get {
+                return ((bool)(this["tintGameWindowsWithAccentColor"]));
+            }
+            set {
+                this["tintGameWindowsWithAccentColor"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int compactUIToggleKeyCode {
             get {
