@@ -1143,34 +1143,39 @@ namespace TTMulti
             var flags = Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate;
             var toInvalidate = new HashSet<IntPtr>();
 
-            IntPtr hdwp = Win32.BeginDeferWindowPos(validOps.Count * 2);
-            if (hdwp != IntPtr.Zero)
+            // Rects were recorded under the per-monitor scope (physical pixels); apply them in the same space so
+            // mixed-DPI setups don't warp edge-column windows (see Win32.EnterPerMonitorDpiScope). WIN32-06.
+            using (Win32.EnterPerMonitorDpiScope())
             {
-                foreach (var op in validOps)
+                IntPtr hdwp = Win32.BeginDeferWindowPos(validOps.Count * 2);
+                if (hdwp != IntPtr.Zero)
                 {
-                    int w1 = op.Rect1.Right - op.Rect1.Left;
-                    int h1 = op.Rect1.Bottom - op.Rect1.Top;
-                    int w2 = op.Rect2.Right - op.Rect2.Left;
-                    int h2 = op.Rect2.Bottom - op.Rect2.Top;
-                    hdwp = Win32.DeferWindowPos(hdwp, op.Hwnd1, IntPtr.Zero, op.Rect2.Left, op.Rect2.Top, w2, h2, flags);
-                    hdwp = Win32.DeferWindowPos(hdwp, op.Hwnd2, IntPtr.Zero, op.Rect1.Left, op.Rect1.Top, w1, h1, flags);
-                    toInvalidate.Add(op.Hwnd1);
-                    toInvalidate.Add(op.Hwnd2);
+                    foreach (var op in validOps)
+                    {
+                        int w1 = op.Rect1.Right - op.Rect1.Left;
+                        int h1 = op.Rect1.Bottom - op.Rect1.Top;
+                        int w2 = op.Rect2.Right - op.Rect2.Left;
+                        int h2 = op.Rect2.Bottom - op.Rect2.Top;
+                        hdwp = Win32.DeferWindowPos(hdwp, op.Hwnd1, IntPtr.Zero, op.Rect2.Left, op.Rect2.Top, w2, h2, flags);
+                        hdwp = Win32.DeferWindowPos(hdwp, op.Hwnd2, IntPtr.Zero, op.Rect1.Left, op.Rect1.Top, w1, h1, flags);
+                        toInvalidate.Add(op.Hwnd1);
+                        toInvalidate.Add(op.Hwnd2);
+                    }
+                    Win32.EndDeferWindowPos(hdwp);
                 }
-                Win32.EndDeferWindowPos(hdwp);
-            }
-            else
-            {
-                foreach (var op in validOps)
+                else
                 {
-                    int w1 = op.Rect1.Right - op.Rect1.Left;
-                    int h1 = op.Rect1.Bottom - op.Rect1.Top;
-                    int w2 = op.Rect2.Right - op.Rect2.Left;
-                    int h2 = op.Rect2.Bottom - op.Rect2.Top;
-                    Win32.SetWindowPos(op.Hwnd1, IntPtr.Zero, op.Rect2.Left, op.Rect2.Top, w2, h2, flags);
-                    Win32.SetWindowPos(op.Hwnd2, IntPtr.Zero, op.Rect1.Left, op.Rect1.Top, w1, h1, flags);
-                    toInvalidate.Add(op.Hwnd1);
-                    toInvalidate.Add(op.Hwnd2);
+                    foreach (var op in validOps)
+                    {
+                        int w1 = op.Rect1.Right - op.Rect1.Left;
+                        int h1 = op.Rect1.Bottom - op.Rect1.Top;
+                        int w2 = op.Rect2.Right - op.Rect2.Left;
+                        int h2 = op.Rect2.Bottom - op.Rect2.Top;
+                        Win32.SetWindowPos(op.Hwnd1, IntPtr.Zero, op.Rect2.Left, op.Rect2.Top, w2, h2, flags);
+                        Win32.SetWindowPos(op.Hwnd2, IntPtr.Zero, op.Rect1.Left, op.Rect1.Top, w1, h1, flags);
+                        toInvalidate.Add(op.Hwnd1);
+                        toInvalidate.Add(op.Hwnd2);
+                    }
                 }
             }
 
@@ -1282,15 +1287,20 @@ namespace TTMulti
                 && Win32.GetWindowShowState(handle1) != Win32.ShowWindowCommands.ShowMinimized
                 && Win32.GetWindowShowState(handle2) != Win32.ShowWindowCommands.ShowMinimized)
             {
-                if (Win32.GetWindowRect(handle1, out Win32.RECT r1) && Win32.GetWindowRect(handle2, out Win32.RECT r2))
+                // Physical pixels, matching the space ApplyRecordedSwapScreenGeometry applies them in, so the
+                // round trip is exact on mixed-DPI setups (see Win32.EnterPerMonitorDpiScope). WIN32-06.
+                using (Win32.EnterPerMonitorDpiScope())
                 {
-                    _swapScreenGeometryOps.Add(new SwapScreenGeometryOp
+                    if (Win32.GetWindowRect(handle1, out Win32.RECT r1) && Win32.GetWindowRect(handle2, out Win32.RECT r2))
                     {
-                        Hwnd1 = handle1,
-                        Hwnd2 = handle2,
-                        Rect1 = r1,
-                        Rect2 = r2
-                    });
+                        _swapScreenGeometryOps.Add(new SwapScreenGeometryOp
+                        {
+                            Hwnd1 = handle1,
+                            Hwnd2 = handle2,
+                            Rect1 = r1,
+                            Rect2 = r2
+                        });
+                    }
                 }
             }
 
@@ -2556,60 +2566,90 @@ namespace TTMulti
                 ? controllers.OrderBy(c => c.GroupNumber).ThenBy(c => c.Type).ThenBy(c => c.PairNumber).ToList()
                 : controllers.OrderBy(c => c.GroupNumber).ThenBy(c => c.PairNumber).ThenBy(c => c.Type).ToList();
 
-            var slots = LayoutPresetBuilder.BuildSlots(preset);
-            int applyCount = Math.Min(slots.Count, ordered.Count);
-
-            // Build list of windows to place. If onlyControllers is set, only include those (e.g. just the 2 swapped windows).
             var toMove = new List<(ToontownController controller, SlotApplyInfo info)>();
             var toMinimizeAfter = new List<ToontownController>();
-            for (int i = 0; i < applyCount; i++)
+
+            // All coordinate work (monitor resolution in BuildSlots, frame measurement, placement, verification)
+            // runs on a per-monitor-DPI-aware thread so every rect is physical pixels end to end. Without this,
+            // rects whose invisible resize border pokes onto a differently-scaled monitor get warped by the OS's
+            // per-corner coordinate conversion (e.g. rightmost column heights x1.25 on a 100%+125% setup). WIN32-06.
+            using (Win32.EnterPerMonitorDpiScope())
             {
-                var controller = ordered[i];
-                if (onlyControllers != null && onlyControllers.Count > 0 && !onlyControllers.Contains(controller))
-                    continue;
-                var info = slots[i];
-                toMove.Add((controller, info));
-                if (info.Minimized)
-                    toMinimizeAfter.Add(controller);
+                var slots = LayoutPresetBuilder.BuildSlots(preset);
+                int applyCount = Math.Min(slots.Count, ordered.Count);
+
+                // Build list of windows to place. If onlyControllers is set, only include those (e.g. just the 2 swapped windows).
+                for (int i = 0; i < applyCount; i++)
+                {
+                    var controller = ordered[i];
+                    if (onlyControllers != null && onlyControllers.Count > 0 && !onlyControllers.Contains(controller))
+                        continue;
+                    var info = slots[i];
+                    toMove.Add((controller, info));
+                    if (info.Minimized)
+                        toMinimizeAfter.Add(controller);
+                }
+
+                if (toMove.Count > 0)
+                {
+                    // Unminimizing: restore first so we can position.
+                    foreach (var (controller, info) in toMove)
+                    {
+                        if (Win32.GetWindowShowState(controller.WindowHandle) == Win32.ShowWindowCommands.ShowMinimized)
+                            Win32.ShowWindow(controller.WindowHandle, Win32.ShowWindowCommands.Restore);
+                    }
+
+                    // Place all windows (position/size). Frame offsets are computed per window (WIN32-06).
+                    IntPtr hdwp = Win32.BeginDeferWindowPos(toMove.Count);
+                    if (hdwp != IntPtr.Zero)
+                    {
+                        foreach (var (controller, info) in toMove)
+                        {
+                            GetPlacementFrameOffsets(controller.WindowHandle, out int xOffset, out int wOverlap, out int hOverlap);
+                            hdwp = Win32.DeferWindowPos(hdwp, controller.WindowHandle, IntPtr.Zero,
+                                info.Rect.X - xOffset, info.Rect.Y, info.Rect.Width + wOverlap, info.Rect.Height + hOverlap,
+                                Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
+                            SetWindowLayoutAttributes(controller.WindowHandle);
+                        }
+                        Win32.EndDeferWindowPos(hdwp);
+                    }
+                    else
+                    {
+                        foreach (var (controller, info) in toMove)
+                        {
+                            GetPlacementFrameOffsets(controller.WindowHandle, out int xOffset, out int wOverlap, out int hOverlap);
+                            Win32.SetWindowPos(controller.WindowHandle, IntPtr.Zero,
+                                info.Rect.X - xOffset, info.Rect.Y, info.Rect.Width + wOverlap, info.Rect.Height + hOverlap,
+                                Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
+                            SetWindowLayoutAttributes(controller.WindowHandle);
+                        }
+                    }
+
+                    // Verification pass: a window whose DPI assignment changed during the move now reports a
+                    // different frame thickness (e.g. 8px on a 125% monitor -> 7px at 100%), and a per-monitor-aware
+                    // game may adjust itself after crossing monitors. Recompute the target from fresh offsets and
+                    // reapply any window that is off target; readback here is physical truth thanks to the scope.
+                    foreach (var (controller, info) in toMove)
+                    {
+                        GetPlacementFrameOffsets(controller.WindowHandle, out int xOffset, out int wOverlap, out int hOverlap);
+                        int x = info.Rect.X - xOffset;
+                        int y = info.Rect.Y;
+                        int w = info.Rect.Width + wOverlap;
+                        int h = info.Rect.Height + hOverlap;
+                        if (Win32.GetWindowRect(controller.WindowHandle, out Win32.RECT actual)
+                            && (actual.Left != x || actual.Top != y || actual.Right - actual.Left != w || actual.Bottom - actual.Top != h))
+                        {
+                            Win32.SetWindowPos(controller.WindowHandle, IntPtr.Zero, x, y, w, h,
+                                Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
+                        }
+                    }
+                }
             }
 
             if (toMove.Count == 0)
             {
                 System.Windows.Forms.Application.DoEvents();
                 return;
-            }
-
-            // Unminimizing: restore first so we can position.
-            foreach (var (controller, info) in toMove)
-            {
-                if (Win32.GetWindowShowState(controller.WindowHandle) == Win32.ShowWindowCommands.ShowMinimized)
-                    Win32.ShowWindow(controller.WindowHandle, Win32.ShowWindowCommands.Restore);
-            }
-
-            // Place all windows (position/size). Frame offsets are computed per window (WIN32-06).
-            IntPtr hdwp = Win32.BeginDeferWindowPos(toMove.Count);
-            if (hdwp != IntPtr.Zero)
-            {
-                foreach (var (controller, info) in toMove)
-                {
-                    GetPlacementFrameOffsets(controller.WindowHandle, out int xOffset, out int wOverlap, out int hOverlap);
-                    hdwp = Win32.DeferWindowPos(hdwp, controller.WindowHandle, IntPtr.Zero,
-                        info.Rect.X - xOffset, info.Rect.Y, info.Rect.Width + wOverlap, info.Rect.Height + hOverlap,
-                        Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
-                    SetWindowLayoutAttributes(controller.WindowHandle);
-                }
-                Win32.EndDeferWindowPos(hdwp);
-            }
-            else
-            {
-                foreach (var (controller, info) in toMove)
-                {
-                    GetPlacementFrameOffsets(controller.WindowHandle, out int xOffset, out int wOverlap, out int hOverlap);
-                    Win32.SetWindowPos(controller.WindowHandle, IntPtr.Zero,
-                        info.Rect.X - xOffset, info.Rect.Y, info.Rect.Width + wOverlap, info.Rect.Height + hOverlap,
-                        Win32.SetWindowPosFlags.ShowWindow | Win32.SetWindowPosFlags.DoNotActivate);
-                    SetWindowLayoutAttributes(controller.WindowHandle);
-                }
             }
 
             // Minimizing: do after placement so windows are positioned first, then minimized.

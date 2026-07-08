@@ -151,6 +151,57 @@ namespace TTMulti
                 => $"L={Left} T={Top} R={Right} B={Bottom}";
         }
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
+
+        private static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new IntPtr(-4);
+
+        /// <summary>
+        /// Temporarily switches the calling thread to Per-Monitor V2 DPI awareness so GetWindowRect/SetWindowPos/
+        /// monitor enumeration all use raw physical pixels; disposing restores the previous context.
+        ///
+        /// Why: this process is system-DPI aware, so on mixed-DPI setups the OS converts our coordinates
+        /// per-corner, each corner through the scale of the monitor that contains it. A rect whose bottom-right
+        /// pokes past a monitor boundary onto a differently-scaled monitor (the invisible DWM resize border of
+        /// an edge-column window always does) comes out warped, e.g. height x1.25 anchored at the monitor top,
+        /// growing per row. Placing from a per-monitor-aware thread bypasses the conversion entirely. (WIN32-06)
+        ///
+        /// No-op (placement falls back to current behavior) on Windows 10 before 1607 where per-thread DPI
+        /// contexts don't exist.
+        /// </summary>
+        public static IDisposable EnterPerMonitorDpiScope()
+        {
+            return new DpiAwarenessScope(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        }
+
+        private sealed class DpiAwarenessScope : IDisposable
+        {
+            private readonly IntPtr _previous;
+            private readonly bool _active;
+
+            internal DpiAwarenessScope(IntPtr context)
+            {
+                try
+                {
+                    _previous = SetThreadDpiAwarenessContext(context);
+                    _active = _previous != IntPtr.Zero;
+                }
+                catch (EntryPointNotFoundException)
+                {
+                    // Pre-1607 Windows 10: no per-thread DPI contexts.
+                }
+            }
+
+            public void Dispose()
+            {
+                if (_active)
+                {
+                    try { SetThreadDpiAwarenessContext(_previous); }
+                    catch (EntryPointNotFoundException) { }
+                }
+            }
+        }
+
         /// <summary>
         /// Gets the work area (usable desktop excluding taskbar) for the monitor at the given 0-based index.
         /// Returns the same coordinate space as GetWindowRect/SetWindowPos (DPI-virtualized when process is system-DPI aware).
