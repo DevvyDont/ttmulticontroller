@@ -1,6 +1,14 @@
-# Multicontroller v2.0.2
+# Multicontroller v2.0.3
 
-A ground-up rebuild and rebrand: a brand-new interface, sharper visuals, and a reworked input engine. Coming from 1.x this is a big jump, and your existing settings carry over automatically. Let me know if they don't or if you have issues.
+A small update on top of the 2.0 rebuild. Grab it in-app from About > Check for updates, or download the exe below; your settings carry over automatically.
+
+## New in 2.0.3
+- Game-window title bars can now be tinted with your Windows accent color, as an alternative to the current mode color (Settings > Appearance > Colors). The two title-bar tints are mutually exclusive, so pick whichever you prefer.
+- Interface wording now consistently spells it "color" (was "colour").
+
+---
+
+Everything from the 2.0 rebuild is still here:
 
 > Note: the initial 2.0.0 build failed to launch (the download was missing some bundled files); it is now a genuinely standalone single .exe.
 
