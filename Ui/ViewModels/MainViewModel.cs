@@ -55,6 +55,12 @@ namespace TTMulti.Ui.ViewModels
         /// <summary>Crosshair tile side: smaller in the compact layout.</summary>
         public double CrosshairTileSize => Properties.Settings.Default.compactUI ? 44 : 54;
 
+        // Warning-chip labels. The compact window is too narrow to fit both chips at full width, so it uses short
+        // forms ("GH Off" / "ML"); the normal window has room for the full text. Re-read each Refresh (compact
+        // can change while running via the toggle key / Options).
+        public string SuspendedChipText => Properties.Settings.Default.compactUI ? "GH Off" : "Hotkeys suspended";
+        public string ModeLockChipText => Properties.Settings.Default.compactUI ? "ML" : "Mode locked";
+
         private bool _isModeLocked;
         public bool IsModeLocked
         {
@@ -187,6 +193,8 @@ namespace TTMulti.Ui.ViewModels
             OnPropertyChanged(nameof(IsCompact));
             OnPropertyChanged(nameof(IsNotCompact));
             OnPropertyChanged(nameof(CrosshairTileSize));
+            OnPropertyChanged(nameof(SuspendedChipText));
+            OnPropertyChanged(nameof(ModeLockChipText));
 
             LeftAccentBrush = ToBrush(AccentColorFor(ControllerType.Left));
             RightAccentBrush = ToBrush(AccentColorFor(ControllerType.Right));

@@ -238,6 +238,12 @@ namespace TTMulti.Ui
         private const double CompactWindowWidth = 180;
         private const double CompactWindowHeight = 96;
 
+        // The state-chip row ("Hotkeys suspended" / "Mode locked") is only present when a warning is active, so
+        // its height isn't baked into the base layout box above. When a chip IS shown, grow the locked window
+        // height by this much (unscaled px) so the chip fits instead of being clipped off the fixed-size window
+        // (both compact and normal share the one chip row, so the extra height is the same for each).
+        private const double ChipRowExtraHeight = 24;
+
         // The controllerUIScaleIndex setting (Options → Appearance → Size) picks one of these whole-window scales.
         private static readonly double[] UiScales = { 0.5, 0.75, 1.0, 1.25, 1.5 };
 
@@ -268,7 +274,12 @@ namespace TTMulti.Ui
             MaxWidth = w;
             Width = w;
 
-            double h = (compact ? CompactWindowHeight : DefaultWindowHeight) * scale;
+            // Reserve room for the state-chip row only while a warning chip is actually showing, so the snug
+            // no-warning layout is unchanged but the chip isn't clipped when hotkeys are suspended / mode is locked.
+            bool chipRowVisible = (_inputHost != null && _inputHost.IsGlobalHotkeysSuspended)
+                                  || (_controller != null && _controller.IsModeLockEngaged);
+            double baseH = (compact ? CompactWindowHeight : DefaultWindowHeight) + (chipRowVisible ? ChipRowExtraHeight : 0);
+            double h = baseH * scale;
             MinHeight = h;
             MaxHeight = h;
             Height = h;
@@ -307,6 +318,18 @@ namespace TTMulti.Ui
 
             _viewModel = new MainViewModel(_controller, Dispatcher);
             DataContext = _viewModel;
+
+            // Grow / shrink the fixed-size window whenever a warning chip ("Hotkeys suspended" / "Mode locked")
+            // appears or disappears, so a shown chip is never clipped — regardless of which chip toggles, in what
+            // order, or through which toggle path. Both chips render off exactly these two VM properties, so
+            // reacting to them here is the single source of truth for the extra chip-row height (the mode-lock
+            // key can toggle via the controller-focused meta path, which never raises ModeLockToggled).
+            _viewModel.PropertyChanged += (s, a) =>
+            {
+                if (a.PropertyName == nameof(MainViewModel.IsSuspended)
+                    || a.PropertyName == nameof(MainViewModel.IsModeLocked))
+                    ApplyModeHeight();
+            };
 
             leftCrosshair.WindowSelected += (s, handle) => _viewModel.AssignLeftWindow(handle);
             rightCrosshair.WindowSelected += (s, handle) => _viewModel.AssignRightWindow(handle);
