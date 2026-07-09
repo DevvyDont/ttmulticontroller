@@ -898,6 +898,18 @@ namespace TTMulti.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int switchingModeDormantKeyCode {
+            get {
+                return ((int)(this["switchingModeDormantKeyCode"]));
+            }
+            set {
+                this["switchingModeDormantKeyCode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool switchingModeEnabled {
             get {
@@ -1025,6 +1037,18 @@ namespace TTMulti.Properties {
             }
             set {
                 this["switchingRemovedColor"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-9404272")]
+        public int switchingDormantColor {
+            get {
+                return ((int)(this["switchingDormantColor"]));
+            }
+            set {
+                this["switchingDormantColor"] = value;
             }
         }
 

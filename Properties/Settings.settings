@@ -211,6 +211,9 @@
     <Setting Name="switchingModeRemoveKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">88</Value>
     </Setting>
+    <Setting Name="switchingModeDormantKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
     <Setting Name="switchingModeKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">18</Value>
     </Setting>
@@ -243,6 +246,9 @@
     </Setting>
     <Setting Name="switchingRemovedColor" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">-9868951</Value>
+    </Setting>
+    <Setting Name="switchingDormantColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-9404272</Value>
     </Setting>
     <Setting Name="focusedModeFocusedColor" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">-8662817</Value>

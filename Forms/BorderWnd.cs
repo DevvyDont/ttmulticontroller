@@ -259,6 +259,7 @@ namespace TTMulti.Forms
         private bool _switchingSelected = false;
         private bool _switchingSwitched = false;
         private bool _switchingMarkedForRemoval = false;
+        private bool _isDormant = false;
 
         /// <summary>
         /// Whether switching mode is active
@@ -335,6 +336,24 @@ namespace TTMulti.Forms
                 if (_switchingMarkedForRemoval != value)
                 {
                     _switchingMarkedForRemoval = value;
+                    Redraw();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Whether this window is set Dormant (not receiving forwarded input). Persistent — kept in sync
+        /// with the controller by ToontownController.Refresh, not just during switching mode — so the moon marker
+        /// below can render in every mode.
+        /// </summary>
+        internal bool IsDormant
+        {
+            get => _isDormant;
+            set
+            {
+                if (_isDormant != value)
+                {
+                    _isDormant = value;
                     Redraw();
                 }
             }
@@ -460,11 +479,13 @@ namespace TTMulti.Forms
             Color borderColor = BorderColor;
             if (SwitchingMode)
             {
-                // Priority: Selected (Yellow) > Marked for Removal (Black) > Switched (Orange) > Normal (Red)
+                // Priority: Selected (Yellow) > Marked for Removal (Black) > Dormant > Switched (Orange) > Normal (Red)
                 if (SwitchingSelected)
                     borderColor = Colors.SwitchingSelected;
                 else if (SwitchingMarkedForRemoval)
                     borderColor = Colors.SwitchingMarkedForRemoval;
+                else if (IsDormant)
+                    borderColor = Colors.SwitchingDormant;
                 else if (SwitchingSwitched)
                     borderColor = Colors.SwitchingSwitched;
                 else
@@ -501,6 +522,7 @@ namespace TTMulti.Forms
                 float emSize = clientRect.Height / 1.3f;
                 Color numberColor = SwitchingSelected ? Colors.SwitchingSelected
                     : SwitchingMarkedForRemoval ? Colors.SwitchingMarkedForRemoval
+                    : IsDormant ? Colors.SwitchingDormant
                     : SwitchingSwitched ? Colors.SwitchingSwitched
                     : Colors.SwitchingMode;
                 using (var text = new System.Drawing.Drawing2D.GraphicsPath())
@@ -516,10 +538,41 @@ namespace TTMulti.Forms
                 }
             }
 
+            // A window set Dormant shows a crescent-moon marker in the top-left corner — where its group number
+            // would be — in every mode, so you can tell at a glance which windows are asleep. The crescent is a disc
+            // with an offset disc excluded from it; a dark drop shadow keeps it legible on any game background.
+            if (IsDormant && clientRect.Height > 4)
+            {
+                float size = Math.Max(14f, Math.Min(clientRect.Height / 6f, 40f));
+                float left = BorderWidth + 6;
+                // Nudge the moon down about a marker-height below the top edge so it doesn't blend into the game's
+                // top-left HUD element (which sits right in the corner).
+                float top = BorderWidth + 6 + size * 1.2f;
+                RectangleF disc = new RectangleF(left, top, size, size);
+                RectangleF carve = new RectangleF(left + size * 0.42f, top - size * 0.24f, size, size);
+                using (var discPath = new System.Drawing.Drawing2D.GraphicsPath())
+                using (var carvePath = new System.Drawing.Drawing2D.GraphicsPath())
+                using (var moonBrush = new SolidBrush(Colors.SwitchingDormant))
+                using (var shadow = new SolidBrush(Color.FromArgb(170, 0, 0, 0)))
+                {
+                    discPath.AddEllipse(disc);
+                    carvePath.AddEllipse(carve);
+                    using (var crescent = new Region(discPath))
+                    {
+                        crescent.Exclude(carvePath);
+                        var state = g.Save();
+                        g.TranslateTransform(1.5f, 1.5f);
+                        g.FillRegion(shadow, crescent);
+                        g.Restore(state);
+                        g.FillRegion(moonBrush, crescent);
+                    }
+                }
+            }
+
             // Group number in the top-left corner, when the number-visibility feature asks for it and we are not
-            // showing the large Switching Mode number. Filled glyph path with a dark shadow so it stays legible on
-            // any game background.
-            if (ShowGroupNumber && !SwitchingMode && clientRect.Height > 4)
+            // showing the large Switching Mode number (or the moon marker above). Filled glyph path with a dark
+            // shadow so it stays legible on any game background.
+            if (ShowGroupNumber && !SwitchingMode && !IsDormant && clientRect.Height > 4)
             {
                 float emSize = Math.Max(14f, Math.Min(clientRect.Height / 6f, 40f));
                 int pad = BorderWidth + 6;

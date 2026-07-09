@@ -17,5 +17,7 @@ namespace TTMulti
         public static Color SwitchingSelected => Color.FromArgb(Properties.Settings.Default.switchingSelectedColor);
         public static Color SwitchingSwitched => Color.FromArgb(Properties.Settings.Default.switchingSwitchedColor);
         public static Color SwitchingMarkedForRemoval => Color.FromArgb(Properties.Settings.Default.switchingRemovedColor);
+        // Border/moon tint for a window the user has set Dormant (kept alive but not receiving forwarded input).
+        public static Color SwitchingDormant => Color.FromArgb(Properties.Settings.Default.switchingDormantColor);
     }
 }

@@ -194,11 +194,15 @@ namespace TTMulti
         }
 
         /// <summary>
-        /// Returns only controllers that have a window and are not minimized (so input can be sent to them).
+        /// Returns only controllers we can actually forward input to right now: they have a window, aren't minimized,
+        /// and aren't set Dormant. Every forwarding path (mirror/multi/group/focused/custom key routing, multiclick,
+        /// zero-power-throw) funnels through here, so excluding dormant windows in this one place is what makes a
+        /// dormant window ignore all input while its own keep-alive timer keeps its toon logged in.
         /// </summary>
-        private static IEnumerable<ToontownController> WhereNotMinimized(IEnumerable<ToontownController> controllers)
+        private static IEnumerable<ToontownController> WhereInputEligible(IEnumerable<ToontownController> controllers)
         {
-            return controllers.Where(c => c.HasWindow && Win32.GetWindowShowState(c.WindowHandle) != Win32.ShowWindowCommands.ShowMinimized);
+            return controllers.Where(c => c.HasWindow && !c.IsDormant
+                && Win32.GetWindowShowState(c.WindowHandle) != Win32.ShowWindowCommands.ShowMinimized);
         }
 
 
@@ -223,7 +227,7 @@ namespace TTMulti
             bool foundCursorWindow = false;
 
             ControllerType? cursorSide = null;
-            foreach (ToontownController c in WhereNotMinimized(AllControllersWithWindows))
+            foreach (ToontownController c in WhereInputEligible(AllControllersWithWindows))
             {
                 Point clientAreaLocation = Win32.GetWindowClientAreaLocation(c.WindowHandle);
                 if (ClickForwarding.ClientAreaContainsPoint(clientAreaLocation, c.WindowSize, cursorPos))
@@ -257,7 +261,7 @@ namespace TTMulti
                     CurrentMode = MulticontrollerMode.MirrorAll;
             }
 
-            IEnumerable<ToontownController> toClick = WhereNotMinimized(ActiveControllers);
+            IEnumerable<ToontownController> toClick = WhereInputEligible(ActiveControllers);
             // separateLR: distinct L/R slots (not Mirror). Never applied in Custom mode.
             bool isMultiMode = CurrentMode == MulticontrollerMode.Group
                             || CurrentMode == MulticontrollerMode.AllGroup
@@ -287,7 +291,7 @@ namespace TTMulti
         {
             Point cursorPos = Win32.GetCursorPosition();
 
-            foreach (ToontownController c in WhereNotMinimized(AllControllersWithWindows))
+            foreach (ToontownController c in WhereInputEligible(AllControllersWithWindows))
             {
                 Point clientAreaLocation = Win32.GetWindowClientAreaLocation(c.WindowHandle);
                 if (ClickForwarding.ClientAreaContainsPoint(clientAreaLocation, c.WindowSize, cursorPos))
@@ -790,7 +794,7 @@ namespace TTMulti
         /// </summary>
         internal List<ToontownController> GetControllersInCustomModeOrder()
         {
-            IEnumerable<ToontownController> src = WhereNotMinimized(AllControllersWithWindows);
+            IEnumerable<ToontownController> src = WhereInputEligible(AllControllersWithWindows);
             if (Properties.Settings.Default.multiclickOrder == 1)
             {
                 src = src.OrderBy(c => Win32.GetWindowClientAreaLocation(c.WindowHandle).Y)
@@ -1041,10 +1045,12 @@ namespace TTMulti
                     bool isSwitched = _switchedControllers.Contains(controller) && !isSelected;
                     // Marked for removal windows are Black
                     bool isMarkedForRemoval = _markedForRemoval.Contains(controller);
-                    
+
                     borderWnd.SwitchingSelected = isSelected;
                     borderWnd.SwitchingSwitched = isSwitched;
                     borderWnd.SwitchingMarkedForRemoval = isMarkedForRemoval;
+                    // The persistent dormant mark (border tint + moon marker) is synced from the controller in
+                    // ToontownController.Refresh, so it needs no per-tick update here.
                 }
             }
             
@@ -1090,6 +1096,8 @@ namespace TTMulti
                     borderWnd.SwitchingSelected = false;
                     borderWnd.SwitchingSwitched = false;
                     borderWnd.SwitchingMarkedForRemoval = false;
+                    // The dormant mark (border.IsDormant) intentionally persists past switching mode; it's re-synced
+                    // from the controller by the Refresh that the SettingChanged below triggers.
                 }
             }
 
@@ -1304,10 +1312,18 @@ namespace TTMulti
                 }
             }
 
+            // The dormant mark follows its window, so capture it before the swap and re-apply it to whichever slot
+            // the window lands in (assigning WindowHandle clears the slot's mark, so this must run after the swap).
+            bool dormant1 = controller1.IsDormant;
+            bool dormant2 = controller2.IsDormant;
+
             // Only swap window handle assignments (group/pair assignments)
             // Don't move or resize windows here; optional screen exchange runs on Alt release
             controller1.WindowHandle = handle2;
             controller2.WindowHandle = handle1;
+
+            controller1.IsDormant = dormant2;
+            controller2.IsDormant = dormant1;
 
             // Show switched (blue) during switching mode; color clears to normal when Alt is released
             _switchedControllers.Add(controller1);
@@ -1653,6 +1669,25 @@ namespace TTMulti
                     return true;
                 }
             }
+            else if (_switchingMode
+                && (Keys)Properties.Settings.Default.switchingModeDormantKeyCode != Keys.None
+                && keysPressed == (Keys)Properties.Settings.Default.switchingModeDormantKeyCode)
+            {
+                // Handle the "Set-dormant" key in switching mode - toggle the dormant mark on the controller under the
+                // cursor. Unlike removal (applied on exit) this is a persistent per-window flag: the window stays
+                // connected and keep-alive'd but the routing skips it (WhereInputEligible), so the user can park some
+                // accounts alive while playing others in mirror/multi mode.
+                if (msg == Win32.WM.KEYDOWN || msg == Win32.WM.SYSKEYDOWN)
+                {
+                    var controllerUnderCursor = GetControllerUnderCursor();
+                    if (controllerUnderCursor != null && controllerUnderCursor.HasWindow)
+                    {
+                        controllerUnderCursor.IsDormant = !controllerUnderCursor.IsDormant;
+                        UpdateSwitchingModeDisplay();
+                    }
+                    return true;
+                }
+            }
             else if (_switchingMode && keysPressed == (Keys)Properties.Settings.Default.switchingModeSwitchKeyCode)
             {
                 // Handle switch/select key in switching mode
@@ -1864,7 +1899,7 @@ namespace TTMulti
                         if (IsActive)
                         {
                             // Multicontroller is active: Send to all active controllers (skip minimized)
-                            IEnumerable<ToontownController> affectedControllers = WhereNotMinimized(ActiveControllers);
+                            IEnumerable<ToontownController> affectedControllers = WhereInputEligible(ActiveControllers);
                             
                             // Send instant tap of the throw key to all active controllers
                             affectedControllers.ToList().ForEach(c => PostZeroPowerThrow(c, throwBinding));
@@ -1874,7 +1909,7 @@ namespace TTMulti
                             // Not active + "no activate": fire the throw at every window without stealing focus
                             // back to the multicontroller or changing the mode. Lets you throw to all windows while
                             // you stay focused on (and keep playing) one of them, or from any other app.
-                            foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
+                            foreach (var controller in WhereInputEligible(AllControllersWithWindows))
                                 PostZeroPowerThrow(controller, throwBinding);
                         }
                         else
@@ -1895,7 +1930,7 @@ namespace TTMulti
                                     _focusedController = focusedController;
                                     
                                     // Send throw to all windows (as per normal behavior); skip minimized
-                                    foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
+                                    foreach (var controller in WhereInputEligible(AllControllersWithWindows))
                                         PostZeroPowerThrow(controller, throwBinding);
                                 }
                                 else
@@ -1905,7 +1940,7 @@ namespace TTMulti
                                     CurrentMode = MulticontrollerMode.MirrorAll;
                                     _focusedController = null;
 
-                                    foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
+                                    foreach (var controller in WhereInputEligible(AllControllersWithWindows))
                                         PostZeroPowerThrow(controller, throwBinding);
                                 }
                             }
@@ -1916,7 +1951,7 @@ namespace TTMulti
                                 CurrentMode = MulticontrollerMode.MirrorAll;
                                 _focusedController = null;
 
-                                foreach (var controller in WhereNotMinimized(AllControllersWithWindows))
+                                foreach (var controller in WhereInputEligible(AllControllersWithWindows))
                                     PostZeroPowerThrow(controller, throwBinding);
                             }
                         }
@@ -2098,9 +2133,9 @@ namespace TTMulti
                     }
                 }
 
-                // Materialize once: WhereNotMinimized runs a GetWindowPlacement per controller, and the branches
+                // Materialize once: WhereInputEligible runs a GetWindowPlacement per controller, and the branches
                 // below (and the per-key loop) would otherwise re-run it for every mapped key (PERF-10).
-                var affectedList = WhereNotMinimized(affectedControllers).ToList();
+                var affectedList = WhereInputEligible(affectedControllers).ToList();
 
                 // Record exactly what we post so the matching KEYUP releases the same (controller, key) pairs.
                 var forwarded = new List<(ToontownController, Keys)>();
@@ -2172,7 +2207,7 @@ namespace TTMulti
             // Manually driving one game window (you clicked into it): release every held key on the OTHER windows
             // so only the focused window keeps moving. Precise (each window's actual held keys), not just movement.
             if (Properties.Settings.Default.releaseKeysOnWindowFocus && sender is ToontownController focused)
-                ReleaseHeldKeysOn(WhereNotMinimized(AllControllersWithWindows).Where(c => c != focused));
+                ReleaseHeldKeysOn(WhereInputEligible(AllControllersWithWindows).Where(c => c != focused));
             WindowActivated?.Invoke(this, EventArgs.Empty);
         }
 
@@ -2199,7 +2234,7 @@ namespace TTMulti
         private void TryReleaseKeysOnInactiveControllers()
         {
             if (!Properties.Settings.Default.releaseKeysOnWindowFocus) return;
-            var inactive = WhereNotMinimized(AllControllersWithWindows).Except(ActiveControllers);
+            var inactive = WhereInputEligible(AllControllersWithWindows).Except(ActiveControllers);
             ReleaseHeldKeysOn(inactive);
         }
 

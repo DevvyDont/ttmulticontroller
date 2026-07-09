@@ -86,6 +86,11 @@ namespace TTMulti
                         WindowWatcher.Instance.StopWatchingWindow(_windowHandle);
                     }
                     
+                    // The dormant mark belongs to the window in the slot, so any handle change drops it: a slot that
+                    // loses its window, or gets a different one, must not carry a stale dormant state.
+                    // (A switching-mode swap moves the mark with the window by re-applying it in SwitchWindows.)
+                    _isDormant = false;
+
                     _windowHandle = value;
                     _captionColorApplied = false; // new window: force caption color re-apply (PERF-05 guard)
 
@@ -113,6 +118,28 @@ namespace TTMulti
         }
 
         public bool HasWindow => WindowHandle != IntPtr.Zero;
+
+        private bool _isDormant = false;
+        /// <summary>
+        /// The "Dormant" state: the window stays connected and keeps receiving keep-alive taps (so its toon won't be
+        /// logged out for idling), but the Multicontroller sends it no forwarded input — mirror/multi/group/focused/
+        /// custom keys and multiclicks all skip it (see Multicontroller.WhereInputEligible). This lets the user park
+        /// some accounts alive while actively playing others. "Dormant" is deliberately distinct from the existing
+        /// "active controller" routing concept (IsActive / IsActiveController), which means something else entirely.
+        /// Persists across switching-mode toggles; cleared only when the window is dropped from the controller.
+        /// </summary>
+        public bool IsDormant
+        {
+            get => _isDormant;
+            set
+            {
+                if (_isDormant != value)
+                {
+                    _isDormant = value;
+                    Refresh();
+                }
+            }
+        }
 
         public Size WindowSize { get; private set; }
 
@@ -418,15 +445,21 @@ namespace TTMulti
         {
             if (_borderWnd.SwitchingMode)
             {
-                // Priority: Selected > Marked for Removal > Switched > Normal.
+                // Priority: Selected > Marked for Removal > Dormant > Switched > Normal.
                 if (_borderWnd.SwitchingSelected) return Colors.SwitchingSelected;
                 if (_borderWnd.SwitchingMarkedForRemoval) return Colors.SwitchingMarkedForRemoval;
+                if (IsDormant) return Colors.SwitchingDormant;
                 if (_borderWnd.SwitchingSwitched) return Colors.SwitchingSwitched;
                 return Colors.SwitchingMode;
             }
 
             // Normal (non-switching) mode: honour the group-number visibility setting / mode restrictions.
             _borderWnd.ShowGroupNumber = multicontroller.ShouldShowGroupNumber();
+
+            // A window the user set Dormant wears the dormant tint persistently (not only in switching mode) so it's
+            // obvious at a glance which windows are parked and won't receive forwarded input.
+            if (IsDormant)
+                return Colors.SwitchingDormant;
 
             if (!multicontroller.IsActive)
                 return _borderWnd.BorderColor; // keep current
@@ -488,6 +521,10 @@ namespace TTMulti
         /// </summary>
         internal void Refresh()
         {
+            // Keep the overlay's dormant flag in sync with this controller so the moon marker (drawn by BorderWnd)
+            // and the switching-mode dormant tint reflect the current dormant state in every mode.
+            _borderWnd.IsDormant = IsDormant;
+
             bool isActiveController = multicontroller.IsActiveController(this);
 
             bool showBorderWindow = HasWindow && (
@@ -500,7 +537,11 @@ namespace TTMulti
             bool showNumberOnly = HasWindow && !showBorderWindow
                 && Properties.Settings.Default.alwaysShowGroupNumber
                 && multicontroller.ShouldShowGroupNumber();
-            bool showOverlay = showBorderWindow || showNumberOnly;
+
+            // A window marked Dormant always shows its moon marker while the multicontroller is active, even in a
+            // mode/group that wouldn't otherwise border it — so you can see at a glance which windows are asleep.
+            bool showMoonOnly = HasWindow && !showBorderWindow && IsDormant && multicontroller.IsActive;
+            bool showOverlay = showBorderWindow || showNumberOnly || showMoonOnly;
 
             // The coloured border is drawn only when actively controlled; the number-only overlay leaves it off.
             _borderWnd.DrawBorder = showBorderWindow;

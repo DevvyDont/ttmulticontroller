@@ -395,6 +395,15 @@
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Remove-from-switch key" />
                                     <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding switchingModeRemoveKeyCode, Mode=TwoWay}" />
                                 </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Set-dormant key"
+                                        ToolTip="While in switching mode, press this over a window to toggle it Dormant. A Dormant window stays connected but no longer receives multi/mirror input. Press again to reactivate it." />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding switchingModeDormantKeyCode, Mode=TwoWay}" />
+                                </Grid>
                                 <CheckBox Margin="0,3" Content="Place windows when the switching-mode key is released" IsChecked="{Binding autoFindPlacementOnAltRelease, Mode=TwoWay}" />
                             </StackPanel>
                         </ui:CardExpander>
@@ -867,6 +876,14 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource RowLabel}" Text="Marked for removal" />
                                     <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingRemovedColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Dormant window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingDormantColor, Mode=TwoWay}" />
                                 </Grid>
                             </StackPanel>
                         </ui:CardExpander>
