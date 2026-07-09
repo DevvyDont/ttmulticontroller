@@ -41,6 +41,16 @@ namespace TTMulti
         /// <summary>Keys currently posted DOWN (not yet UP) to the game window, so they can be released on demand.</summary>
         readonly HashSet<Keys> _heldKeys = new HashSet<Keys>();
 
+        /// <summary>How long a window must go without receiving any input before we send it a keep-alive wake-up.</summary>
+        const long KeepAliveIntervalMs = 60000;
+
+        /// <summary>
+        /// DateTime.UtcNow.Ticks of the last input we successfully posted to this window. Read/written from both the
+        /// UI thread (forwarded input) and a ThreadPool thread (the keep-alive tick), so accessed via Interlocked.
+        /// The keep-alive tick uses this to skip windows that are already being actively driven.
+        /// </summary>
+        long _lastInputTicks;
+
         IntPtr _windowHandle;
 
         /// <summary>
@@ -212,7 +222,7 @@ namespace TTMulti
         System.Timers.Timer keepAliveTimer = new System.Timers.Timer()
         {
             AutoReset = false,
-            Interval = 60000
+            Interval = KeepAliveIntervalMs
         };
 
         // Timer to periodically validate window handles and detect ghost windows
@@ -276,19 +286,34 @@ namespace TTMulti
 
         private void KeepAliveTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (!Properties.Settings.Default.disableKeepAlive
-                && Properties.Settings.Default.keepAliveKeyCode != (int)Keys.None
-                && HasWindow)
+            if (Properties.Settings.Default.disableKeepAlive
+                || Properties.Settings.Default.keepAliveKeyCode == (int)Keys.None
+                || !HasWindow)
             {
-                // Well-formed key lParams: a zero lParam clears the key-up transition bit and is misread as a
-                // keypress by in-game chat (see Multicontroller.ReleaseMovementKeysOnControllers) — WIN32-03.
-                Keys keepAliveKey = (Keys)Properties.Settings.Default.keepAliveKeyCode;
-                PostMessage(Win32.WM.KEYDOWN, (IntPtr)keepAliveKey, Win32.MakePostedKeyLParam(keepAliveKey, false));
-                Thread.Sleep(50);
-                PostMessage(Win32.WM.KEYUP, (IntPtr)keepAliveKey, Win32.MakePostedKeyLParam(keepAliveKey, true));
-
-                keepAliveTimer.Start();
+                return;
             }
+
+            // Only wake a window that has actually gone idle. Windows we're currently driving (forwarded movement /
+            // chat) already reset the game's idle clock through PostMessage, so a keep-alive there is redundant and can
+            // interfere with input. If input arrived within the interval, reschedule for just the remaining time rather
+            // than posting — the timer is per-controller, so this decision is naturally tracked per window.
+            long idleMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastInputTicks)) / TimeSpan.TicksPerMillisecond;
+            if (idleMs < KeepAliveIntervalMs)
+            {
+                keepAliveTimer.Interval = Math.Max(1L, KeepAliveIntervalMs - idleMs);
+                keepAliveTimer.Start();
+                return;
+            }
+
+            // Well-formed key lParams: a zero lParam clears the key-up transition bit and is misread as a
+            // keypress by in-game chat (see Multicontroller.ReleaseMovementKeysOnControllers) — WIN32-03.
+            Keys keepAliveKey = (Keys)Properties.Settings.Default.keepAliveKeyCode;
+            PostMessage(Win32.WM.KEYDOWN, (IntPtr)keepAliveKey, Win32.MakePostedKeyLParam(keepAliveKey, false));
+            Thread.Sleep(50);
+            PostMessage(Win32.WM.KEYUP, (IntPtr)keepAliveKey, Win32.MakePostedKeyLParam(keepAliveKey, true));
+
+            keepAliveTimer.Interval = KeepAliveIntervalMs;
+            keepAliveTimer.Start();
         }
 
         private void WindowValidationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -565,6 +590,11 @@ namespace TTMulti
             }
             else if (!Properties.Settings.Default.disableKeepAlive && HasWindow && !keepAliveTimer.Enabled)
             {
+                // Reset the idle baseline and restore the full interval so a freshly (re)attached window waits a whole
+                // interval before its first keep-alive, rather than firing immediately on a reduced interval left over
+                // from a prior reschedule.
+                Interlocked.Exchange(ref _lastInputTicks, DateTime.UtcNow.Ticks);
+                keepAliveTimer.Interval = KeepAliveIntervalMs;
                 keepAliveTimer.Start();
             }
 
@@ -708,6 +738,8 @@ namespace TTMulti
                 }
                 else
                 {
+                    // Record that this window just received input so the keep-alive tick can skip it while it's active.
+                    Interlocked.Exchange(ref _lastInputTicks, DateTime.UtcNow.Ticks);
                     TrackHeldKey(msg, wParam);
                 }
             }
