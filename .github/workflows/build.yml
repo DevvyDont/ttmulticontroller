@@ -1,0 +1,43 @@
+name: build
+
+on:
+  push:
+    branches: [ master, update/new-version ]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & publish (Release, win-x64 single-file)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore TTMulti.csproj
+
+      - name: Build
+        run: dotnet build TTMulti.csproj -c Release --no-restore /v:m /nologo
+
+      - name: Test
+        run: dotnet test tests/TTMulti.Tests/TTMulti.Tests.csproj -c Release /v:m /nologo
+
+      # Smoke-publish the portable single-file exe so any single-file/self-contained regression
+      # (trimming, RID, resource loading) is caught on every push/PR, not only at release time.
+      - name: Publish single-file
+        run: dotnet publish TTMulti.csproj -p:PublishProfile=win-x64 /v:m /nologo
+
+      - name: Upload single-file exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: Multicontroller-win-x64
+          path: bin/Release/win-x64/publish/Multicontroller.exe
+          if-no-files-found: error

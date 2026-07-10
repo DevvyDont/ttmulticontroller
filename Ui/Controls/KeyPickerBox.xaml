@@ -1,0 +1,15 @@
+<UserControl
+    x:Class="TTMulti.Ui.Controls.KeyPickerBox"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <ui:Button
+        x:Name="pickerButton"
+        MinWidth="104"
+        HorizontalAlignment="Stretch"
+        HorizontalContentAlignment="Center"
+        Click="PickerButton_Click"
+        PreviewMouseLeftButtonDown="PickerButton_PreviewMouseLeftButtonDown"
+        Content="Disabled"
+        ToolTip="Click, then press any key to bind it. Click again to cancel. Double-click to clear." />
+</UserControl>

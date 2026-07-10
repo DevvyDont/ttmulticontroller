@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Embedded as the native Win32 manifest by the SDK-style build (via <ApplicationManifest> in TTMulti.csproj).
+     Declares system-DPI awareness, supportedOS, and longPathAware. Per-Monitor V2 is staged below but not enabled
+     (still gated on mixed-DPI testing — BUILD-03 / WIN32-06). -->
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="Multicontroller.app" />
+
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <!-- Runs at the caller's privilege level; the app self-relaunches elevated only when needed. -->
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Declare support through Windows 10/11 so Environment.OSVersion reports the true version. -->
+      <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}" /><!-- Windows 7 -->
+      <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}" /><!-- Windows 8 -->
+      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}" /><!-- Windows 8.1 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" /><!-- Windows 10 and 11 -->
+    </application>
+  </compatibility>
+
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <!-- Current behavior: system-DPI aware, declared in the manifest so the process is DPI-aware BEFORE the
+           first window is created. Program.cs also calls Application.SetHighDpiMode(SystemAware) as a runtime
+           fallback for the case where this manifest is not embedded; when the manifest wins the race (the normal
+           case) that call is a no-op. -->
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
+
+      <!-- STAGED: Per-Monitor V2 (BUILD-03 / WIN32-06). DO NOT enable without validating on a mixed-DPI
+           dual-monitor setup AND a scaled (125/150%) single-monitor setup — flipping this stops Windows from
+           virtualizing coordinates everywhere and can misalign the overlays / break WinForms dialog layout on
+           .NET Framework 4.8. To enable:
+             1) replace the <dpiAware>true</dpiAware> line above with:
+                  <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/PM</dpiAware>
+                  <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2,PerMonitor</dpiAwareness>
+             2) enable the WinForms DpiAwareness section in app.config (see the comment there),
+             3) change the Application.SetHighDpiMode(SystemAware) call in Program.cs to PerMonitorV2,
+             4) audit the overlay/click coordinate math (ToontownController overlay positioning, Multicontroller
+                click lParam mapping) for per-monitor DPI. The frame-offset math already uses GetFrameThickness,
+                which becomes DPI-correct automatically under Per-Monitor V2. -->
+
+      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+    </windowsSettings>
+  </application>
+</assembly>

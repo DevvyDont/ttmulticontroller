@@ -1,0 +1,1328 @@
+<ui:FluentWindow
+    x:Class="TTMulti.Ui.Settings.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ctrl="clr-namespace:TTMulti.Ui.Controls"
+    xmlns:local="clr-namespace:TTMulti.Ui.Settings"
+    xmlns:props="clr-namespace:TTMulti.Properties"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="Options"
+    Width="1080"
+    Height="720"
+    MinWidth="720"
+    MinHeight="520"
+    ExtendsContentIntoTitleBar="True"
+    WindowBackdropType="Mica"
+    WindowStartupLocation="CenterOwner">
+    <ui:FluentWindow.Resources>
+        <local:InverseBooleanConverter x:Key="InverseBool" />
+        <local:ArgbToBrushConverter x:Key="ArgbToBrush" />
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="2,14,0,6" />
+        </Style>
+
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+
+        <Style x:Key="RowLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- Explanatory paragraph that sits directly under a SectionHeader. -->
+        <Style x:Key="SectionDesc" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="2,0,8,8" />
+        </Style>
+    </ui:FluentWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar
+            x:Name="titleBar"
+            Grid.Row="0"
+            Title="Options"
+            ShowMaximize="False" />
+
+        <Grid Grid.Row="1" Margin="12,0,12,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="212" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Navigation rail -->
+            <!-- Windows-Settings-style rail: each item is an icon + label. The page key lives in Tag (not Content,
+                 which is now a panel), NavList_SelectionChanged reads Tag to pick the page. -->
+            <ListBox
+                x:Name="navList"
+                Grid.Column="0"
+                Margin="0,0,10,0"
+                Padding="0,2"
+                BorderThickness="0"
+                Background="Transparent"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                SelectionChanged="NavList_SelectionChanged">
+                <ListBox.Resources>
+                    <Style x:Key="NavIcon" TargetType="ui:SymbolIcon">
+                        <Setter Property="FontSize" Value="16" />
+                        <Setter Property="Margin" Value="0,0,12,0" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                    </Style>
+                </ListBox.Resources>
+                <ListBoxItem Tag="General" IsSelected="True">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Settings24" />
+                        <TextBlock VerticalAlignment="Center" Text="General" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Appearance">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Color24" />
+                        <TextBlock VerticalAlignment="Center" Text="Appearance" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Keybinds">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Keyboard24" />
+                        <TextBlock VerticalAlignment="Center" Text="Keybinds" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Controller Modes">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Games24" />
+                        <TextBlock VerticalAlignment="Center" Text="Controller Modes" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Multi-Click">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Cursor24" />
+                        <TextBlock VerticalAlignment="Center" Text="Multi-Click" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Window Management">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="WindowMultiple20" />
+                        <TextBlock VerticalAlignment="Center" Text="Window Management" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Layout Presets">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Grid24" />
+                        <TextBlock VerticalAlignment="Center" Text="Layout Presets" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem Tag="Custom Modes">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource NavIcon}" Symbol="Wand24" />
+                        <TextBlock VerticalAlignment="Center" Text="Custom Modes" />
+                    </StackPanel>
+                </ListBoxItem>
+            </ListBox>
+
+            <!-- Page content -->
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+                <Grid>
+                    <!-- ── Multi-Mode Keys ───────────────────────────────────────── -->
+                    <StackPanel x:Name="pageKeyBindings" Grid.IsSharedSizeScope="True">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Mode / Activate" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="The key that activates the controller and cycles through your enabled control modes. 'Start in Mirror mode on launch' sets which mode the app opens in." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mode / activate key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding modeKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Global hotkey (works when other windows are focused)" IsChecked="{Binding modeHotkeyGlobal, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Start in Mirror mode on launch" IsChecked="{Binding defaultModeOnLaunch, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Multi-Mode key bindings" />
+                        <TextBlock
+                            Margin="2,0,0,8"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            FontSize="12"
+                            Text="The physical key each toon presses (left / right) to perform each in-game action." />
+                        <!-- Column widths (incl. the trailing trash column) are shared with every row's grid below via
+                             the KCol/LCol/RCol/TrashCol shared-size groups, so these labels sit directly above their key
+                             columns. Right margin 11 == each row card's border (1) + padding (10) so the right edges line up. -->
+                        <Grid Margin="11,0,11,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="KCol" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="LCol" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="RCol" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="TrashCol" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Margin="2,0" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="In-game key" />
+                            <TextBlock Grid.Column="2" Margin="2,0" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Left toon" />
+                            <TextBlock Grid.Column="3" Margin="2,0" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Right toon" />
+                        </Grid>
+                        <ItemsControl x:Name="keyBindingsItems">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Card}" Margin="0,0,0,4" Padding="10,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="KCol" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="LCol" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="RCol" />
+                                                <!-- Shared with the header + every other row so the trash column's width is reserved
+                                                     even on default (non-deletable) rows, keeping all key buttons vertically aligned. -->
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="TrashCol" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox
+                                                Grid.Column="0"
+                                                Margin="0,0,8,0"
+                                                VerticalAlignment="Center"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                IsReadOnly="{Binding IsReadOnly}"
+                                                Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <!-- Each column is tinted with the mode colour it maps to: the in-game key uses the
+                                                 Mirror-mode colour (the key you'd hit in Mirror mode), left/right use their toon colours. -->
+                                            <ctrl:KeyPickerBox Grid.Column="1" Margin="2,0" KeyCode="{Binding KeyCode, Mode=TwoWay}"
+                                                AccentBrush="{Binding DataContext.mirrorModeBorderColor, RelativeSource={RelativeSource AncestorType={x:Type ui:FluentWindow}}, Converter={StaticResource ArgbToBrush}}" />
+                                            <ctrl:KeyPickerBox Grid.Column="2" Margin="2,0" KeyCode="{Binding LeftKeyCode, Mode=TwoWay}"
+                                                AccentBrush="{Binding DataContext.multiModeLeftBorderColor, RelativeSource={RelativeSource AncestorType={x:Type ui:FluentWindow}}, Converter={StaticResource ArgbToBrush}}" />
+                                            <ctrl:KeyPickerBox Grid.Column="3" Margin="2,0" KeyCode="{Binding RightKeyCode, Mode=TwoWay}"
+                                                AccentBrush="{Binding DataContext.multiModeRightBorderColor, RelativeSource={RelativeSource AncestorType={x:Type ui:FluentWindow}}, Converter={StaticResource ArgbToBrush}}" />
+                                            <ui:Button
+                                                Grid.Column="4"
+                                                Margin="4,0,0,0"
+                                                Padding="6"
+                                                Click="RemoveBinding_Click"
+                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                Icon="{ui:SymbolIcon Delete24}"
+                                                Tag="{Binding}"
+                                                ToolTip="Remove this binding"
+                                                Visibility="{Binding IsEditable, Converter={StaticResource BoolToVis}}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ui:Button
+                            Margin="0,8,0,0"
+                            Appearance="Success"
+                            Click="AddBinding_Click"
+                            Content="Add binding"
+                            Icon="{ui:SymbolIcon Add24}" />
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Zero Power Throw" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Instantly throws a gag at zero power, a quick tap of the throw key with no charge-up. 'Enable focus mode' routes your movement to a single toon while zero-power throws still fire on every other window, so you can solo-control one window (e.g. stunning in the CJ) while your other toons keep hitting the pan." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Zero power throw key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding zeroPowerThrowKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding zeroPowerThrowHotkeyGlobal, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Enable focus mode" IsChecked="{Binding zeroPowerThrowEnableFocusMode, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Throw to all windows without activating"
+                                    IsChecked="{Binding zeroPowerThrowNoActivate, Mode=TwoWay}"
+                                    ToolTip="When the multicontroller isn't active, pressing the throw key fires the throw on every window without pulling focus back or changing the mode, so you can keep playing the window you're on (or trigger it from any other app). Requires 'Global hotkey'. Takes priority over focus mode." />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ── Controller Modes ──────────────────────────────────────── -->
+                    <StackPanel x:Name="pageModes" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Group (Multi) Mode" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Controls one group at a time. Your inputs go only to the current group: the left toon and right toon each follow their own key mapping from the Keybinds page." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switch-to-mode key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding groupModeKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Include in mode-key cycle" IsChecked="{Binding groupModeCycleWithModeHotkey, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Mirror Mode" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Mirrors your raw keypresses and clicks to every window at once, so all toons do exactly the same thing." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switch-to-mode key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding mirrorModeKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Include in mode-key cycle" IsChecked="{Binding mirrorModeCycleWithModeHotkey, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="All-Groups Mode" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Controls every group at once: your left inputs go to every left toon and your right inputs to every right toon, across all groups, not just the selected one." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switch-to-mode key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding controlAllGroupsKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Include in mode-key cycle" IsChecked="{Binding allGroupModeCycleWithModeHotkey, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ── Window Management ──────────────────────────────────────── -->
+                    <StackPanel x:Name="pageWindowManagement" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Window Management" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Finding and pairing game windows, rearranging them, arranging them across monitors with layout presets, and a few extra hotkeys. Click a group to expand it." />
+
+                        <!-- ══ Auto Find ══ -->
+                        <ui:CardExpander IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Auto Find" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Finds the listed game windows and pairs them into controllers automatically. Press the hotkey (with any modifiers) to run it." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <TextBlock Style="{StaticResource RowLabel}" Margin="0,0,0,6"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="Semicolon-separated list of game .exe names to auto-find and pair." />
+                                <TextBox Text="{Binding autoFindExecutables, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Grid Margin="0,10,0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Auto-find key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding autoFindWindowsKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <StackPanel x:Name="autoFindModifiersPanel" Margin="0,3" Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource RowLabel}" Margin="0,0,12,0" Text="Modifiers:" />
+                                    <CheckBox Margin="0,0,12,0" Content="Alt" IsChecked="{Binding Alt, Mode=TwoWay}" />
+                                    <CheckBox Margin="0,0,12,0" Content="Ctrl" IsChecked="{Binding Control, Mode=TwoWay}" />
+                                    <CheckBox Content="Shift" IsChecked="{Binding Shift, Mode=TwoWay}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </ui:CardExpander>
+
+                        <!-- ══ Switching Mode ══ -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Switching Mode" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="A mode for rearranging which game window each controller slot points to: hold the switching-mode key (Alt by default) while the multicontroller is focused, click windows to swap their assignments, and use the remove key to drop a window from the swap. 'Place windows when the key is released' physically moves the swapped windows into their new left/right positions when you let go; with it off, only the app's grouping changes and you reposition the windows yourself (or with a Layout Presets hotkey)." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <CheckBox Margin="0,3" Content="Enable Switching Mode" IsChecked="{Binding switchingModeEnabled, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Hold this key to enter switching mode" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding switchingModeKeyCode, Mode=TwoWay}"
+                                        ToolTip="Hold this key while the multicontroller is focused to enter switching mode. A modifier like Alt (default), Ctrl, or Shift works best." />
+                                </Grid>
+                                <Grid x:Name="switchKeyPanel" Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switch binding" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <ComboBox MinWidth="150" SelectedIndex="{Binding ComboIndex, Mode=TwoWay}">
+                                            <ComboBoxItem Content="Left Mouse Button" />
+                                            <ComboBoxItem Content="Right Mouse Button" />
+                                            <ComboBoxItem Content="Middle Mouse Button" />
+                                            <ComboBoxItem Content="Keyboard Key…" />
+                                        </ComboBox>
+                                        <ctrl:KeyPickerBox
+                                            Margin="8,0,0,0"
+                                            MinWidth="120"
+                                            KeyCode="{Binding KeyboardKeyCode, Mode=TwoWay}"
+                                            Visibility="{Binding IsKeyboard, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Remove-from-switch key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding switchingModeRemoveKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Set-dormant key"
+                                        ToolTip="While in switching mode, press this over a window to toggle it Dormant. A Dormant window stays connected but no longer receives multi/mirror input. Press again to reactivate it." />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding switchingModeDormantKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Place windows when the switching-mode key is released" IsChecked="{Binding autoFindPlacementOnAltRelease, Mode=TwoWay}" />
+                            </StackPanel>
+                        </ui:CardExpander>
+
+                        <!-- ══ Other hotkeys ══ (Layout presets moved to its own top-level tab.) -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Other hotkeys" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Extra keybinds: minimize any windows not linked to a toon, lock the current mode so hotkeys can't change it, and suspend all global hotkeys." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Minimize unconnected windows key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding minimizeUnconnectedKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <StackPanel x:Name="minimizeModifiersPanel" Margin="0,3" Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource RowLabel}" Margin="0,0,12,0" Text="Modifiers:" />
+                                    <CheckBox Margin="0,0,12,0" Content="Alt" IsChecked="{Binding Alt, Mode=TwoWay}" />
+                                    <CheckBox Margin="0,0,12,0" Content="Ctrl" IsChecked="{Binding Control, Mode=TwoWay}" />
+                                    <CheckBox Content="Shift" IsChecked="{Binding Shift, Mode=TwoWay}" />
+                                </StackPanel>
+                                <CheckBox Margin="0,3" Content="Minimize-unconnected is a global hotkey" IsChecked="{Binding minimizeUnconnectedHotkeyGlobal, Mode=TwoWay}" />
+                                <Grid Margin="0,10,0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mode-lock toggle key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding modeLockToggleKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Suspend global hotkeys toggle key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding suspendGlobalHotkeysToggleKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </ui:CardExpander>
+                    </StackPanel>
+
+                    <!-- ── General ────────────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageGeneral" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Behavior" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="How the controller behaves as you play: whether movement keys stay held on windows you switch away from, and whether the app window floats above others when it isn't focused." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox Margin="0,3" Content="Release held keys when a window stops receiving input"
+                                          ToolTip="On: whenever a window stops receiving your input (you switch group/pair/mode, click another game window, hold Alt for switching mode, or leave the app), the keys it was holding are released so its toon stops moving. Off (default): those keys stay held until you switch back and release the key. Either way, a key you physically release is never left stuck."
+                                          IsChecked="{Binding releaseKeysOnWindowFocus, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Keep window on top when inactive" IsChecked="{Binding onTopWhenInactive, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Express group focus"
+                                          ToolTip="When on, pressing a number key while the multicontroller is focused instantly jumps to Multi mode AND that group, no matter the current mode, e.g. pressing 2 in Mirror mode switches straight to Multi mode, Group 2 (one keypress instead of switching modes and then the group). Heads up: this means you can no longer type numbers while the multicontroller is focused (e.g. in Mirror mode), they always switch groups instead. Numbers still work normally when a Toontown window is focused."
+                                          IsChecked="{Binding expressGroupFocus, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Keep Alive" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Periodically taps a key into each game window so the game doesn't disconnect you for being idle. Choose the key it sends below." />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox x:Name="keepAliveChk" Margin="0,3" Content="Enable Keep-Alive" IsChecked="{Binding disableKeepAlive, Converter={StaticResource InverseBool}, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Keep-Alive key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding keepAliveKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="About" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="App version, homepage link, and a manual update check." />
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource RowLabel}" Text="Version, homepage, and update check" />
+                                <ui:Button Grid.Column="1" Content="About" Icon="{ui:SymbolIcon Info24}" Click="About_Click" />
+                            </Grid>
+                        </Border>
+
+                    </StackPanel>
+
+                    <!-- ── Multi-Click (Precise Click Mode + Instant Multi-Click) ──── -->
+                    <StackPanel x:Name="pageMultiClick" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Multi-Click" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Two separate ways to click several game windows at once. Precise Click Mode is a mode you switch on to mirror your normal clicks onto every window; Instant Multi-Click is a one-shot hotkey that clicks every window once. The two groups below are independent, and every setting inside a group belongs only to that group." />
+
+                        <!-- ══ Precise Click Mode ══ No separate on/off switch: the mode is on precisely when an Activation
+                             key is bound below. EVERY setting inside the card belongs to it, so the grouping is unambiguous. -->
+                        <ui:CardExpander IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Precise Click Mode" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Switch this mode on with a hotkey, then click normally: your left and right clicks are mirrored to every game window at the same spot, with no window stealing focus. A marker shows where each click will land, and your real clicks are held back from the games so nothing gets misclicked. Set an Activation key below to turn it on; leave it unset to keep the mode off. Defaults: left mouse mirrors a left click, right mouse mirrors a right click. Use a Passthrough bind to click only the window you're pointing at instead." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+
+                            <StackPanel Margin="0,2,0,0">
+                                <!-- Activation -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Activation" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="The key or button that switches the mode on. Hold keeps it active only while the key is held down; Toggle turns it on with one press and off with the next. Turn on 'Global hotkey' to let it work even while a game window (rather than this app) is focused." />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Activation key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding controlledMulticlickActivateKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <StackPanel Margin="0,3" Orientation="Horizontal">
+                                    <RadioButton x:Name="cmActivateHoldRadio" Content="Hold" GroupName="CmActivate" Checked="CmActivateMode_Checked" />
+                                    <RadioButton x:Name="cmActivateToggleRadio" Margin="16,0,0,0" Content="Toggle" GroupName="CmActivate" Checked="CmActivateMode_Checked" />
+                                </StackPanel>
+                                <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding controlledMulticlickActivateGlobal, Mode=TwoWay}" />
+
+                                <Separator Margin="0,12" />
+
+                                <!-- Mirror clicks -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Mirror clicks" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="While in the mode, these send your click to every game window at the cursor's spot. Left defaults to the left mouse button, right to the right mouse button; switch either to a keyboard key if you prefer." />
+                                <TextBlock Style="{StaticResource RowLabel}" FontWeight="SemiBold" Margin="0,2,0,2" Text="Left click" />
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickMirrorLeftUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding controlledMulticlickMirrorLeftUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickMirrorLeftMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Left click" />
+                                        <ComboBoxItem Content="Right click" />
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding controlledMulticlickMirrorLeftUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickMirrorLeftKeyCode, Mode=TwoWay}" />
+                                </Grid>
+
+                                <TextBlock Style="{StaticResource RowLabel}" FontWeight="SemiBold" Margin="0,10,0,2" Text="Right click" />
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickMirrorRightUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding controlledMulticlickMirrorRightUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickMirrorRightMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Left click" />
+                                        <ComboBoxItem Content="Right click" />
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding controlledMulticlickMirrorRightUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickMirrorRightKeyCode, Mode=TwoWay}" />
+                                </Grid>
+
+                                <Separator Margin="0,12" />
+
+                                <!-- Passthrough -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Passthrough (single window)" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="Optional. Sends a click to only the window your cursor is over, without stealing its focus, for clicking one toon while in the mode. Unbound by default; set a key or a spare mouse button (not one already used for mirroring). 'Trigger on release' fires when you let go instead of on press." />
+                                <TextBlock Style="{StaticResource RowLabel}" FontWeight="SemiBold" Margin="0,2,0,2" Text="Left click" />
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickRegularClickUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding controlledMulticlickRegularClickUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickRegularClickMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Left click" />
+                                        <ComboBoxItem Content="Right click" />
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding controlledMulticlickRegularClickUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickRegularClickKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Trigger on release" IsChecked="{Binding controlledMulticlickRegularClickTriggerOnRelease, Mode=TwoWay}" />
+
+                                <TextBlock Style="{StaticResource RowLabel}" FontWeight="SemiBold" Margin="0,10,0,2" Text="Right click" />
+                                <CheckBox Margin="0,3" Content="Use a mouse button" IsChecked="{Binding controlledMulticlickRegularClickRightUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding controlledMulticlickRegularClickRightUseMouseButton}"
+                                        SelectedIndex="{Binding controlledMulticlickRegularClickRightMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Left click" />
+                                        <ComboBoxItem Content="Right click" />
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding controlledMulticlickRegularClickRightUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding controlledMulticlickRegularClickRightKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Trigger on release" IsChecked="{Binding controlledMulticlickRegularClickRightTriggerOnRelease, Mode=TwoWay}" />
+                            </StackPanel>
+                        </ui:CardExpander>
+
+                        <!-- ══ Instant Multi-Click ══ A separate one-shot hotkey; nothing here is tied to Precise Click Mode above. -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Instant Multi-Click" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="A single hotkey that instantly clicks every game window at once. Point your mouse anywhere over one game window, press the trigger, and all active windows get a left-click at that same spot. If nothing is active yet, it turns on and drops into Mirror-All so every toon responds. 'Click order' sets the order the clicks are sent; 'Separate left / right clicks' limits it to windows on the same side as the one you're pointing at in a group or pair mode." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <CheckBox x:Name="multiUseMouseChk" Margin="0,3" Content="Trigger with a mouse button" IsChecked="{Binding replicateMouseUseMouseButton, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Trigger key" />
+                                    <ctrl:KeyPickerBox Grid.Column="1"
+                                        IsEnabled="{Binding replicateMouseUseMouseButton, Converter={StaticResource InverseBool}}"
+                                        KeyCode="{Binding replicateMouseKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mouse button" />
+                                    <ComboBox Grid.Column="1" MinWidth="180"
+                                        IsEnabled="{Binding replicateMouseUseMouseButton}"
+                                        SelectedIndex="{Binding replicateMouseMouseButton, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Middle (wheel click)" />
+                                        <ComboBoxItem Content="Mouse 4" />
+                                        <ComboBoxItem Content="Mouse 5" />
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Click order" />
+                                    <ComboBox Grid.Column="1" MinWidth="240" SelectedIndex="{Binding multiclickOrder, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Controller order (group, pair, L/R)" />
+                                        <ComboBoxItem Content="Window order (by position)" />
+                                    </ComboBox>
+                                </Grid>
+                                <CheckBox Margin="0,3" Content="Global hotkey" IsChecked="{Binding replicateMouseHotkeyGlobal, Mode=TwoWay}" />
+                                <CheckBox Margin="0,3" Content="Separate left / right clicks" IsChecked="{Binding replicateMouseSeparateLR, Mode=TwoWay}" />
+                            </StackPanel>
+                        </ui:CardExpander>
+                    </StackPanel>
+
+                    <!-- ── Appearance ─────────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageAppearance" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Appearance" />
+                        <TextBlock Style="{StaticResource SectionDesc}"
+                            Text="Colors for the game-window borders and where the current mode color is shown, plus the controller window's size. Click a group to expand it." />
+
+                        <!-- ══ Colors ══ mode/border colors plus the tint toggles: an independent controller-title-bar
+                             tint, and the two mutually-exclusive game-window caption tints (mode color vs PC accent color). -->
+                        <ui:CardExpander IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Colors" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Border colors for each mode, and where the current mode color is applied." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <CheckBox Margin="0,3" Content="Tint controller title bar with the current mode color" IsChecked="{Binding tintControllerTitleBar, Mode=TwoWay}" />
+                                <!-- The two game-window caption tints (mode color vs PC accent color) write the same title bar, so they
+                                     are mutually exclusive: the Checked handlers clear the other. Both may be off (no game-window tint). -->
+                                <CheckBox x:Name="tintGameModeCheck" Margin="0,3" Content="Tint game windows with the current mode color"
+                                    IsChecked="{Binding enableCaptionColor, Mode=TwoWay}" Checked="TintGameModeCheck_Checked" />
+                                <CheckBox x:Name="tintGameAccentCheck" Margin="0,3" Content="Tint game windows with the PC accent color"
+                                    IsChecked="{Binding tintGameWindowsWithAccentColor, Mode=TwoWay}" Checked="TintGameAccentCheck_Checked" />
+
+                                <Separator Margin="0,12" />
+
+                                <!-- Border style -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Border style" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="Thickness and corner rounding of the border drawn around each game window. A corner radius of 0 keeps the border square." />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Thickness" />
+                                    <Slider x:Name="borderWidthSlider" Grid.Column="1" VerticalAlignment="Center"
+                                        Minimum="1" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding borderWidth, Mode=TwoWay}" />
+                                    <TextBlock Grid.Column="2" MinWidth="26" Margin="10,0,0,0" VerticalAlignment="Center" TextAlignment="Right"
+                                        Text="{Binding Value, ElementName=borderWidthSlider, StringFormat=0}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Corner radius" />
+                                    <Slider x:Name="borderCornerRadiusSlider" Grid.Column="1" VerticalAlignment="Center"
+                                        Minimum="0" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding borderCornerRadius, Mode=TwoWay}" />
+                                    <TextBlock Grid.Column="2" MinWidth="26" Margin="10,0,0,0" VerticalAlignment="Center" TextAlignment="Right"
+                                        Text="{Binding Value, ElementName=borderCornerRadiusSlider, StringFormat=0}" />
+                                </Grid>
+
+                                <Separator Margin="0,12" />
+
+                                <!-- Border colours -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Border colors" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="The color drawn around each game window in Multi and Mirror modes, so you can tell your left and right toons apart at a glance." />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Multi-Mode left toon" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding multiModeLeftBorderColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Multi-Mode right toon" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding multiModeRightBorderColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Mirror Mode" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding mirrorModeBorderColor, Mode=TwoWay}" />
+                                </Grid>
+
+                                <Separator Margin="0,12" />
+
+                                <!-- Focused mode -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Focused mode" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="Border colors used in Focused mode: the window you've focused versus the others." />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Focused window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding focusedModeFocusedColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Unfocused window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding focusedModeUnfocusedColor, Mode=TwoWay}" />
+                                </Grid>
+
+                                <Separator Margin="0,12" />
+
+                                <!-- Switching mode -->
+                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="Switching mode" />
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,3,0,6"
+                                    Text="Border colors shown while rearranging windows in Switching Mode (configured under Window Management)." />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switching (base)" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingModeColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Selected window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingSelectedColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Switched window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingSwitchedColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Marked for removal" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingRemovedColor, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Dormant window" />
+                                    <ctrl:ColorSwatch Grid.Column="1" ColorArgb="{Binding switchingDormantColor, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </ui:CardExpander>
+
+                        <!-- ══ Size ══ compact layout, its (controller-focused) toggle key, and the overall window scale. -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Size" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="Compact layout and the overall scale of the controller window." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <CheckBox Margin="0,3" Content="Compact UI" IsChecked="{Binding compactUI, Mode=TwoWay}" />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Toggle Compact UI key (only while the controller window is focused)" />
+                                    <ctrl:KeyPickerBox Grid.Column="1" KeyCode="{Binding compactUIToggleKeyCode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Window scale" />
+                                    <ComboBox Grid.Column="1" MinWidth="120" SelectedIndex="{Binding controllerUIScaleIndex, Mode=TwoWay}">
+                                        <ComboBoxItem Content="50%" />
+                                        <ComboBoxItem Content="75%" />
+                                        <ComboBoxItem Content="100%" />
+                                        <ComboBoxItem Content="125%" />
+                                        <ComboBoxItem Content="150%" />
+                                    </ComboBox>
+                                </Grid>
+                            </StackPanel>
+                        </ui:CardExpander>
+
+                        <!-- ══ Visuals ══ overlays drawn on the game windows. -->
+                        <ui:CardExpander Margin="0,4,0,0" IsExpanded="False">
+                            <ui:CardExpander.Header>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Visuals" />
+                                    <TextBlock Margin="0,2,0,0" FontSize="12" TextWrapping="Wrap"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="On-screen overlays drawn on the game windows." />
+                                </StackPanel>
+                            </ui:CardExpander.Header>
+                            <StackPanel Margin="0,2,0,0">
+                                <TextBlock Style="{StaticResource SectionDesc}" Margin="0,0,0,6"
+                                    Text="When the group number is drawn in the corner of each game window. 'Multi mode' is the per-group control mode; 'All Groups mode' controls every group at once." />
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Group number display" />
+                                    <ComboBox Grid.Column="1" MinWidth="240" SelectedIndex="{Binding groupNumberVisibility, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Always visible" />
+                                        <ComboBoxItem Content="Multi mode and All Groups mode" />
+                                        <ComboBoxItem Content="All Groups mode only" />
+                                        <ComboBoxItem Content="Hidden" />
+                                    </ComboBox>
+                                </Grid>
+                                <CheckBox Margin="0,6,0,0" Content="Show the group number even when a window is inactive"
+                                    IsChecked="{Binding alwaysShowGroupNumber, Mode=TwoWay}"
+                                    ToolTip="Off (default): the number only shows on windows that currently have a border (i.e. the group you're controlling). On: the number is also drawn — with no border — on windows that aren't currently active, so you can still tell which group they belong to. The 'Group number display' choice above is still respected (e.g. Hidden shows nothing)." />
+                            </StackPanel>
+                        </ui:CardExpander>
+                    </StackPanel>
+
+                    <!-- ── Custom Modes ───────────────────────────────────────────── -->
+                    <StackPanel x:Name="pageLayoutPresets" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Margin="2,0,0,6" Text="Layout Presets" />
+                        <TextBlock Style="{StaticResource SectionDesc}" Margin="2,0,8,8"
+                            Text="A layout preset arranges your controlled windows into a grid across your monitors. Pick or create a preset, set its grid, and the diagram shows exactly where each numbered window lands. Bind a hotkey to apply it." />
+
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" VerticalAlignment="Center"
+                                    ItemsSource="{Binding Presets}"
+                                    SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
+                                    DisplayMemberPath="Name" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="New" Icon="{ui:SymbolIcon Add24}" Click="LpAddPreset_Click" />
+                                <ui:Button Grid.Column="2" Margin="6,0,0,0" Content="Delete" Icon="{ui:SymbolIcon Delete24}"
+                                    IsEnabled="{Binding HasPresets}" Click="LpDeletePreset_Click" />
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Padding="14,20" Visibility="{Binding NoPresets, Converter={StaticResource BoolToVis}}">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="You don't have any layout presets yet." Margin="0,0,0,10" />
+                                <ui:Button HorizontalAlignment="Center" Appearance="Primary"
+                                    Content="Create a layout preset" Icon="{ui:SymbolIcon Add24}" Click="LpAddPreset_Click" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Visibility="{Binding HasPresets, Converter={StaticResource BoolToVis}}">
+                            <StackPanel DataContext="{Binding SelectedPreset}">
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Name" />
+                                            <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </Grid>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Apply hotkey" />
+                                            <WrapPanel Grid.Column="1">
+                                                <ctrl:KeyPickerBox VerticalAlignment="Center" KeyCode="{Binding HotkeyCode, Mode=TwoWay}" />
+                                                <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" Content="Alt" IsChecked="{Binding HkAlt, Mode=TwoWay}" />
+                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Ctrl" IsChecked="{Binding HkCtrl, Mode=TwoWay}" />
+                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Shift" IsChecked="{Binding HkShift, Mode=TwoWay}" />
+                                            </WrapPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <StackPanel Visibility="{Binding DataContext.PreviewInline, ElementName=pageLayoutPresets, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource SectionHeader}" Text="Preview" />
+                                        <ui:Button Grid.Column="1" VerticalAlignment="Bottom" Content="Pop out"
+                                            Icon="{ui:SymbolIcon WindowArrowUp20}" Click="LpPopOutPreview_Click"
+                                            ToolTip="Open the preview in a movable, always-on-top window so you can watch it while you adjust." />
+                                    </Grid>
+                                    <Border Style="{StaticResource Card}">
+                                        <ctrl:LayoutPreview Height="220"
+                                            Preset="{Binding Preset}"
+                                            SelectedRegionIndex="{Binding SelectedRegionIndex}"
+                                            Rev="{Binding PreviewRev}" />
+                                    </Border>
+                                </StackPanel>
+
+                                <TextBlock Style="{StaticResource SectionHeader}" Text="Grids" />
+                                <TextBlock Style="{StaticResource SectionDesc}"
+                                    Text="Each grid fills with windows left-to-right, top-to-bottom; extra grids continue the numbering. Select a grid to highlight it in the preview." />
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <ListBox ItemsSource="{Binding Regions}" SelectedItem="{Binding SelectedRegion, Mode=TwoWay}"
+                                                 BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="Margin" Value="0,0,0,6" />
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Padding="8,6" CornerRadius="6"
+                                                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                        <StackPanel>
+                                                            <WrapPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Grid" />
+                                                                    <TextBox VerticalAlignment="Center" Width="40" Text="{Binding Rows, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                    <TextBlock VerticalAlignment="Center" Margin="4,0" Text="x" />
+                                                                    <TextBox VerticalAlignment="Center" Width="40" Text="{Binding Cols, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="on" />
+                                                                    <ComboBox VerticalAlignment="Center" MinWidth="170"
+                                                                        ItemsSource="{Binding MonitorOptions}"
+                                                                        SelectedItem="{Binding SelectedMonitor, Mode=TwoWay}"
+                                                                        DisplayMemberPath="Label" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+                                                                    <ToggleButton VerticalAlignment="Center" Content="More" IsChecked="{Binding IsMoreOpen, Mode=TwoWay}" ToolTip="Row/column weights" />
+                                                                    <ui:Button VerticalAlignment="Center" Margin="6,0,0,0" Content="Adjust on screen" Click="LpAdjustOnScreen_Click" />
+                                                                    <ui:Button VerticalAlignment="Center" Margin="6,0,0,0" Icon="{ui:SymbolIcon Dismiss24}" ToolTip="Remove grid" Click="LpDeleteRegion_Click" />
+                                                                </StackPanel>
+                                                            </WrapPanel>
+                                                            <WrapPanel Margin="0,6,0,0" Visibility="{Binding IsMoreOpen, Converter={StaticResource BoolToVis}}">
+                                                                <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Row weights" />
+                                                                <TextBox VerticalAlignment="Center" Width="120" Text="{Binding RowWeightsText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" ToolTip="Comma-separated, e.g. 2, 1" />
+                                                                <TextBlock VerticalAlignment="Center" Margin="16,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Col weights" />
+                                                                <TextBox VerticalAlignment="Center" Width="120" Text="{Binding ColWeightsText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" ToolTip="Comma-separated, e.g. 2, 1" />
+                                                            </WrapPanel>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <ui:Button HorizontalAlignment="Left" Content="Add grid" Icon="{ui:SymbolIcon Add24}" Click="LpAddRegion_Click" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Expander Margin="0,6,0,0" Header="Fine-tune each window (overrides)">
+                                    <StackPanel Margin="0,6,0,0">
+                                        <TextBlock Style="{StaticResource SectionDesc}" Margin="0,0,0,6"
+                                            Text="Give a specific window its own position, or minimize it, instead of using its grid slot. Drag each window's box on screen, or type exact values below by slot number." />
+                                        <ui:Button HorizontalAlignment="Left" Margin="0,0,0,8" Content="Adjust each window on screen"
+                                            Icon="{ui:SymbolIcon ResizeLarge24}" Click="LpAdjustSlotsOnScreen_Click"
+                                            ToolTip="Show every window as a numbered box you can drag and resize on the actual screen; each becomes a per-window override." />
+                                        <DataGrid ItemsSource="{Binding SlotRows}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="220">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Slot" Binding="{Binding Slot}" IsReadOnly="True" />
+                                                <DataGridCheckBoxColumn Header="Custom pos" Binding="{Binding OverrideRect, UpdateSourceTrigger=PropertyChanged}" />
+                                                <DataGridTextColumn Header="X" Binding="{Binding X}" />
+                                                <DataGridTextColumn Header="Y" Binding="{Binding Y}" />
+                                                <DataGridTextColumn Header="W" Binding="{Binding Width}" />
+                                                <DataGridTextColumn Header="H" Binding="{Binding Height}" />
+                                                <DataGridCheckBoxColumn Header="Minimize" Binding="{Binding Minimized, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+
+                            <TextBlock Style="{StaticResource SectionHeader}" Text="Fill order" />
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <CheckBox Content="Lefts first"
+                                        IsChecked="{Binding layoutPriorityLeftsFirst, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
+                                    <TextBlock Style="{StaticResource SectionDesc}" Margin="0,6,0,0"
+                                        Text="Which order windows fill the slots. Lefts first: all left toons, then all right toons. Off: pair by pair (left then right within each group)." />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel x:Name="pageCustomModes" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource SectionHeader}" Margin="2,0,0,6" Text="Custom Modes" />
+                        <TextBlock Style="{StaticResource SectionDesc}" Margin="2,0,8,8"
+                            Text="A custom mode turns keys you press into actions on specific toons. Pick a mode below, then add rules that read like a sentence: press a key, send something, to a toon. The first rule that matches wins." />
+
+                        <!-- Mode selector -->
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" VerticalAlignment="Center"
+                                    ItemsSource="{Binding Modes}"
+                                    SelectedItem="{Binding SelectedMode, Mode=TwoWay}"
+                                    DisplayMemberPath="Name" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="New" Icon="{ui:SymbolIcon Add24}" Click="CmAddMode_Click" />
+                                <ui:Button Grid.Column="2" Margin="6,0,0,0" Content="Delete" Icon="{ui:SymbolIcon Delete24}"
+                                    IsEnabled="{Binding HasModes}" Click="CmRemoveMode_Click" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Empty state -->
+                        <Border Style="{StaticResource Card}" Padding="14,20" Visibility="{Binding NoModes, Converter={StaticResource BoolToVis}}">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="You don't have any custom modes yet." Margin="0,0,0,10" />
+                                <ui:Button HorizontalAlignment="Center" Appearance="Primary"
+                                    Content="Create a custom mode" Icon="{ui:SymbolIcon Add24}" Click="CmAddMode_Click" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Selected-mode editor -->
+                        <StackPanel Visibility="{Binding HasModes, Converter={StaticResource BoolToVis}}">
+                            <StackPanel DataContext="{Binding SelectedMode}">
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Name" />
+                                            <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </Grid>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Activation key" />
+                                            <WrapPanel Grid.Column="1">
+                                                <ctrl:KeyPickerBox VerticalAlignment="Center" KeyCode="{Binding ActivationKeyCode, Mode=TwoWay}" />
+                                                <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" Content="Alt" IsChecked="{Binding ActAlt, Mode=TwoWay}" />
+                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Ctrl" IsChecked="{Binding ActCtrl, Mode=TwoWay}" />
+                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Shift" IsChecked="{Binding ActShift, Mode=TwoWay}" />
+                                                <CheckBox Margin="16,0,0,0" VerticalAlignment="Center" Content="Global" IsChecked="{Binding ActGlobal, Mode=TwoWay}"
+                                                    ToolTip="On: the activation key works from any window. Off: only while the multicontroller is active." />
+                                            </WrapPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Rules -->
+                                <TextBlock Style="{StaticResource SectionHeader}" Text="Rules" />
+                                <TextBlock Style="{StaticResource SectionDesc}"
+                                    Text="Toon numbers match the big numbers shown on each window in Switching mode (hold Alt to see them)." />
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding Bindings}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,0,6" Padding="8,6" CornerRadius="6"
+                                                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                        <StackPanel>
+                                                            <WrapPanel>
+                                                                <!-- Each phrase is a non-wrapping group, so if the row wraps it breaks between phrases. -->
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Press" />
+                                                                    <ctrl:KeyPickerBox VerticalAlignment="Center" KeyCode="{Binding InputKeyCode, Mode=TwoWay}" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="send" />
+                                                                    <ComboBox VerticalAlignment="Center" MinWidth="140"
+                                                                        ItemsSource="{Binding SendOptions}"
+                                                                        SelectedItem="{Binding SelectedSendOption, Mode=TwoWay}"
+                                                                        DisplayMemberPath="Label" />
+                                                                    <ctrl:KeyPickerBox VerticalAlignment="Center" Margin="6,0,0,0"
+                                                                        Visibility="{Binding ShowRawKey, Converter={StaticResource BoolToVis}}"
+                                                                        KeyCode="{Binding RawKeyCode, Mode=TwoWay}" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,12,2">
+                                                                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="to" />
+                                                                    <ComboBox VerticalAlignment="Center" MinWidth="150"
+                                                                        ItemsSource="{Binding TargetOptions}"
+                                                                        SelectedItem="{Binding SelectedTargetOption, Mode=TwoWay}"
+                                                                        DisplayMemberPath="Label" />
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+                                                                    <ToggleButton VerticalAlignment="Center" Content="More"
+                                                                        IsChecked="{Binding IsMoreOpen, Mode=TwoWay}"
+                                                                        ToolTip="Modifier keys and pass-through" />
+                                                                    <ui:Button VerticalAlignment="Center" Margin="6,0,0,0"
+                                                                        Icon="{ui:SymbolIcon Dismiss24}" ToolTip="Delete rule" Click="CmDeleteRule_Click" />
+                                                                </StackPanel>
+                                                            </WrapPanel>
+
+                                                            <!-- Several toons picker -->
+                                                            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding SeveralToons}"
+                                                                          Visibility="{Binding ShowSeveral, Converter={StaticResource BoolToVis}}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <CheckBox Margin="0,0,12,4" Content="{Binding Label}" IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+
+                                                            <!-- More: modifiers + pass-through -->
+                                                            <WrapPanel Margin="0,6,0,0" Visibility="{Binding IsMoreOpen, Converter={StaticResource BoolToVis}}">
+                                                                <TextBlock VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="only if holding:" />
+                                                                <CheckBox VerticalAlignment="Center" Content="Alt" IsChecked="{Binding RequireAlt, Mode=TwoWay}" />
+                                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Ctrl" IsChecked="{Binding RequireControl, Mode=TwoWay}" />
+                                                                <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="Shift" IsChecked="{Binding RequireShift, Mode=TwoWay}" />
+                                                                <CheckBox Margin="20,0,0,0" VerticalAlignment="Center" Content="Also send the key to the game"
+                                                                    IsChecked="{Binding PassThrough, Mode=TwoWay}" />
+                                                            </WrapPanel>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ui:Button HorizontalAlignment="Left" Content="Add rule" Icon="{ui:SymbolIcon Add24}" Click="CmAddBinding_Click" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Advanced -->
+                                <Expander Margin="0,6,0,0" Header="Advanced">
+                                    <StackPanel Margin="0,6,0,0">
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource RowLabel}" Text="Border colors" />
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <ctrl:ColorSwatch Width="70" VerticalAlignment="Center" ColorArgb="{Binding LeftColorArgb, Mode=TwoWay}" />
+                                                <TextBlock VerticalAlignment="Center" Margin="6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="left" />
+                                                <ctrl:ColorSwatch Width="70" Margin="8,0,0,0" VerticalAlignment="Center" ColorArgb="{Binding RightColorArgb, Mode=TwoWay}" />
+                                                <TextBlock VerticalAlignment="Center" Margin="6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="right" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <CheckBox Margin="0,6,0,0" Content="Show this mode in the mode-key cycle" IsChecked="{Binding IncludeInCycle, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+
+                            <!-- Mode-key cycle (global) -->
+                            <TextBlock Style="{StaticResource SectionHeader}" Text="Mode-key cycle" />
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <CheckBox Content="Rotate through custom modes when you tap the mode key"
+                                        IsChecked="{Binding customModeCycleWithModeHotkey, Source={x:Static props:Settings.Default}, Mode=TwoWay}" />
+                                    <TextBlock Style="{StaticResource SectionDesc}" Margin="0,6,0,0"
+                                        Text="When on, tapping your mode key cycles through custom modes too. To leave one mode out, turn off its 'Show this mode in the mode-key cycle' under Advanced." />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Footer -->
+        <Border
+            Grid.Row="2"
+            Padding="16,12"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <ui:Button
+                    MinWidth="90"
+                    Appearance="Primary"
+                    Content="OK"
+                    Click="OkButton_Click" />
+                <ui:Button
+                    MinWidth="90"
+                    Margin="8,0,0,0"
+                    Content="Cancel"
+                    Click="CancelButton_Click" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

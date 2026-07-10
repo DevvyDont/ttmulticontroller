@@ -1,0 +1,55 @@
+# EditorConfig for Multicontroller — https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{cs,csproj,config,manifest,xml,resx}]
+indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[*.cs]
+# --- Analyzer baseline for a legacy WinForms codebase ---
+# Roslyn analyzers are enabled (see TTMulti.csproj) at the Default level, surfaced as build warnings but never
+# failing the build. Categories below are tuned so the signal is useful without drowning existing code.
+
+# Interop-heavy Win32 P/Invoke code: these fire constantly and aren't actionable for this project.
+dotnet_diagnostic.CA1401.severity = none   # P/Invokes should not be visible
+dotnet_diagnostic.SYSLIB1054.severity = none # use LibraryImport source-gen (net481 has no source gen)
+dotnet_diagnostic.CA1806.severity = none   # ignored return value (many Win32 calls intentionally ignore it)
+dotnet_diagnostic.CA1810.severity = none   # static field init
+dotnet_diagnostic.CA2101.severity = none   # marshaling for P/Invoke string args
+
+# Localization is not a goal for this single-locale desktop tool.
+dotnet_diagnostic.CA1303.severity = none   # do not pass literals as localized parameters
+dotnet_diagnostic.CA1304.severity = none
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1310.severity = none
+
+# WinForms modern-SDK analyzers (net10). WFO1000 flags custom-control properties that don't declare designer
+# code-serialization. Every hit here is on a hand-coded runtime overlay/picker control (BorderWnd, KeyPicker,
+# SelectWindowCrosshair) whose properties are assigned in code and never authored through the WinForms designer,
+# so serialization visibility is moot. Silenced for the mechanical retarget; the UI-redesign stage revisits these
+# controls and can annotate them properly then.
+dotnet_diagnostic.WFO1000.severity = none
+
+# High-value correctness/reliability rules kept as warnings.
+dotnet_diagnostic.CA2000.severity = warning # dispose objects before losing scope
+dotnet_diagnostic.CA1063.severity = warning # implement IDisposable correctly
+dotnet_diagnostic.CA2200.severity = warning # rethrow to preserve stack
+# Dispose-hygiene debt is widespread here (~190 hits); keep as an IDE suggestion, not build noise, for a
+# dedicated cleanup later rather than a 190-warning wall on every build.
+dotnet_diagnostic.CA2213.severity = suggestion # disposable fields should be disposed
+
+# --- Light code-style preferences (IDE hints only; not enforced in build) ---
+dotnet_sort_system_directives_first = true
+csharp_prefer_braces = true:suggestion
+csharp_style_namespace_declarations = block_scoped:suggestion
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion

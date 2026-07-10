@@ -1,4 +1,4 @@
-﻿namespace TTMulti.Forms
+namespace TTMulti.Forms
 {
     partial class BorderWnd
     {
@@ -17,6 +17,10 @@
             {
                 components.Dispose();
             }
+            if (disposing)
+            {
+                _surface?.Dispose();
+            }
             base.Dispose(disposing);
         }
 
@@ -32,18 +36,18 @@
             // 
             // BorderWnd
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.BackColor = Colors.ChromaKey;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+            this.BackColor = System.Drawing.Color.Black;
             this.ClientSize = new System.Drawing.Size(400, 400);
             this.DoubleBuffered = true;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Margin = new System.Windows.Forms.Padding(4);
             this.Name = "BorderWnd";
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.Text = "BorderWnd";
-            this.TransparencyKey = Colors.ChromaKey;
             this.ResumeLayout(false);
 
         }

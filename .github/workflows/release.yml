@@ -1,0 +1,33 @@
+name: release
+
+# Publishes a portable single-file exe to a GitHub Release when a v* tag is pushed.
+# Tag to match the AssemblyFileVersion in Properties/AssemblyInfo.cs, e.g. git tag v1.4.0 && git push origin v1.4.0.
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish single-file exe to GitHub Release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish single-file
+        run: dotnet publish TTMulti.csproj -p:PublishProfile=win-x64 /v:m /nologo
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: bin/Release/win-x64/publish/Multicontroller.exe
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: false
+          fail_on_unmatched_files: true

@@ -1,14 +1,23 @@
-﻿using System.Drawing;
+using System.Drawing;
 
 namespace TTMulti
 {
     public static class Colors
     {
-        public static readonly Color LeftGroup = Color.MediumPurple;
-        public static readonly Color RightGroup = Color.Purple;
-        public static readonly Color AllGroups = Color.Aqua;
+        public static Color LeftGroup => Color.FromArgb(Properties.Settings.Default.multiModeLeftBorderColor);
+        public static Color RightGroup => Color.FromArgb(Properties.Settings.Default.multiModeRightBorderColor);
+        public static Color AllGroups => Color.FromArgb(Properties.Settings.Default.mirrorModeBorderColor);
         public static readonly Color Individual = Color.Lime;
         public static readonly Color Multiclick = Color.IndianRed;
         public static readonly Color ChromaKey = Color.Fuchsia;
+        public static Color FocusedFocused => Color.FromArgb(Properties.Settings.Default.focusedModeFocusedColor);
+        public static Color FocusedUnfocused => Color.FromArgb(Properties.Settings.Default.focusedModeUnfocusedColor);
+        public static readonly Color Focused = Color.DarkBlue; // Legacy, kept for backwards compatibility
+        public static Color SwitchingMode => Color.FromArgb(Properties.Settings.Default.switchingModeColor);
+        public static Color SwitchingSelected => Color.FromArgb(Properties.Settings.Default.switchingSelectedColor);
+        public static Color SwitchingSwitched => Color.FromArgb(Properties.Settings.Default.switchingSwitchedColor);
+        public static Color SwitchingMarkedForRemoval => Color.FromArgb(Properties.Settings.Default.switchingRemovedColor);
+        // Border/moon tint for a window the user has set Dormant (kept alive but not receiving forwarded input).
+        public static Color SwitchingDormant => Color.FromArgb(Properties.Settings.Default.switchingDormantColor);
     }
 }

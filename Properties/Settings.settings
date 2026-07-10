@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="TTMulti.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
@@ -18,7 +18,7 @@
       <Value Profile="(Default)">1</Value>
     </Setting>
     <Setting Name="disableKeepAlive" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
+      <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="modeKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">192</Value>
@@ -87,7 +87,7 @@
       <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="homepageUrl" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">https://danfresneda.com/tt/multicontroller</Value>
+      <Value Profile="(Default)">https://github.com/kittkittlou/ttmulticontroller</Value>
     </Setting>
     <Setting Name="individualControlKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
@@ -98,6 +98,32 @@
     <Setting Name="replicateMouseKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
+    <Setting Name="replicateMouseHotkeyGlobal" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="replicateMouseUseMouseButton" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="replicateMouseMouseButton" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+
+    <Setting Name="multiclickTriggerOnRelease" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="multiclickOrder" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="replicateMouseSeparateLR" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="defaultModeOnLaunch" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="releaseKeysOnWindowFocus" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+
     <Setting Name="lastGroupsFormSize" Type="System.Drawing.Size" Scope="User">
       <Value Profile="(Default)">0, 0</Value>
     </Setting>
@@ -116,6 +142,18 @@
     <Setting Name="allGroupModeCycleWithModeHotkey" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="customModeCycleWithModeHotkey" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="lastActiveCustomModeId" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="modeLockToggleKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="suspendGlobalHotkeysToggleKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
     <Setting Name="mirrorGroupModeKeyCode" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
@@ -127,6 +165,126 @@
     </Setting>
     <Setting Name="enableClickToChangeControllers" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="zeroPowerThrowKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="zeroPowerThrowHotkeyGlobal" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="autoFindWindowsKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">70</Value>
+    </Setting>
+    <Setting Name="autoFindWindowsKeyModifiers" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="autoFindExecutables" Type="System.String" Scope="User">
+      <Value Profile="(Default)">CorporateClash.exe;TTREngine64.exe</Value>
+    </Setting>
+    <Setting Name="autoFindPlacementOnAltRelease" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="lastUsedLayoutPresetIndex" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="layoutPriorityLeftsFirst" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="modeHotkeyGlobal" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="replicateMouseHotkeyGlobal" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="zeroPowerThrowHotkeyGlobal" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="zeroPowerThrowEnableFocusMode" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="zeroPowerThrowNoActivate" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="switchingModeSwitchKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="switchingModeRemoveKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">88</Value>
+    </Setting>
+    <Setting Name="switchingModeDormantKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="switchingModeKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">18</Value>
+    </Setting>
+    <Setting Name="switchingModeEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="mirrorModeBorderColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1146130</Value>
+    </Setting>
+    <Setting Name="borderWidth" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">5</Value>
+    </Setting>
+    <Setting Name="borderCornerRadius" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="multiModeLeftBorderColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-13447886</Value>
+    </Setting>
+    <Setting Name="multiModeRightBorderColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-16751616</Value>
+    </Setting>
+    <Setting Name="switchingModeColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-701616</Value>
+    </Setting>
+    <Setting Name="switchingSelectedColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-736628</Value>
+    </Setting>
+    <Setting Name="switchingSwitchedColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1206214</Value>
+    </Setting>
+    <Setting Name="switchingRemovedColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-9868951</Value>
+    </Setting>
+    <Setting Name="switchingDormantColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-9404272</Value>
+    </Setting>
+    <Setting Name="focusedModeFocusedColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-8662817</Value>
+    </Setting>
+    <Setting Name="focusedModeUnfocusedColor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-10516785</Value>
+    </Setting>
+    <Setting Name="enableCaptionColor" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="tintControllerTitleBar" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="tintGameWindowsWithAccentColor" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="compactUIToggleKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="controllerUIScaleIndex" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">2</Value>
+    </Setting>
+    <Setting Name="groupNumberVisibility" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">2</Value>
+    </Setting>
+    <Setting Name="alwaysShowGroupNumber" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="minimizeUnconnectedKeyCode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="minimizeUnconnectedKeyModifiers" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="minimizeUnconnectedHotkeyGlobal" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>
 </SettingsFile>
